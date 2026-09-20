@@ -25,6 +25,8 @@
 <div class="toast" id="toast"></div>
 <script>
 const API='/api';
+const nav=document.getElementById('nav'), root=document.getElementById('root'), pageTitle=document.getElementById('pageTitle'),
+      mb=document.getElementById('mb'), mt=document.getElementById('mt'), mc=document.getElementById('mc'), toast=document.getElementById('toast');
 let route=location.hash.slice(1)||'dashboard', cache={products:[],inventory:[],suppliers:[],purchase_orders:[],materials:[],production_orders:[],outbound_orders:[],ledger:[]};
 const navs=[['dashboard','经营总览','总览','⌂'],['products','商品 / ASIN','基础资料','◫'],['suppliers','供应商','基础资料','▥'],['purchase','货物采购','采购与生产','🛒'],['materials','辅料 / 包材','采购与生产','▤'],['production','生产进度','采购与生产','▣'],['inventory','库存中心','库存与物流','⌂'],['outbound','出库单','库存与物流','⇥'],['ledger','库存流水','库存与物流','▧']];
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
