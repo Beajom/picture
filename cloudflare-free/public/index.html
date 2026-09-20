@@ -71,7 +71,56 @@ async function newPO(){openModal('新建采购单','<form id="f" class="form"><l
 async function viewPO(id){const o=await api('/purchase-orders/'+id);openModal('采购单 '+esc(o.order_no),'<div class="table"><table><tr><th>SKU</th><th>颜色</th><th>尺码</th><th>数量</th><th>单价</th></tr>'+o.items.map(i=>'<tr><td>'+esc(i.sku)+'</td><td>'+esc(i.color)+'</td><td>'+esc(i.size)+'</td><td>'+i.quantity+'</td><td>'+money(i.unit_price)+'</td></tr>').join('')+'</table></div><div class="actions"><button class="btn" onclick="window.print()">打印采购合同</button></div>')}
 async function delPO(id){if(!confirm('删除采购单？已占用的辅料会自动返还；已入库的采购单不允许删除。'))return;await api('/purchase-orders/'+id,{method:'DELETE'});refresh()}
 async function advanceProduction(id){await api('/production-orders/'+id+'/advance',{method:'POST'});refresh()}
-async function newOutbound(){openModal('新建出库单','<form id="f" class="form"><label>出库单号<input class="field" name="outbound_no" value="OUT-'+Date.now().toString().slice(-8)+'"></label><label>出库日期<input class="field" type="date" name="outbound_date" value="'+new Date().toISOString().slice(0,10)+'"></label><label>目的地<input class="field" name="destination" value="FBA"></label><label>承运商 / 货代<input class="field" name="carrier"></label><label class="full">产品<select class="field" name="product_id">'+productOptions()+'</select></label><label>数量<input class="field" type="number" name="quantity" min="1" value="1"></label><label>每箱装量<input class="field" type="number" name="units_per_carton" min="1" value="100"></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button class="btn primary">确认出库</button></div></form>');f.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(f).entries());d.quantity=Number(d.quantity);d.units_per_carton=Number(d.units_per_carton);await api('/outbound-orders',{method:'POST',body:JSON.stringify(d)});closeModal();refresh()}}
+function outboundModels(){return [...new Set(cache.products.map(p=>model(p)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-CN',{numeric:true}))}
+function outboundRowsByModel(m){return cache.products.filter(p=>model(p)===m)}
+function outboundColors(m){return [...new Set(outboundRowsByModel(m).map(p=>p.color).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'zh-CN'))}
+function outboundRowsByModelColor(m,c){return outboundRowsByModel(m).filter(p=>p.color===c).sort((a,b)=>sizeRank(a.size)-sizeRank(b.size))}
+function updateOutboundSelectors(){
+  const m=f.model_select.value;
+  const colors=outboundColors(m);
+  const prevColor=f.color_select.value;
+  f.color_select.innerHTML=colors.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+  if(colors.includes(prevColor))f.color_select.value=prevColor;
+  updateOutboundSizes();
+}
+function updateOutboundSizes(){
+  const m=f.model_select.value,c=f.color_select.value;
+  const rows=outboundRowsByModelColor(m,c);
+  const prev=f.size_select.value;
+  f.size_select.innerHTML=rows.map(p=>{const stock=inventoryQty(p.id),disabled=stock<=0?' disabled':'';return '<option value="'+p.id+'"'+disabled+'>'+esc(p.size)+' · 库存 '+stock.toLocaleString()+' 双'+(stock<=0?'（无库存）':'')+'</option>'}).join('');
+  if(rows.some(p=>p.id===prev&&inventoryQty(p.id)>0))f.size_select.value=prev;
+  if(!f.size_select.value){const first=rows.find(p=>inventoryQty(p.id)>0);if(first)f.size_select.value=first.id}
+  updateOutboundStock();
+}
+function updateOutboundStock(){
+  const pid=f.size_select.value,p=cache.products.find(x=>x.id===pid),stock=p?inventoryQty(pid):0;
+  f.product_id.value=pid||'';
+  const stockEl=document.getElementById('outStock');
+  if(stockEl)stockEl.textContent=stock.toLocaleString()+' 双';
+  f.quantity.max=String(stock);
+  if(Number(f.quantity.value)>stock)f.quantity.value=stock>0?String(stock):'';
+  const btn=f.querySelector('button[type="submit"]');
+  if(btn)btn.disabled=!pid||stock<=0;
+}
+async function newOutbound(){
+  const models=outboundModels();
+  openModal('新建出库单','<form id="f" class="form"><label>出库单号<input class="field" name="outbound_no" value="OUT-'+Date.now().toString().slice(-8)+'"></label><label>出库日期<input class="field" type="date" name="outbound_date" value="'+new Date().toISOString().slice(0,10)+'"></label><label>目的地<input class="field" name="destination" value="FBA"></label><label>承运商 / 货代<input class="field" name="carrier"></label><label>型号<select class="field" name="model_select">'+models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join('')+'</select></label><label>颜色<select class="field" name="color_select"></select></label><label>尺码<select class="field" name="size_select"></select></label><label>当前可用库存<div id="outStock" class="field" style="background:#f8fafc;font-weight:700">0 双</div></label><input type="hidden" name="product_id"><label>数量<input class="field" type="number" name="quantity" min="1" value="1"></label><label>每箱装量<input class="field" type="number" name="units_per_carton" min="1" value="100"></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button type="submit" class="btn primary">确认出库</button></div></form>');
+  f.model_select.onchange=updateOutboundSelectors;
+  f.color_select.onchange=updateOutboundSizes;
+  f.size_select.onchange=updateOutboundStock;
+  updateOutboundSelectors();
+  f.onsubmit=async e=>{
+    e.preventDefault();
+    const d=Object.fromEntries(new FormData(f).entries());
+    delete d.model_select;delete d.color_select;delete d.size_select;
+    d.quantity=Number(d.quantity);d.units_per_carton=Number(d.units_per_carton);
+    const stock=inventoryQty(d.product_id);
+    if(!d.product_id)throw new Error('请选择有库存的尺码');
+    if(d.quantity<=0||d.quantity>stock)throw new Error('出库数量不能超过当前可用库存');
+    await api('/outbound-orders',{method:'POST',body:JSON.stringify(d)});
+    closeModal();refresh()
+  }
+}
 async function delOutbound(id){if(!confirm('删除出库单？本次扣减的库存会自动恢复并生成撤销流水。'))return;await api('/outbound-orders/'+id,{method:'DELETE'});refresh()}
 async function migrateImages(){if(!confirm('把现有商品图片复制到 Cloudflare KV？只复制一次，完成后数据库会自动改为 Cloudflare KV 地址。'))return;const r=await api('/migrate-images',{method:'POST'});toastMsg('已迁移 '+r.moved+' 张图片');refresh()}
 load().then(render).catch(e=>{root.innerHTML='<div class="panel"><div class="empty">尚未连接 Cloudflare D1：'+esc(e.message)+'</div></div>';renderNav()})
