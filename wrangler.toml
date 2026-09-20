@@ -1,0 +1,10 @@
+name = "amazon-supply-workbench"
+compatibility_date = "2026-09-20"
+pages_build_output_dir = "."
+
+# Cloudflare Pages / Workers bindings expected by functions/api/[[path]].js:
+# D1 binding: DB
+# R2 binding: IMAGES
+#
+# After Cloudflare creates the database and bucket, bind them in:
+# Pages project > Settings > Bindings.
