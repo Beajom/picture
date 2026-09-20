@@ -1,0 +1,23 @@
+{
+  "name": "amazon-supply-workbench-cloudflare-free",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "wrangler dev",
+    "db:init": "wrangler d1 execute DB --remote --file=./schema.sql && wrangler d1 execute DB --remote --file=./seed-current-data.sql",
+    "deploy": "npm run db:init && wrangler deploy"
+  },
+  "cloudflare": {
+    "bindings": {
+      "DB": {
+        "description": "Amazon Supply Workbench D1 主数据库。首次部署自动导入现有商品、库存、供应商和辅料数据。"
+      },
+      "IMAGES": {
+        "description": "商品父体图、颜色图和辅料图的 Workers KV 存储空间。"
+      }
+    }
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.0"
+  }
+}
