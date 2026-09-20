@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "db:init": "wrangler d1 execute DB --remote --file=./schema.sql && wrangler d1 execute DB --remote --file=./seed-current-data.sql",
-    "deploy": "npm run db:init && wrangler deploy"
+    "deploy": "wrangler deploy && npm run db:init"
   },
   "cloudflare": {
     "bindings": {
@@ -18,6 +18,6 @@
     }
   },
   "devDependencies": {
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.45.0"
   }
 }
