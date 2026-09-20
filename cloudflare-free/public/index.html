@@ -104,7 +104,7 @@ function updateOutboundStock(){
 }
 async function newOutbound(){
   const models=outboundModels();
-  openModal('新建出库单','<form id="f" class="form"><label>出库单号<input class="field" name="outbound_no" value="OUT-'+Date.now().toString().slice(-8)+'"></label><label>出库日期<input class="field" type="date" name="outbound_date" value="'+new Date().toISOString().slice(0,10)+'"></label><label>目的地<input class="field" name="destination" value="FBA"></label><label>承运商 / 货代<input class="field" name="carrier"></label><label>型号<select class="field" name="model_select">'+models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join('')+'</select></label><label>颜色<select class="field" name="color_select"></select></label><label>尺码<select class="field" name="size_select"></select></label><label>当前可用库存<div id="outStock" class="field" style="background:#f8fafc;font-weight:700">0 双</div></label><input type="hidden" name="product_id"><label>数量<input class="field" type="number" name="quantity" min="1" value="1"></label><label>每箱装量<input class="field" type="number" name="units_per_carton" min="1" value="100"></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button type="submit" class="btn primary">确认出库</button></div></form>');
+  openModal('新建出库单','<form id="f" class="form"><label>出库单号<input class="field" name="outbound_no" value="OUT-'+Date.now().toString().slice(-8)+'"></label><label>出库日期<input class="field" type="date" name="outbound_date" value="'+new Date().toISOString().slice(0,10)+'"></label><label>目的地<input class="field" name="destination" value="FBA"></label><label>承运商 / 货代<input class="field" name="carrier"></label><label>型号<select class="field" name="model_select">'+models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join('')+'</select></label><label>颜色<select class="field" name="color_select"></select></label><label>尺码<select class="field" name="size_select"></select></label><label>当前可用库存<div id="outStock" class="field" style="background:#f8fafc;font-weight:700">0 双</div></label><input type="hidden" name="product_id"><label>数量<input class="field" type="number" name="quantity" min="1" value="1"></label><label>每箱装量<input class="field" type="number" name="units_per_carton" value="200" readonly></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button type="submit" class="btn primary">确认出库</button></div></form>');
   f.model_select.onchange=updateOutboundSelectors;
   f.color_select.onchange=updateOutboundSizes;
   f.size_select.onchange=updateOutboundStock;
@@ -123,22 +123,27 @@ async function newOutbound(){
 }
 async function viewOutbound(id){
   const o=await api('/outbound-orders/'+id);
-  const rows=(o.items||[]).map(i=>'<tr><td>'+esc(model(i))+'</td><td>'+esc(i.product_name||'')+'</td><td>'+esc(i.color||'')+'</td><td>'+esc(i.size||'')+'</td><td>'+esc(i.sku||'')+'</td><td><b>'+Number(i.quantity||0).toLocaleString()+'</b></td></tr>').join('');
+  const PACK_PAIRS=200, PAIRS_PER_SET=2;
+  const totalPairs=Number(o.total_qty||0), totalSets=Math.ceil(totalPairs/PAIRS_PER_SET), totalBoxes=Math.ceil(totalPairs/PACK_PAIRS);
+  const rows=(o.items||[]).map((i,idx)=>{
+    const qty=Number(i.quantity||0), sets=Math.ceil(qty/PAIRS_PER_SET), boxes=Math.ceil(qty/PACK_PAIRS);
+    return '<tr><td>'+(idx+1)+'</td><td>'+esc(model(i))+'</td><td>'+esc(i.product_name||'')+'</td><td>'+esc(i.color||'')+'</td><td>'+esc(i.size||'')+'</td><td><b>'+qty.toLocaleString()+' 双</b></td><td>'+sets.toLocaleString()+' 套</td><td>'+boxes.toLocaleString()+' 箱</td></tr>'
+  }).join('');
   openModal('出库单 '+esc(o.outbound_no),
     '<div id="outboundDoc" class="doc">'+
     '<div class="cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">'+
       '<div class="card"><span>出库日期</span><b>'+esc(o.outbound_date||'')+'</b></div>'+
-      '<div class="card"><span>目的地</span><b>'+esc(o.destination||'')+'</b></div>'+
-      '<div class="card"><span>总双数</span><b>'+Number(o.total_qty||0).toLocaleString()+' 双</b></div>'+
-      '<div class="card"><span>箱数</span><b>'+Number(o.box_count||0).toLocaleString()+' 箱</b></div>'+
+      '<div class="card"><span>总双数</span><b>'+totalPairs.toLocaleString()+' 双</b></div>'+
+      '<div class="card"><span>总套数</span><b>'+totalSets.toLocaleString()+' 套</b></div>'+
+      '<div class="card"><span>总箱数</span><b>'+totalBoxes.toLocaleString()+' 箱</b></div>'+
     '</div>'+
     '<div class="panel" style="padding:14px;margin-bottom:14px"><div class="grid2">'+
       '<div><span class="muted small">出库单号</span><div><b>'+esc(o.outbound_no||'')+'</b></div></div>'+
       '<div><span class="muted small">状态</span><div><b>'+esc(o.status||'')+'</b></div></div>'+
-      '<div><span class="muted small">承运商 / 货代</span><div>'+esc(o.carrier||'—')+'</div></div>'+
-      '<div><span class="muted small">每箱装量</span><div>'+Number(o.units_per_carton||0).toLocaleString()+' 双/箱</div></div>'+
+      '<div><span class="muted small">目的地</span><div>'+esc(o.destination||'—')+'</div></div>'+
+      '<div><span class="muted small">装箱规则</span><div><b>200 双/箱 · 2 双/套（100 套/箱）</b></div></div>'+
     '</div></div>'+
-    '<div class="table"><table><thead><tr><th>型号</th><th>商品</th><th>颜色</th><th>尺码</th><th>SKU</th><th>数量</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="table"><table><thead><tr><th>序号</th><th>型号</th><th>商品</th><th>颜色</th><th>尺码</th><th>数量</th><th>套数</th><th>箱数</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div class="actions" style="margin-top:16px"><button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="printOutbound(\''+o.id+'\')">PDF预览</button></div></div>'
   )
 }
@@ -147,24 +152,25 @@ function printOutbound(id){
   if(!w){toastMsg('浏览器阻止了预览窗口，请允许弹窗');return}
   w.document.write('<p style="font-family:Arial;padding:24px">正在生成 PDF 预览...</p>');
   api('/outbound-orders/'+id).then(o=>{
-    const unitsPerCarton=Math.max(Number(o.units_per_carton||0),1);
-    const rows=(o.items||[]).map(i=>{
-      const qty=Number(i.quantity||0);
-      const boxes=Math.ceil(qty/unitsPerCarton);
+    const PACK_PAIRS=200, PAIRS_PER_SET=2;
+    const totalPairs=Number(o.total_qty||0), totalSets=Math.ceil(totalPairs/PAIRS_PER_SET), totalBoxes=Math.ceil(totalPairs/PACK_PAIRS);
+    const rows=(o.items||[]).map((i,idx)=>{
+      const qty=Number(i.quantity||0), sets=Math.ceil(qty/PAIRS_PER_SET), boxes=Math.ceil(qty/PACK_PAIRS);
       let img='';
       try{img=i.image_url?new URL(i.image_url,location.origin).href:''}catch(e){img=''}
       const imgHtml=img?'<img src="'+esc(img)+'" alt="产品图片" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="img-fallback" style="display:none">无图</div>':'<div class="img-fallback">无图</div>';
-      return '<tr><td class="img-cell">'+imgHtml+'</td><td>'+esc(model(i))+'</td><td>'+esc(i.product_name||'')+'</td><td>'+esc(i.color||'')+'</td><td>'+esc(i.size||'')+'</td><td>'+esc(i.sku||'')+'</td><td>'+qty.toLocaleString()+'</td><td><b>'+boxes.toLocaleString()+' 箱</b></td></tr>'
+      return '<tr><td class="seq">'+(idx+1)+'</td><td class="img-cell">'+imgHtml+'</td><td>'+esc(model(i))+'</td><td>'+esc(i.product_name||'')+'</td><td>'+esc(i.color||'')+'</td><td>'+esc(i.size||'')+'</td><td>'+qty.toLocaleString()+'</td><td>'+sets.toLocaleString()+'</td><td><b>'+boxes.toLocaleString()+' 箱</b></td></tr>'
     }).join('');
     const html='<!doctype html><html><head><meta charset="utf-8"><title>出库单 '+esc(o.outbound_no||'')+' - PDF预览</title><style>'+
-      '*{box-sizing:border-box}body{font-family:Arial,"Microsoft YaHei",sans-serif;color:#111827;margin:0;background:#eef1f5;font-size:13px}.toolbar{position:sticky;top:0;z-index:20;height:62px;background:#fff;border-bottom:1px solid #d1d5db;display:flex;align-items:center;justify-content:space-between;padding:0 22px;box-shadow:0 2px 10px rgba(0,0,0,.05)}.toolbar .title{font-size:16px;font-weight:700}.toolbar .hint{font-size:12px;color:#6b7280;margin-left:10px}.toolbar button{border:1px solid #d1d5db;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;margin-left:8px}.toolbar button.primary{background:#2563eb;color:#fff;border-color:#2563eb}.canvas{padding:28px;min-height:calc(100vh - 62px);display:flex;justify-content:center;align-items:flex-start}.page{width:210mm;min-height:297mm;background:#fff;box-shadow:0 8px 28px rgba(15,23,42,.18);padding:12mm}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111827;padding-bottom:12px;margin-bottom:18px}.head h1{margin:0;font-size:26px}.brand{font-weight:700;font-size:16px}.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 28px;margin-bottom:18px}.meta div{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:7px 0}.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.sum div{border:1px solid #d1d5db;padding:12px;text-align:center}.sum b{display:block;font-size:20px;margin-top:4px}table{width:100%;border-collapse:collapse;margin-top:12px;table-layout:auto}th,td{border:1px solid #d1d5db;padding:7px;text-align:left;vertical-align:middle}th{background:#f3f4f6;white-space:nowrap}.img-cell{width:64px;text-align:center}.img-cell img{width:50px;height:50px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;background:#fff;display:block;margin:auto}.img-fallback{width:50px;height:50px;border:1px dashed #cbd5e1;border-radius:6px;align-items:center;justify-content:center;color:#94a3b8;background:#f8fafc;margin:auto;font-size:11px;display:flex}.foot{margin-top:30px;display:flex;justify-content:space-between}.sign{width:42%;border-top:1px solid #9ca3af;padding-top:8px;margin-top:36px}@page{size:A4;margin:0}@media print{body{background:#fff}.toolbar{display:none}.canvas{padding:0}.page{width:210mm;min-height:297mm;box-shadow:none;margin:0;padding:12mm}.img-cell img{print-color-adjust:exact;-webkit-print-color-adjust:exact}}'+
+      '*{box-sizing:border-box}body{font-family:Arial,"Microsoft YaHei",sans-serif;color:#111827;margin:0;background:#eef1f5;font-size:12px}.toolbar{position:sticky;top:0;z-index:20;height:62px;background:#fff;border-bottom:1px solid #d1d5db;display:flex;align-items:center;justify-content:space-between;padding:0 22px;box-shadow:0 2px 10px rgba(0,0,0,.05)}.toolbar .title{font-size:16px;font-weight:700}.toolbar .hint{font-size:12px;color:#6b7280;margin-left:10px}.toolbar button{border:1px solid #d1d5db;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;margin-left:8px}.toolbar button.primary{background:#2563eb;color:#fff;border-color:#2563eb}.canvas{padding:28px;min-height:calc(100vh - 62px);display:flex;justify-content:center;align-items:flex-start}.page{width:210mm;min-height:297mm;background:#fff;box-shadow:0 8px 28px rgba(15,23,42,.18);padding:12mm}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111827;padding-bottom:12px;margin-bottom:18px}.head h1{margin:0;font-size:26px}.brand{font-weight:700;font-size:16px}.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 28px;margin-bottom:18px}.meta div{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:7px 0}.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}.sum div{border:1px solid #d1d5db;padding:10px;text-align:center}.sum b{display:block;font-size:18px;margin-top:4px}.rule{border:1px solid #bfdbfe;background:#eff6ff;color:#1e3a8a;padding:9px 12px;margin:0 0 12px;font-weight:700}table{width:100%;border-collapse:collapse;margin-top:10px;table-layout:auto}th,td{border:1px solid #d1d5db;padding:6px;text-align:left;vertical-align:middle}th{background:#f3f4f6;white-space:nowrap}.seq{width:36px;text-align:center}.img-cell{width:62px;text-align:center}.img-cell img{width:48px;height:48px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;background:#fff;display:block;margin:auto}.img-fallback{width:48px;height:48px;border:1px dashed #cbd5e1;border-radius:6px;align-items:center;justify-content:center;color:#94a3b8;background:#f8fafc;margin:auto;font-size:10px;display:flex}.foot{margin-top:30px;display:flex;justify-content:space-between}.sign{width:42%;border-top:1px solid #9ca3af;padding-top:8px;margin-top:36px}@page{size:A4;margin:0}@media print{body{background:#fff}.toolbar{display:none}.canvas{padding:0}.page{width:210mm;min-height:297mm;box-shadow:none;margin:0;padding:12mm}.img-cell img{print-color-adjust:exact;-webkit-print-color-adjust:exact}}'+
       '</style></head><body>'+
-      '<div class="toolbar"><div><span class="title">PDF 预览 · 出库单</span><span class="hint">先确认产品图片、数量与箱数，再打印或保存为 PDF</span></div><div><button onclick="window.close()">关闭</button><button class="primary" onclick="window.print()">打印 / 保存为 PDF</button></div></div>'+
+      '<div class="toolbar"><div><span class="title">PDF 预览 · 出库单</span><span class="hint">200 双/箱 · 2 双/套</span></div><div><button onclick="window.close()">关闭</button><button class="primary" onclick="window.print()">打印 / 保存为 PDF</button></div></div>'+
       '<div class="canvas"><div class="page">'+
       '<div class="head"><div><div class="brand">Amazon Supply</div><h1>出库单</h1></div><div>单号：<b>'+esc(o.outbound_no||'')+'</b></div></div>'+
       '<div class="meta"><div><span>出库日期</span><b>'+esc(o.outbound_date||'')+'</b></div><div><span>状态</span><b>'+esc(o.status||'')+'</b></div><div><span>目的地</span><b>'+esc(o.destination||'')+'</b></div><div><span>承运商 / 货代</span><b>'+esc(o.carrier||'—')+'</b></div></div>'+
-      '<div class="sum"><div>总双数<b>'+Number(o.total_qty||0).toLocaleString()+' 双</b></div><div>每箱装量<b>'+Number(o.units_per_carton||0).toLocaleString()+' 双</b></div><div>总箱数<b>'+Number(o.box_count||0).toLocaleString()+' 箱</b></div></div>'+
-      '<table><thead><tr><th>图片</th><th>型号</th><th>商品</th><th>颜色</th><th>尺码</th><th>SKU</th><th>数量</th><th>箱数</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div class="rule">装箱规则：每箱 200 双；2 双 = 1 套；因此每箱 = 100 套。</div>'+
+      '<div class="sum"><div>总双数<b>'+totalPairs.toLocaleString()+' 双</b></div><div>总套数<b>'+totalSets.toLocaleString()+' 套</b></div><div>每箱装量<b>200 双</b></div><div>总箱数<b>'+totalBoxes.toLocaleString()+' 箱</b></div></div>'+
+      '<table><thead><tr><th>序号</th><th>图片</th><th>型号</th><th>商品</th><th>颜色</th><th>尺码</th><th>数量（双）</th><th>套数</th><th>箱数</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<div class="foot"><div class="sign">制单人：</div><div class="sign">复核人：</div></div>'+
       '</div></div></body></html>';
     w.document.open();w.document.write(html);w.document.close();w.focus()
