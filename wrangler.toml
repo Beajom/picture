@@ -1,4 +1,4 @@
-name = "amazon-supply-workbench"
+name = "amazon-supply-workbench-free"
 main = "src/worker.js"
 compatibility_date = "2026-09-20"
 
@@ -9,8 +9,6 @@ not_found_handling = "single-page-application"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "amazon-supply-workbench"
-database_id = "00000000-0000-0000-0000-000000000000"
 
 [[kv_namespaces]]
 binding = "IMAGES"
