@@ -24,7 +24,7 @@ export async function onRequest(ctx){
           COALESCE((SELECT SUM(quantity) FROM production_order_items x WHERE x.production_order_id=pr.id),0) total_qty
           FROM production_orders pr LEFT JOIN purchase_orders po ON po.id=pr.purchase_order_id
           LEFT JOIN suppliers s ON s.id=pr.supplier_id ORDER BY pr.created_at DESC`),
-        all(env.DB,'SELECT * FROM outbound_orders ORDER BY created_at DESC'),
+        all(env.DB,'SELECT o.*,200 AS units_per_carton,CAST((o.total_qty+199)/200 AS INTEGER) AS box_count FROM outbound_orders o ORDER BY created_at DESC'),
         all(env.DB,`SELECT l.*,p.sku FROM inventory_ledger l LEFT JOIN products p ON p.id=l.product_id ORDER BY l.created_at DESC LIMIT 500`)
       ]);
       return json({products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger});
@@ -212,10 +212,10 @@ export async function onRequest(ctx){
     if(p==='/outbound-orders'&&method==='POST'){
       const d=await request.json(), q=Math.trunc(num(d.quantity)), inv=await one(env.DB,'SELECT available_qty FROM inventory WHERE product_id=?',d.product_id);
       if(!inv)throw new Error('库存不存在');if(q<=0)throw new Error('出库数量必须大于0');if(num(inv.available_qty)<q)throw new Error('库存不足');
-      const after=num(inv.available_qty)-q, oid=id(), box=Math.ceil(q/Math.max(Math.trunc(num(d.units_per_carton)),1));
+      const after=num(inv.available_qty)-q, oid=id(), unitsPerCarton=200, box=Math.ceil(q/unitsPerCarton);
       await env.DB.batch([
         env.DB.prepare('INSERT INTO outbound_orders(id,outbound_no,outbound_date,destination,carrier,total_qty,units_per_carton,box_count,status) VALUES(?,?,?,?,?,?,?,?,?)')
-          .bind(oid,d.outbound_no,d.outbound_date,d.destination||'',d.carrier||'',q,Math.max(Math.trunc(num(d.units_per_carton)),1),box,'已出库'),
+          .bind(oid,d.outbound_no,d.outbound_date,d.destination||'',d.carrier||'',q,unitsPerCarton,box,'已出库'),
         env.DB.prepare('INSERT INTO outbound_order_items(id,outbound_order_id,product_id,quantity) VALUES(?,?,?,?)').bind(id(),oid,d.product_id,q),
         env.DB.prepare('UPDATE inventory SET available_qty=?,updated_at=CURRENT_TIMESTAMP WHERE product_id=?').bind(after,d.product_id),
         env.DB.prepare('INSERT INTO inventory_ledger(id,business_type,reference_no,product_id,qty_change,balance_after,notes) VALUES(?,?,?,?,?,?,?)')
@@ -225,7 +225,7 @@ export async function onRequest(ctx){
     }
     m=p.match(/^\/outbound-orders\/([^/]+)$/);
     if(m&&method==='GET'){
-      const o=await one(env.DB,'SELECT * FROM outbound_orders WHERE id=?',m[1]);if(!o)return err('出库单不存在',404);
+      const o=await one(env.DB,'SELECT * FROM outbound_orders WHERE id=?',m[1]);if(!o)return err('出库单不存在',404);o.units_per_carton=200;o.box_count=Math.ceil(num(o.total_qty)/200);
       o.items=await all(env.DB,`SELECT i.*,p.sku,p.internal_code,p.product_name,p.color,p.size,p.image_url,p.parent_asin,p.child_asin
         FROM outbound_order_items i JOIN products p ON p.id=i.product_id WHERE i.outbound_order_id=? ORDER BY p.internal_code`,m[1]);
       return json(o);
