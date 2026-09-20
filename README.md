@@ -5,7 +5,7 @@
 This production configuration runs as a Cloudflare Worker with:
 - Static Assets: ERP frontend
 - D1 binding `DB`: business data
-- R2 binding `IMAGES`: product/material images
+- Workers KV binding `IMAGES`: product/material images
 - Worker API: `/api/*`
 
 The deploy script initializes the D1 schema and imports the current ERP seed data before deploying the Worker.
