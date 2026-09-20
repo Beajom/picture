@@ -52,7 +52,7 @@ purchase(){return '<div class="title"><div><h1>货物采购</h1><p>采购单 →
 materials(){return '<div class="title"><div><h1>辅料 / 包材</h1><p>产品采购时自动检查辅料是否充足</p></div><button class="btn primary" onclick="editMaterial()">＋ 新增辅料</button></div><div class="grid2">'+cache.materials.map(m=>'<div class="card"><div class="row"><img class="thumb" src="'+esc(m.image_url||'')+'" loading="lazy"><div><b>'+esc(m.material_code||m.name)+'</b><div>'+esc(m.name)+'</div><div class="small muted">适用 '+esc(m.applicable_model||'未关联')+'</div></div></div><div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><span>库存</span><b>'+Number(m.current_stock||0)+' '+esc(m.unit||'个')+'</b></div><div><span>采购价</span><b>'+money(m.purchase_price)+'</b></div></div><div class="actions"><button class="btn" onclick="editMaterial(\''+m.id+'\')">编辑</button></div></div>').join('')+'</div>'},
 production(){return '<div class="title"><div><h1>生产进度</h1><p>贸易公司跟单：待生产 / 生产中 / 待质检 / 生产完成 / 已入库</p></div></div>'+table(cache.production_orders,['production_no','purchase_order_no','supplier_name','total_qty','planned_finish_date','status'],['生产单','采购单','供应商','数量','计划完成','状态'],o=>'<button class="link" onclick="advanceProduction(\''+o.id+'\')">推进状态</button>')},
 inventory(){return '<div class="title"><div><h1>库存中心</h1><p>按型号 → 颜色 → 尺码展示，所有总数由子SKU实时汇总</p></div><button class="btn primary" onclick="adjustStock()">＋ 库存调整</button></div><div class="cards">'+card('库存总双数',cache.inventory.reduce((s,x)=>s+Number(x.available_qty||0),0),'inventory')+card('父体 / 型号',parentGroups().length,'inventory')+card('低库存SKU',cache.inventory.filter(x=>Number(x.available_qty||0)<=Number(x.safety_stock||0)).length,'inventory')+card('库存流水',cache.ledger.length,'ledger')+card('待入库',cache.production_orders.filter(x=>x.status==='生产完成').length,'production')+'</div>'+parentGroups().map(g=>{const colors={};g.rows.forEach(p=>(colors[p.color]??=[]).push(p));const total=g.rows.reduce((s,p)=>s+inventoryQty(p.id),0);return '<div class="inventory-model"><div class="inventory-head"><div class="row"><img class="thumb" src="'+esc(g.rows[0]?.parent_image_url||g.rows[0]?.image_url||'')+'" loading="lazy"><div><b style="font-size:18px">'+esc(g.model)+'</b><div>'+esc(g.name)+'</div><div class="small muted">'+esc(g.parent)+'</div></div></div><div><span class="muted small">型号小计</span><b style="font-size:22px;margin-left:8px">'+total.toLocaleString()+' 双</b></div></div><div class="inventory-colors">'+Object.entries(colors).map(([color,rows])=>'<div class="color-card"><div class="color-side"><img src="'+esc(rows[0]?.image_url||'')+'" loading="lazy"><b>'+esc(color)+'</b><div class="small muted">'+rows.reduce((s,p)=>s+inventoryQty(p.id),0).toLocaleString()+' 双</div></div><div class="size-list">'+rows.sort((a,b)=>sizeRank(a.size)-sizeRank(b.size)).map(p=>'<div class="size-row"><span><b>'+esc(p.size)+'</b></span><strong>'+inventoryQty(p.id).toLocaleString()+'</strong><button class="link" onclick="adjustStock(\''+p.id+'\')">调整</button></div>').join('')+'</div></div>').join('')+'</div></div>'}).join('')},
-outbound(){return '<div class="title"><div><h1>出库单</h1><p>选择型号、颜色、尺码，自动扣库存和计算箱数</p></div><button class="btn primary" onclick="newOutbound()">＋ 新建出库单</button></div>'+table(cache.outbound_orders,['outbound_no','outbound_date','destination','total_qty','box_count','status'],['出库单号','日期','目的地','总双数','箱数','状态'],o=>'<button class="link red" onclick="delOutbound(\''+o.id+'\')">删除</button>')},
+outbound(){return '<div class="title"><div><h1>出库单</h1><p>选择型号、颜色、尺码，自动扣库存和计算箱数</p></div><button class="btn primary" onclick="newOutbound()">＋ 新建出库单</button></div>'+table(cache.outbound_orders,['outbound_no','outbound_date','destination','total_qty','box_count','status'],['出库单号','日期','目的地','总双数','箱数','状态'],o=>'<button class="link" onclick="viewOutbound(\''+o.id+'\')">查看</button><button class="link" onclick="printOutbound(\''+o.id+'\')">打印</button><button class="link red" onclick="delOutbound(\''+o.id+'\')">删除</button>')},
 ledger(){return '<div class="title"><div><h1>库存流水</h1><p>所有库存变化必须有可追溯流水</p></div></div>'+table(cache.ledger,['created_at','business_type','reference_no','sku','qty_change','balance_after','notes'],['时间','类型','单号','SKU','变化','结存','备注'])}
 }
 function table(rows,keys,heads,actions){if(!rows.length)return '<div class="panel"><div class="empty">暂无数据</div></div>';return '<div class="panel table"><table><thead><tr>'+heads.map(h=>'<th>'+h+'</th>').join('')+(actions?'<th>操作</th>':'')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+keys.map(k=>'<td>'+esc(r[k]??'')+'</td>').join('')+(actions?'<td>'+actions(r)+'</td>':'')+'</tr>').join('')+'</tbody></table></div>'}
@@ -120,6 +120,46 @@ async function newOutbound(){
     await api('/outbound-orders',{method:'POST',body:JSON.stringify(d)});
     closeModal();refresh()
   }
+}
+async function viewOutbound(id){
+  const o=await api('/outbound-orders/'+id);
+  const rows=(o.items||[]).map(i=>'<tr><td>'+esc(model(i))+'</td><td>'+esc(i.product_name||'')+'</td><td>'+esc(i.color||'')+'</td><td>'+esc(i.size||'')+'</td><td>'+esc(i.sku||'')+'</td><td><b>'+Number(i.quantity||0).toLocaleString()+'</b></td></tr>').join('');
+  openModal('出库单 '+esc(o.outbound_no),
+    '<div id="outboundDoc" class="doc">'+
+    '<div class="cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">'+
+      '<div class="card"><span>出库日期</span><b>'+esc(o.outbound_date||'')+'</b></div>'+
+      '<div class="card"><span>目的地</span><b>'+esc(o.destination||'')+'</b></div>'+
+      '<div class="card"><span>总双数</span><b>'+Number(o.total_qty||0).toLocaleString()+' 双</b></div>'+
+      '<div class="card"><span>箱数</span><b>'+Number(o.box_count||0).toLocaleString()+' 箱</b></div>'+
+    '</div>'+
+    '<div class="panel" style="padding:14px;margin-bottom:14px"><div class="grid2">'+
+      '<div><span class="muted small">出库单号</span><div><b>'+esc(o.outbound_no||'')+'</b></div></div>'+
+      '<div><span class="muted small">状态</span><div><b>'+esc(o.status||'')+'</b></div></div>'+
+      '<div><span class="muted small">承运商 / 货代</span><div>'+esc(o.carrier||'—')+'</div></div>'+
+      '<div><span class="muted small">每箱装量</span><div>'+Number(o.units_per_carton||0).toLocaleString()+' 双/箱</div></div>'+
+    '</div></div>'+
+    '<div class="table"><table><thead><tr><th>型号</th><th>商品</th><th>颜色</th><th>尺码</th><th>SKU</th><th>数量</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="actions" style="margin-top:16px"><button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="printOutbound(\''+o.id+'\')">打印出库单</button></div></div>'
+  )
+}
+function printOutbound(id){
+  const w=window.open('','_blank','width=1000,height=800');
+  if(!w){toastMsg('浏览器阻止了打印窗口，请允许弹窗');return}
+  w.document.write('<p style="font-family:Arial;padding:24px">正在生成出库单...</p>');
+  api('/outbound-orders/'+id).then(o=>{
+    const rows=(o.items||[]).map(i=>'<tr><td>'+esc(model(i))+'</td><td>'+esc(i.product_name||'')+'</td><td>'+esc(i.color||'')+'</td><td>'+esc(i.size||'')+'</td><td>'+esc(i.sku||'')+'</td><td>'+Number(i.quantity||0).toLocaleString()+'</td></tr>').join('');
+    const html='<!doctype html><html><head><meta charset="utf-8"><title>出库单 '+esc(o.outbound_no||'')+'</title><style>'+
+      '@page{size:A4;margin:14mm}body{font-family:Arial,"Microsoft YaHei",sans-serif;color:#111827;margin:0;font-size:13px}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111827;padding-bottom:12px;margin-bottom:18px}.head h1{margin:0;font-size:26px}.brand{font-weight:700;font-size:16px}.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 28px;margin-bottom:18px}.meta div{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:7px 0}.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.sum div{border:1px solid #d1d5db;padding:12px;text-align:center}.sum b{display:block;font-size:20px;margin-top:4px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left}th{background:#f3f4f6}.foot{margin-top:30px;display:flex;justify-content:space-between}.sign{width:42%;border-top:1px solid #9ca3af;padding-top:8px;margin-top:36px}@media print{button{display:none}}'+
+      '</style></head><body>'+
+      '<div class="head"><div><div class="brand">Amazon Supply</div><h1>出库单</h1></div><div>单号：<b>'+esc(o.outbound_no||'')+'</b></div></div>'+
+      '<div class="meta"><div><span>出库日期</span><b>'+esc(o.outbound_date||'')+'</b></div><div><span>状态</span><b>'+esc(o.status||'')+'</b></div><div><span>目的地</span><b>'+esc(o.destination||'')+'</b></div><div><span>承运商 / 货代</span><b>'+esc(o.carrier||'—')+'</b></div></div>'+
+      '<div class="sum"><div>总双数<b>'+Number(o.total_qty||0).toLocaleString()+' 双</b></div><div>每箱装量<b>'+Number(o.units_per_carton||0).toLocaleString()+' 双</b></div><div>箱数<b>'+Number(o.box_count||0).toLocaleString()+' 箱</b></div></div>'+
+      '<table><thead><tr><th>型号</th><th>商品</th><th>颜色</th><th>尺码</th><th>SKU</th><th>数量</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div class="foot"><div class="sign">制单人：</div><div class="sign">复核人：</div></div>'+
+      '</body></html>';
+    w.document.open();w.document.write(html);w.document.close();
+    setTimeout(()=>{w.focus();w.print()},300)
+  }).catch(e=>{w.document.body.innerHTML='<p style="font-family:Arial;padding:24px">生成失败：'+esc(e.message)+'</p>'})
 }
 async function delOutbound(id){if(!confirm('删除出库单？本次扣减的库存会自动恢复并生成撤销流水。'))return;await api('/outbound-orders/'+id,{method:'DELETE'});refresh()}
 async function migrateImages(){if(!confirm('把现有商品图片复制到 Cloudflare KV？只复制一次，完成后数据库会自动改为 Cloudflare KV 地址。'))return;const r=await api('/migrate-images',{method:'POST'});toastMsg('已迁移 '+r.moved+' 张图片');refresh()}
