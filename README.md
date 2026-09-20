@@ -1,3 +1,13 @@
-# Amazon Supply Workbench
+# Amazon Supply Workbench — Cloudflare
 
-免费线上供应链工作台：GitHub Pages 前端 + Supabase 云数据库。
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Beajom/picture)
+
+This production configuration runs as a Cloudflare Worker with:
+- Static Assets: ERP frontend
+- D1 binding `DB`: business data
+- R2 binding `IMAGES`: product/material images
+- Worker API: `/api/*`
+
+The deploy script initializes the D1 schema and imports the current ERP seed data before deploying the Worker.
+
+Health check: `/health`
