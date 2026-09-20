@@ -224,6 +224,12 @@ export async function onRequest(ctx){
       return json({id:oid,box_count:box});
     }
     m=p.match(/^\/outbound-orders\/([^/]+)$/);
+    if(m&&method==='GET'){
+      const o=await one(env.DB,'SELECT * FROM outbound_orders WHERE id=?',m[1]);if(!o)return err('出库单不存在',404);
+      o.items=await all(env.DB,`SELECT i.*,p.sku,p.internal_code,p.product_name,p.color,p.size,p.image_url,p.parent_asin,p.child_asin
+        FROM outbound_order_items i JOIN products p ON p.id=i.product_id WHERE i.outbound_order_id=? ORDER BY p.internal_code`,m[1]);
+      return json(o);
+    }
     if(m&&method==='DELETE'){
       const o=await one(env.DB,'SELECT * FROM outbound_orders WHERE id=?',m[1]);if(!o)return err('出库单不存在',404);
       const items=await all(env.DB,'SELECT * FROM outbound_order_items WHERE outbound_order_id=?',o.id),batch=[];
