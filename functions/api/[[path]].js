@@ -89,7 +89,7 @@ export async function onRequest(ctx){
       const productId=String(fd.get('product_id')||''), materialId=String(fd.get('material_id')||'');
       const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'').toLowerCase();
       const key=`${type}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-      await env.IMAGES.put(key,await file.arrayBuffer(),{httpMetadata:{contentType:file.type||'image/jpeg',cacheControl:'public,max-age=31536000,immutable'}});
+      await env.IMAGES.put(key, await file.arrayBuffer(), {metadata:{contentType:file.type||'image/jpeg'}});
       const publicUrl='/api/image/'+encodeURIComponent(key);
       await exec(env.DB,'INSERT INTO image_refs(id,kind,parent_asin,color,product_id,material_id,r2_key,public_url) VALUES(?,?,?,?,?,?,?,?)',id(),type,parent,color,productId||null,materialId||null,key,publicUrl);
       if(type==='parent'&&parent)await exec(env.DB,'UPDATE products SET parent_image_url=? WHERE parent_asin=?',publicUrl,parent);
@@ -99,10 +99,10 @@ export async function onRequest(ctx){
     }
     m=p.match(/^\/image\/(.+)$/);
     if(m&&method==='GET'){
-      const key=decodeURIComponent(m[1]), obj=await env.IMAGES.get(key);
-      if(!obj)return new Response('Not found',{status:404});
-      const h=new Headers();obj.writeHttpMetadata(h);h.set('etag',obj.httpEtag);h.set('cache-control','public,max-age=31536000,immutable');
-      return new Response(obj.body,{headers:h});
+      const key=decodeURIComponent(m[1]), obj=await env.IMAGES.getWithMetadata(key,'arrayBuffer');
+      if(!obj.value)return new Response('Not found',{status:404});
+      const h=new Headers({'content-type':obj.metadata?.contentType||'application/octet-stream','cache-control':'public,max-age=31536000,immutable'});
+      return new Response(obj.value,{headers:h});
     }
 
     if(p==='/migrate-images'&&method==='POST'){
@@ -115,7 +115,7 @@ export async function onRequest(ctx){
         const ct=rr.headers.get('content-type')||'image/jpeg';
         const ext=(ct.split('/')[1]||'jpg').replace('jpeg','jpg').replace(/[^a-z0-9]/gi,'');
         const key='migrated/'+prefix+'-'+crypto.randomUUID()+'.'+ext;
-        await env.IMAGES.put(key,await rr.arrayBuffer(),{httpMetadata:{contentType:ct,cacheControl:'public,max-age=31536000,immutable'}});
+        await env.IMAGES.put(key, await rr.arrayBuffer(), {metadata:{contentType:ct}});
         const nu='/api/image/'+encodeURIComponent(key);seen.set(u,nu);moved++;return nu;
       }
       for(const r of rows){
