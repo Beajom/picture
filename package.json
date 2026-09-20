@@ -13,7 +13,7 @@
         "description": "Amazon Supply Workbench 主数据库（D1）。首次部署会自动创建并导入现有商品、库存、供应商和辅料数据。"
       },
       "IMAGES": {
-        "description": "商品父体图、颜色图和辅料图的 R2 存储桶。"
+        "description": "商品父体图、颜色图和辅料图的 Workers KV 存储空间（免费计划可用）。"
       }
     }
   },
