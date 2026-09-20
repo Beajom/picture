@@ -113,7 +113,7 @@ INSERT OR REPLACE INTO inventory(id,product_id,available_qty,safety_stock) VALUE
 INSERT OR REPLACE INTO inventory(id,product_id,available_qty,safety_stock) VALUES('e3f01785-b66e-4c23-8afa-eed907fa81de','a622cd96-08cf-4a12-8b6e-e840423444a6',0,0);
 INSERT OR REPLACE INTO inventory(id,product_id,available_qty,safety_stock) VALUES('f741adcb-ddb5-49bd-bba0-30595c747e24','a8fc65f1-e053-48e9-83e2-1e9387f6a4dc',0,0);
 INSERT OR REPLACE INTO inventory(id,product_id,available_qty,safety_stock) VALUES('1ff714bd-fac8-404e-bd0e-a3f646906bfb','abbfbe12-4664-4a3c-838d-2b98f4cc81f5',0,0);
-INSERT OR REPLACE INTO inventory(id,product_id,available_qty,safety_stock) VALUES('bf5b1154-e08c-47ff-a455-c163c88eab08','ade4e431-acfe-4e29-9402-0cdb292a2f6f',1402,0);
+INSERT OR REPLACE INTO inventory(id,product_id,available_qty,safety_stock) VALUES('bf5b1154-e08c-47ff-a455-c163c88eab08','ade4e431-acfe-4e29-9402-0cdb292a2f6f',1400,0);
 INSERT OR REPLACE INTO inventory(id,product_id,available_qty,safety_stock) VALUES('c883b7f8-b236-4a3d-b143-0d5f555a8e81','b001c51a-fa17-44f5-b1c4-27311c8dc395',0,0);
 INSERT OR REPLACE INTO inventory(id,product_id,available_qty,safety_stock) VALUES('66f5568f-b80e-4cbf-be53-3a8fa50f9e62','b20ac4e8-6122-464c-ad20-5ef14438c154',1800,0);
 INSERT OR REPLACE INTO inventory(id,product_id,available_qty,safety_stock) VALUES('62b861b2-b98e-4e3a-88bb-005f0cdcc2f1','b4019e97-4436-45ed-86d4-dd9a300b0018',0,0);
