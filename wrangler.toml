@@ -12,6 +12,5 @@ binding = "DB"
 database_name = "amazon-supply-workbench"
 database_id = "00000000-0000-0000-0000-000000000000"
 
-[[r2_buckets]]
+[[kv_namespaces]]
 binding = "IMAGES"
-bucket_name = "amazon-supply-images"
