@@ -166,10 +166,11 @@ export async function onRequest(ctx){
     }
     m=p.match(/^\/purchase-orders\/([^/]+)$/);
     if(m&&method==='GET'){
-      const po=await one(env.DB,`SELECT po.*,s.company_name supplier_name,s.company_address,s.account_name,s.bank_name,s.bank_account
+      const po=await one(env.DB,`SELECT po.*,s.company_name supplier_name,s.company_address,s.website supplier_website,s.contact_name supplier_contact,
+        s.phone supplier_phone,s.payment_method supplier_payment_method,s.bank_type,s.account_name,s.bank_name,s.bank_account
         FROM purchase_orders po LEFT JOIN suppliers s ON s.id=po.supplier_id WHERE po.id=?`,m[1]);
       if(!po)return err('采购单不存在',404);
-      po.items=await all(env.DB,`SELECT i.*,p.sku,p.internal_code,p.product_name,p.color,p.size
+      po.items=await all(env.DB,`SELECT i.*,p.sku,p.internal_code,p.product_name,p.color,p.size,p.image_url,p.parent_image_url
         FROM purchase_order_items i JOIN products p ON p.id=i.product_id WHERE i.purchase_order_id=?`,m[1]);
       return json(po);
     }
