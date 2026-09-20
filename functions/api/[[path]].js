@@ -105,6 +105,26 @@ export async function onRequest(ctx){
       return new Response(obj.body,{headers:h});
     }
 
+    if(p==='/migrate-images'&&method==='POST'){
+      const rows=await all(env.DB,"SELECT id,image_url,parent_image_url FROM products WHERE (image_url LIKE 'http%') OR (parent_image_url LIKE 'http%')");
+      const seen=new Map();let moved=0;
+      async function migrateUrl(u,prefix){
+        if(!u||!/^https?:\/\//i.test(u))return u;
+        if(seen.has(u))return seen.get(u);
+        const rr=await fetch(u);if(!rr.ok)return u;
+        const ct=rr.headers.get('content-type')||'image/jpeg';
+        const ext=(ct.split('/')[1]||'jpg').replace('jpeg','jpg').replace(/[^a-z0-9]/gi,'');
+        const key='migrated/'+prefix+'-'+crypto.randomUUID()+'.'+ext;
+        await env.IMAGES.put(key,await rr.arrayBuffer(),{httpMetadata:{contentType:ct,cacheControl:'public,max-age=31536000,immutable'}});
+        const nu='/api/image/'+encodeURIComponent(key);seen.set(u,nu);moved++;return nu;
+      }
+      for(const r of rows){
+        const a=await migrateUrl(r.image_url,'color'), b=await migrateUrl(r.parent_image_url,'parent');
+        await exec(env.DB,'UPDATE products SET image_url=?,parent_image_url=? WHERE id=?',a||'',b||'',r.id);
+      }
+      return json({ok:true,moved});
+    }
+
     if(p==='/inventory/adjust'&&method==='POST'){
       const d=await request.json(), q=Math.trunc(num(d.qty_change));
       if(!q)throw new Error('调整数量不能为0');
