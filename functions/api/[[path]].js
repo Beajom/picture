@@ -99,32 +99,45 @@ export async function onRequest(ctx){
     }
     m=p.match(/^\/image\/(.+)$/);
     if(m&&method==='GET'){
+      const cacheApi=caches.default, cacheKey=new Request(request.url,{method:'GET'});
+      const hit=await cacheApi.match(cacheKey);
+      if(hit)return hit;
       const key=decodeURIComponent(m[1]), obj=await env.IMAGES.getWithMetadata(key,'arrayBuffer');
-      if(!obj.value)return new Response('Not found',{status:404});
-      const h=new Headers({'content-type':obj.metadata?.contentType||'application/octet-stream','cache-control':'public,max-age=31536000,immutable'});
-      return new Response(obj.value,{headers:h});
+      if(!obj.value)return new Response('Not found',{status:404,headers:{'cache-control':'no-store'}});
+      const h=new Headers({
+        'content-type':obj.metadata?.contentType||'application/octet-stream',
+        'cache-control':'public,max-age=31536000,s-maxage=31536000,immutable',
+        'etag':'"'+key+'"'
+      });
+      const resp=new Response(obj.value,{headers:h});
+      ctx.waitUntil?.(cacheApi.put(cacheKey,resp.clone()));
+      return resp;
     }
 
     if(p==='/migrate-images'&&method==='POST'){
-      const rows=await all(env.DB,"SELECT id,image_url,parent_image_url FROM products WHERE (image_url LIKE 'http%') OR (parent_image_url LIKE 'http%')");
-      const seen=new Map();let moved=0;
-      async function migrateUrl(u,prefix){
-        if(!u||!/^https?:\/\//i.test(u))return u;
-        if(seen.has(u))return seen.get(u);
-        const rr=await fetch(u);if(!rr.ok)return u;
-        const ct=rr.headers.get('content-type')||'image/jpeg';
-        const ext=(ct.split('/')[1]||'jpg').replace('jpeg','jpg').replace(/[^a-z0-9]/gi,'');
-        const key='migrated/'+prefix+'-'+crypto.randomUUID()+'.'+ext;
-        await env.IMAGES.put(key, await rr.arrayBuffer(), {metadata:{contentType:ct}});
-        const nu='/api/image/'+encodeURIComponent(key);seen.set(u,nu);moved++;return nu;
+      const limit=Math.max(1,Math.min(10,Math.trunc(num(url.searchParams.get('limit')||6))));
+      const rows=await all(env.DB,"SELECT image_url,parent_image_url FROM products WHERE (image_url LIKE 'http%') OR (parent_image_url LIKE 'http%')");
+      const urls=[...new Set(rows.flatMap(r=>[r.image_url,r.parent_image_url]).filter(u=>/^https?:\/\//i.test(u)))];
+      const batchUrls=urls.slice(0,limit), updates=[];let moved=0,failed=0;
+      for(const oldUrl of batchUrls){
+        try{
+          const rr=await fetch(oldUrl,{cf:{cacheEverything:true,cacheTtl:86400}});
+          if(!rr.ok){failed++;continue}
+          const ct=rr.headers.get('content-type')||'image/jpeg';
+          if(!ct.startsWith('image/')){failed++;continue}
+          const ext=(ct.split('/')[1]||'jpg').replace('jpeg','jpg').replace(/[^a-z0-9]/gi,'')||'jpg';
+          const key='migrated/'+crypto.randomUUID()+'.'+ext;
+          await env.IMAGES.put(key,await rr.arrayBuffer(),{metadata:{contentType:ct}});
+          const nu='/api/image/'+encodeURIComponent(key);
+          updates.push(env.DB.prepare('UPDATE products SET image_url=? WHERE image_url=?').bind(nu,oldUrl));
+          updates.push(env.DB.prepare('UPDATE products SET parent_image_url=? WHERE parent_image_url=?').bind(nu,oldUrl));
+          moved++;
+        }catch(e){failed++}
       }
-      for(const r of rows){
-        const a=await migrateUrl(r.image_url,'color'), b=await migrateUrl(r.parent_image_url,'parent');
-        await exec(env.DB,'UPDATE products SET image_url=?,parent_image_url=? WHERE id=?',a||'',b||'',r.id);
-      }
-      return json({ok:true,moved});
+      if(updates.length)await env.DB.batch(updates);
+      const remaining=Math.max(0,urls.length-moved);
+      return json({ok:true,moved,failed,remaining,total_external:urls.length});
     }
-
     if(p==='/inventory/adjust'&&method==='POST'){
       const d=await request.json(), q=Math.trunc(num(d.qty_change));
       if(!q)throw new Error('调整数量不能为0');
