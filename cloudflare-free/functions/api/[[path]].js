@@ -6,17 +6,38 @@ async function all(db,sql,...args){return (await db.prepare(sql).bind(...args).a
 async function one(db,sql,...args){return await db.prepare(sql).bind(...args).first()}
 async function exec(db,sql,...args){return await db.prepare(sql).bind(...args).run()}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
+async function createDailyBackup(env){
+  try{
+    const day=new Date().toISOString().slice(0,10);
+    const key='system-backups/'+day+'.json';
+    const exists=await env.IMAGES.get(key);
+    if(exists)return;
+    const tables=['products','inventory','suppliers','materials','purchase_orders','purchase_order_items','production_orders','production_order_items','outbound_orders','outbound_order_items','inventory_ledger','material_movements','image_refs'];
+    const snapshot={created_at:new Date().toISOString(),version:1,tables:{}};
+    for(const t of tables)snapshot.tables[t]=await all(env.DB,'SELECT * FROM '+t);
+    const body=JSON.stringify(snapshot);
+    await Promise.all([
+      env.IMAGES.put(key,body,{metadata:{contentType:'application/json'}}),
+      env.IMAGES.put('system-backups/latest.json',body,{metadata:{contentType:'application/json'}})
+    ]);
+  }catch(e){}
+}
 
 export async function onRequest(ctx){
   const {request,env}=ctx, url=new URL(request.url), p=url.pathname.replace(/^\/api/,'')||'/', method=request.method;
   try{
     if(p==='/bootstrap'&&method==='GET'){
       const [products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger]=await Promise.all([
-        all(env.DB,`SELECT * FROM products ORDER BY parent_asin,color,
+        all(env.DB,`SELECT p.*,
+          COALESCE(NULLIF(p.image_url,''),(SELECT ir.public_url FROM image_refs ir WHERE ((ir.product_id=p.id) OR (ir.parent_asin=p.parent_asin AND ir.color=p.color)) AND ir.public_url IS NOT NULL ORDER BY ir.created_at DESC LIMIT 1)) AS resolved_image_url,
+          COALESCE(NULLIF(p.parent_image_url,''),(SELECT ir.public_url FROM image_refs ir WHERE ir.parent_asin=p.parent_asin AND ir.kind='parent' AND ir.public_url IS NOT NULL ORDER BY ir.created_at DESC LIMIT 1)) AS resolved_parent_image_url
+          FROM products p ORDER BY parent_asin,color,
           CASE size WHEN 'S' THEN 1 WHEN 'M' THEN 2 WHEN 'L' THEN 3 WHEN 'XL' THEN 4 WHEN '2XL' THEN 5 WHEN '3XL' THEN 6 WHEN '4XL' THEN 7 ELSE 99 END`),
         all(env.DB,'SELECT * FROM inventory'),
         all(env.DB,'SELECT * FROM suppliers ORDER BY company_name'),
-        all(env.DB,'SELECT * FROM materials ORDER BY material_code'),
+        all(env.DB,`SELECT m.*,
+          COALESCE(NULLIF(m.image_url,''),(SELECT ir.public_url FROM image_refs ir WHERE ir.material_id=m.id AND ir.public_url IS NOT NULL ORDER BY ir.created_at DESC LIMIT 1)) AS resolved_image_url
+          FROM materials m ORDER BY material_code`),
         all(env.DB,`SELECT po.*,s.company_name supplier_name,
           COALESCE((SELECT SUM(quantity) FROM purchase_order_items x WHERE x.purchase_order_id=po.id),0) total_qty
           FROM purchase_orders po LEFT JOIN suppliers s ON s.id=po.supplier_id ORDER BY po.created_at DESC`),
@@ -27,7 +48,13 @@ export async function onRequest(ctx){
         all(env.DB,'SELECT o.*,200 AS units_per_carton,CAST((o.total_qty+199)/200 AS INTEGER) AS box_count FROM outbound_orders o ORDER BY created_at DESC'),
         all(env.DB,`SELECT l.*,p.sku FROM inventory_ledger l LEFT JOIN products p ON p.id=l.product_id ORDER BY l.created_at DESC LIMIT 500`)
       ]);
+      ctx.waitUntil?.(createDailyBackup(env));
       return json({products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger});
+    }
+
+    if(p==='/backup-status'&&method==='GET'){
+      const latest=await env.IMAGES.getWithMetadata('system-backups/latest.json','text');
+      return json({ok:!!latest.value,metadata:latest.metadata||null,size:latest.value?latest.value.length:0});
     }
 
     if(p==='/products'&&method==='POST'){
@@ -128,7 +155,8 @@ export async function onRequest(ctx){
     if(p==='/migrate-images'&&method==='POST'){
       const limit=Math.max(1,Math.min(10,Math.trunc(num(url.searchParams.get('limit')||6))));
       const rows=await all(env.DB,"SELECT image_url,parent_image_url FROM products WHERE (image_url LIKE 'http%') OR (parent_image_url LIKE 'http%')");
-      const urls=[...new Set(rows.flatMap(r=>[r.image_url,r.parent_image_url]).filter(u=>/^https?:\/\//i.test(u)))];
+      const mats=await all(env.DB,"SELECT image_url FROM materials WHERE image_url LIKE 'http%'");
+      const urls=[...new Set([...rows.flatMap(r=>[r.image_url,r.parent_image_url]),...mats.map(r=>r.image_url)].filter(u=>/^https?:\/\//i.test(u)))];
       const batchUrls=urls.slice(0,limit), updates=[];let moved=0,failed=0;
       for(const oldUrl of batchUrls){
         try{
@@ -142,6 +170,7 @@ export async function onRequest(ctx){
           const nu='/api/image/'+encodeURIComponent(key);
           updates.push(env.DB.prepare('UPDATE products SET image_url=? WHERE image_url=?').bind(nu,oldUrl));
           updates.push(env.DB.prepare('UPDATE products SET parent_image_url=? WHERE parent_image_url=?').bind(nu,oldUrl));
+          updates.push(env.DB.prepare('UPDATE materials SET image_url=? WHERE image_url=?').bind(nu,oldUrl));
           moved++;
         }catch(e){failed++}
       }
