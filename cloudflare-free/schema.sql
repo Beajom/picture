@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS materials(
   current_stock INTEGER NOT NULL DEFAULT 0,
   safety_stock INTEGER NOT NULL DEFAULT 0,
   target_stock INTEGER NOT NULL DEFAULT 0,
-  finished_units_per_material REAL NOT NULL DEFAULT 1,
+  finished_units_per_material REAL NOT NULL DEFAULT 2,
   image_url TEXT,
   supplier_id TEXT REFERENCES suppliers(id) ON DELETE SET NULL,
   notes TEXT,
