@@ -136,9 +136,72 @@ function productOptions(){return cache.products.slice().sort((a,b)=>model(a).loc
 async function editProduct(id){const p=cache.products.find(x=>x.id===id)||{};openModal(id?'编辑商品':'新增商品','<form id="f" class="form"><label>父ASIN<input class="field" name="parent_asin" value="'+esc(p.parent_asin||'')+'" required></label><label>子ASIN<input class="field" name="child_asin" value="'+esc(p.child_asin||'')+'"></label><label>SKU<input class="field" name="sku" value="'+esc(p.sku||'')+'" required></label><label>内部编码<input class="field" name="internal_code" value="'+esc(p.internal_code||'')+'" placeholder="1697-1级-黑色-S" required></label><label>商品名称<input class="field" name="product_name" value="'+esc(p.product_name||'')+'" required></label><label>颜色<input class="field" name="color" value="'+esc(p.color||'')+'" required></label><label>尺码<input class="field" name="size" value="'+esc(p.size||'')+'" required></label><label>不含税价格<input class="field" type="number" step="0.01" name="untaxed_price" value="'+Number(p.untaxed_price||0)+'"></label><label>税率 %<input class="field" type="number" step="0.01" name="tax_rate" value="'+Number(p.tax_rate||0)+'"></label><label>商品图片<input class="field" type="file" name="image" accept="image/*"></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button class="btn primary">保存</button></div></form>');f.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(f).entries()),file=f.image.files[0];delete d.image;d.untaxed_price=Number(d.untaxed_price||0);d.tax_rate=Number(d.tax_rate||0);d.taxed_price=d.untaxed_price*(1+d.tax_rate/100);const saved=await api('/products'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify(d)});if(file)await uploadImage(file,{type:'color',parent_asin:d.parent_asin,color:d.color,product_id:saved.id});closeModal();await refresh()}}
 async function delProduct(id){if(!confirm('确定删除这个SKU吗？'))return;await api('/products/'+id,{method:'DELETE'});refresh()}
 async function uploadParentImage(parent){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=async()=>{if(inp.files[0]){await uploadImage(inp.files[0],{type:'parent',parent_asin:parent});refresh()}};inp.click()}
-async function uploadImage(file,meta){const fd=new FormData();fd.append('file',file);Object.entries(meta).forEach(([k,v])=>fd.append(k,v));const r=await fetch(API+'/images',{method:'POST',body:fd});if(!r.ok)throw new Error('图片上传失败');toastMsg('图片已上传')}
+async function compressImageForUpload(file,maxSide=900,quality=.78){
+  if(!file||!file.type?.startsWith('image/'))return file;
+  try{
+    let bmp;
+    if('createImageBitmap' in window)bmp=await createImageBitmap(file);
+    else{
+      bmp=await new Promise((resolve,reject)=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(u);resolve(img)};img.onerror=e=>{URL.revokeObjectURL(u);reject(e)};img.src=u})
+    }
+    const sw=bmp.width||bmp.naturalWidth,sh=bmp.height||bmp.naturalHeight,scale=Math.min(1,maxSide/Math.max(sw,sh));
+    const w=Math.max(1,Math.round(sw*scale)),h=Math.max(1,Math.round(sh*scale));
+    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+    const ctx2=canvas.getContext('2d',{alpha:false});ctx2.drawImage(bmp,0,0,w,h);
+    if(bmp.close)bmp.close();
+    const blob=await new Promise(res=>canvas.toBlob(res,'image/webp',quality));
+    if(!blob)return file;
+    return new File([blob],(file.name.replace(/\.[^.]+$/,'')||'image')+'.webp',{type:'image/webp',lastModified:Date.now()})
+  }catch(e){return file}
+}
+async function uploadImage(file,meta){
+  const optimized=await compressImageForUpload(file);
+  const fd=new FormData();fd.append('file',optimized);
+  Object.entries(meta).forEach(([k,v])=>fd.append(k,v));
+  const r=await fetch(API+'/images',{method:'POST',body:fd});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||'图片上传失败');
+  return j
+}
 async function editSupplier(id){const s=cache.suppliers.find(x=>x.id===id)||{};openModal(id?'编辑供应商':'新增供应商','<form id="f" class="form"><label>公司名称<input class="field" name="company_name" value="'+esc(s.company_name||'')+'" required></label><label>网址<input class="field" name="website" value="'+esc(s.website||'')+'"></label><label class="full">公司地址<input class="field" name="company_address" value="'+esc(s.company_address||'')+'"></label><label>联系人<input class="field" name="contact_name" value="'+esc(s.contact_name||'')+'"></label><label>电话<input class="field" name="phone" value="'+esc(s.phone||'')+'"></label><label>银行账户类型<select class="field" name="bank_type"><option>公户</option><option>私户</option></select></label><label>收款人<input class="field" name="account_name" value="'+esc(s.account_name||'')+'"></label><label>收款银行<input class="field" name="bank_name" value="'+esc(s.bank_name||'')+'"></label><label>银行账户<input class="field" name="bank_account" value="'+esc(s.bank_account||'')+'"></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button class="btn primary">保存</button></div></form>');f.onsubmit=async e=>{e.preventDefault();await api('/suppliers'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify(Object.fromEntries(new FormData(f).entries()))});closeModal();refresh()}}
-async function editMaterial(id){const m=cache.materials.find(x=>x.id===id)||{};openModal(id?'编辑辅料':'新增辅料','<form id="f" class="form"><label>编码<input class="field" name="material_code" value="'+esc(m.material_code||'')+'" required></label><label>名称<input class="field" name="name" value="'+esc(m.name||'')+'" required></label><label>单位<input class="field" name="unit" value="'+esc(m.unit||'个')+'"></label><label>适用型号<input class="field" name="applicable_model" value="'+esc(m.applicable_model||'')+'"></label><label>采购价<input class="field" type="number" step="0.01" name="purchase_price" value="'+Number(m.purchase_price||0)+'"></label><label>当前库存<input class="field" type="number" step="1" name="current_stock" value="'+Number(m.current_stock||0)+'"></label><label>安全库存<input class="field" type="number" step="1" name="safety_stock" value="'+Number(m.safety_stock||0)+'"></label><label>目标库存<input class="field" type="number" step="1" name="target_stock" value="'+Number(m.target_stock||0)+'"></label><label>每个辅料对应成品双数<input class="field" type="number" step="0.01" name="finished_units_per_material" value="'+Number(m.finished_units_per_material||1)+'"></label><label>图片<input class="field" type="file" name="image" accept="image/*"></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button class="btn primary">保存</button></div></form>');f.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(f).entries()),file=f.image.files[0];delete d.image;['purchase_price','current_stock','safety_stock','target_stock','finished_units_per_material'].forEach(k=>d[k]=Number(d[k]||0));const saved=await api('/materials'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify(d)});if(file)await uploadImage(file,{type:'material',material_id:saved.id});closeModal();refresh()}}
+async function editMaterial(id){
+  const m=cache.materials.find(x=>x.id===id)||{};
+  openModal(id?'编辑辅料':'新增辅料','<form id="f" class="form"><label>编码<input class="field" name="material_code" value="'+esc(m.material_code||'')+'" required></label><label>名称<input class="field" name="name" value="'+esc(m.name||'')+'" required></label><label>单位<input class="field" name="unit" value="'+esc(m.unit||'个')+'"></label><label>适用型号<input class="field" name="applicable_model" value="'+esc(m.applicable_model||'')+'"></label><label>采购价<input class="field" type="number" step="0.01" name="purchase_price" value="'+Number(m.purchase_price||0)+'"></label><label>当前库存<input class="field" type="number" step="1" name="current_stock" value="'+Number(m.current_stock||0)+'"></label><label>安全库存<input class="field" type="number" step="1" name="safety_stock" value="'+Number(m.safety_stock||0)+'"></label><label>目标库存<input class="field" type="number" step="1" name="target_stock" value="'+Number(m.target_stock||0)+'"></label><label>每个辅料对应成品双数<input class="field" type="number" step="0.01" name="finished_units_per_material" value="'+Number(m.finished_units_per_material||1)+'"></label><label>图片<input class="field" type="file" name="image" accept="image/*"><span class="small muted">保存时会自动压缩图片，提高上传速度</span></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button type="submit" class="btn primary" id="materialSaveBtn">保存</button></div></form>');
+  f.onsubmit=async e=>{
+    e.preventDefault();
+    const btn=document.getElementById('materialSaveBtn');
+    if(btn?.disabled)return;
+    if(btn){btn.disabled=true;btn.textContent='保存中…'}
+    const d=Object.fromEntries(new FormData(f).entries()),file=f.image.files[0];delete d.image;
+    ['purchase_price','current_stock','safety_stock','target_stock','finished_units_per_material'].forEach(k=>d[k]=Number(d[k]||0));
+    try{
+      const saved=await api('/materials'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify(d)});
+      const mid=saved.id;
+      const existing=cache.materials.find(x=>x.id===mid);
+      const next={...(existing||{}),...d,id:mid,image_url:existing?.image_url||m.image_url||''};
+      if(existing)Object.assign(existing,next);else cache.materials.unshift(next);
+      try{sessionStorage.setItem('asw_bootstrap',JSON.stringify(cache))}catch(e){}
+      closeModal();render();toastMsg(file?'资料已保存，图片上传中…':'已保存');
+      if(file){
+        (async()=>{
+          try{
+            const r=await uploadImage(file,{type:'material',material_id:mid});
+            const row=cache.materials.find(x=>x.id===mid);
+            if(row&&r.url)row.image_url=r.url;
+            try{sessionStorage.setItem('asw_bootstrap',JSON.stringify(cache))}catch(e){}
+            if(route==='materials')render();
+            toastMsg('图片已保存')
+          }catch(err){
+            toastMsg('资料已保存；图片上传失败，可重新编辑补图')
+          }
+        })()
+      }
+    }catch(err){
+      if(btn){btn.disabled=false;btn.textContent='保存'}
+      toastMsg(err.message||'保存失败')
+    }
+  }
+}
 async function adjustStock(pid=''){openModal('库存调整','<form id="f" class="form"><label class="full">产品<select class="field" name="product_id">'+productOptions()+'</select></label><label>调整数量<input class="field" type="number" name="qty_change" placeholder="入库正数，出库负数" required></label><label>类型<select class="field" name="business_type"><option>库存调整</option><option>期初库存</option><option>退货入库</option><option>样品出库</option></select></label><label class="full">备注<input class="field" name="notes"></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button class="btn primary">确认</button></div></form>');if(pid)f.product_id.value=pid;f.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(f).entries());d.qty_change=Number(d.qty_change);await api('/inventory/adjust',{method:'POST',body:JSON.stringify(d)});closeModal();refresh()}}
 function poModels(){return [...new Set(cache.products.map(p=>model(p)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-CN',{numeric:true}))}
 function poRowsByModel(m){return cache.products.filter(p=>model(p)===m)}
