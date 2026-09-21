@@ -69,7 +69,7 @@ export async function onRequest(ctx){
     }
 
     if(p==='/materials'&&method==='POST'){
-      const d=await request.json(), mid=id();
+      const d=await request.json(), mid=String(d.id||id());
       await exec(env.DB,`INSERT INTO materials(id,material_code,name,unit,applicable_model,purchase_price,current_stock,safety_stock,target_stock,finished_units_per_material,notes)
       VALUES(?,?,?,?,?,?,?,?,?,?,?)`,mid,d.material_code,d.name,d.unit||'个',d.applicable_model||'',num(d.purchase_price),num(d.current_stock),num(d.safety_stock),num(d.target_stock),Math.max(num(d.finished_units_per_material),0.0001),d.notes||'');
       return json({id:mid});
