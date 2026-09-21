@@ -179,12 +179,6 @@ export async function onRequest(ctx){
         env.DB.prepare('INSERT INTO production_order_items(id,production_order_id,product_id,quantity) VALUES(?,?,?,?)')
           .bind(priid,prdid,d.product_id,quantity)
       ];
-      for(const mat of mats){
-        const need=Math.ceil(quantity/Math.max(num(mat.finished_units_per_material),0.0001)), after=num(mat.current_stock)-need;
-        batch.push(env.DB.prepare('UPDATE materials SET current_stock=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(after,mat.id));
-        batch.push(env.DB.prepare('INSERT INTO material_movements(id,material_id,purchase_order_id,movement_type,qty_change,balance_after,reference_no,notes) VALUES(?,?,?,?,?,?,?,?)')
-          .bind(id(),mat.id,poid,'采购占用',-need,after,d.order_no,'按采购成品数量自动占用辅料'));
-      }
       await env.DB.batch(batch);
       const material_requirements=mats.map(mat=>{
         const pairsPerMaterial=Math.max(num(mat.finished_units_per_material)||2,0.0001);
@@ -233,6 +227,33 @@ export async function onRequest(ctx){
           batch.push(env.DB.prepare('INSERT INTO inventory_ledger(id,business_type,reference_no,product_id,qty_change,balance_after,notes) VALUES(?,?,?,?,?,?,?)')
             .bind(id(),'生产入库',o.production_no,it.product_id,num(it.quantity),after,'生产完成验收入库'));
         }
+
+        // New rule: packaging/material inventory is consumed when finished goods are actually received.
+        // Legacy protection: old purchase orders may already have negative material movements from the previous "purchase reservation" rule.
+        // If such movement exists for this PO, do not deduct a second time.
+        const legacy=await one(env.DB,'SELECT COUNT(*) c FROM material_movements WHERE purchase_order_id=? AND qty_change<0',o.purchase_order_id);
+        if(num(legacy?.c)===0){
+          const grouped={};
+          for(const it of items){
+            const prod=await one(env.DB,'SELECT internal_code FROM products WHERE id=?',it.product_id);
+            const mdl=modelOf(prod?.internal_code||'');
+            if(!mdl)continue;
+            grouped[mdl]=(grouped[mdl]||0)+num(it.quantity);
+          }
+          const po=await one(env.DB,'SELECT order_no FROM purchase_orders WHERE id=?',o.purchase_order_id);
+          for(const [mdl,qty] of Object.entries(grouped)){
+            const mats=await all(env.DB,'SELECT * FROM materials WHERE applicable_model=?',mdl);
+            for(const mat of mats){
+              const pairsPerMaterial=Math.max(num(mat.finished_units_per_material)||2,0.0001);
+              const need=Math.ceil(qty/pairsPerMaterial);
+              const before=num(mat.current_stock), after=before-need;
+              batch.push(env.DB.prepare('UPDATE materials SET current_stock=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(after,mat.id));
+              batch.push(env.DB.prepare('INSERT INTO material_movements(id,material_id,purchase_order_id,movement_type,qty_change,balance_after,reference_no,notes) VALUES(?,?,?,?,?,?,?,?)')
+                .bind(id(),mat.id,o.purchase_order_id,'成品入库消耗',-need,after,o.production_no,'成品入库时按2双=1套、每套1个包材自动扣减；关联采购单 '+(po?.order_no||'')));
+            }
+          }
+        }
+
         batch.push(env.DB.prepare("UPDATE production_orders SET status='已入库',inbound_at=CURRENT_TIMESTAMP WHERE id=?").bind(o.id));
         batch.push(env.DB.prepare("UPDATE purchase_orders SET status='已入库',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(o.purchase_order_id));
         await env.DB.batch(batch);
