@@ -89,8 +89,19 @@ export async function onRequest(ctx){
       const productId=String(fd.get('product_id')||''), materialId=String(fd.get('material_id')||'');
       const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'').toLowerCase();
       const key=`${type}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-      await env.IMAGES.put(key, await file.arrayBuffer(), {metadata:{contentType:file.type||'image/jpeg'}});
+      const contentType=file.type||'image/jpeg';
+      const bytes=await file.arrayBuffer();
+      await env.IMAGES.put(key, bytes, {metadata:{contentType}});
       const publicUrl='/api/image/'+encodeURIComponent(key);
+      try{
+        const absolute=new URL(publicUrl,request.url).href;
+        const resp=new Response(bytes.slice(0),{headers:{
+          'content-type':contentType,
+          'cache-control':'public,max-age=31536000,s-maxage=31536000,immutable',
+          'etag':'"'+key+'"'
+        }});
+        ctx.waitUntil?.(caches.default.put(new Request(absolute,{method:'GET'}),resp));
+      }catch(e){}
       await exec(env.DB,'INSERT INTO image_refs(id,kind,parent_asin,color,product_id,material_id,r2_key,public_url) VALUES(?,?,?,?,?,?,?,?)',id(),type,parent,color,productId||null,materialId||null,key,publicUrl);
       if(type==='parent'&&parent)await exec(env.DB,'UPDATE products SET parent_image_url=? WHERE parent_asin=?',publicUrl,parent);
       if(type==='color'&&parent&&color)await exec(env.DB,'UPDATE products SET image_url=? WHERE parent_asin=? AND color=?',publicUrl,parent,color);
