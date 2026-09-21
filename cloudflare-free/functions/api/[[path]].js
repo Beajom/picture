@@ -186,7 +186,16 @@ export async function onRequest(ctx){
           .bind(id(),mat.id,poid,'采购占用',-need,after,d.order_no,'按采购成品数量自动占用辅料'));
       }
       await env.DB.batch(batch);
-      return json({id:poid,material_shortages:mats.filter(m=>num(m.current_stock)<Math.ceil(quantity/Math.max(num(m.finished_units_per_material),0.0001))).map(m=>m.name)});
+      const material_requirements=mats.map(mat=>{
+        const pairsPerMaterial=Math.max(num(mat.finished_units_per_material)||2,0.0001);
+        const need=Math.ceil(quantity/pairsPerMaterial),stock=num(mat.current_stock),shortage=Math.max(0,need-stock);
+        return {id:mat.id,name:mat.name,material_code:mat.material_code,unit:mat.unit||'个',need,stock,shortage,pairs_per_material:pairsPerMaterial,sets:Math.ceil(quantity/2)}
+      });
+      return json({
+        id:poid,
+        material_requirements,
+        material_shortages:material_requirements.filter(x=>x.shortage>0).map(x=>x.name)
+      });
     }
     m=p.match(/^\/purchase-orders\/([^/]+)$/);
     if(m&&method==='GET'){
