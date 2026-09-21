@@ -219,6 +219,7 @@ export async function onRequest(ctx){
       const seq=['待生产','生产中','待质检','生产完成','已入库'], i=seq.indexOf(o.status);
       if(i<0||i===seq.length-1)return json({status:o.status});
       const next=seq[i+1];
+      const material_consumptions=[];
       if(next==='已入库'){
         const items=await all(env.DB,'SELECT * FROM production_order_items WHERE production_order_id=?',o.id),batch=[];
         for(const it of items){
@@ -247,6 +248,7 @@ export async function onRequest(ctx){
               const pairsPerMaterial=Math.max(num(mat.finished_units_per_material)||2,0.0001);
               const need=Math.ceil(qty/pairsPerMaterial);
               const before=num(mat.current_stock), after=before-need;
+              material_consumptions.push({material_id:mat.id,name:mat.name,material_code:mat.material_code,model:mdl,finished_pairs:qty,sets:Math.ceil(qty/2),consumed:need,before,after,unit:mat.unit||'个'});
               batch.push(env.DB.prepare('UPDATE materials SET current_stock=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(after,mat.id));
               batch.push(env.DB.prepare('INSERT INTO material_movements(id,material_id,purchase_order_id,movement_type,qty_change,balance_after,reference_no,notes) VALUES(?,?,?,?,?,?,?,?)')
                 .bind(id(),mat.id,o.purchase_order_id,'成品入库消耗',-need,after,o.production_no,'成品入库时按2双=1套、每套1个包材自动扣减；关联采购单 '+(po?.order_no||'')));
@@ -261,7 +263,7 @@ export async function onRequest(ctx){
         await exec(env.DB,'UPDATE production_orders SET status=?,production_completed_at=CASE WHEN ?=\'生产完成\' THEN CURRENT_TIMESTAMP ELSE production_completed_at END WHERE id=?',next,next,o.id);
         await exec(env.DB,'UPDATE purchase_orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',next==='生产完成'?'生产完成':'生产中',o.purchase_order_id);
       }
-      return json({status:next});
+      return json({status:next,material_consumptions});
     }
 
     if(p==='/outbound-orders'&&method==='POST'){
