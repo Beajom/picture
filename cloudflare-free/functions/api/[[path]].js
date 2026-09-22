@@ -57,6 +57,20 @@ function suggestPurchase(qty,safety){
   qty=num(qty);safety=Math.max(0,num(safety));
   return safety>0?Math.max(0,Math.ceil(safety*2-qty)):0
 }
+async function ensureOutboundMetaTables(env){
+  await exec(env.DB,`CREATE TABLE IF NOT EXISTS outbound_shipping_meta(
+    outbound_order_id TEXT PRIMARY KEY,
+    transport_method TEXT NOT NULL DEFAULT '',
+    fba_shipment_id TEXT NOT NULL DEFAULT '',
+    tracking_no TEXT NOT NULL DEFAULT '',
+    warehouse_code TEXT NOT NULL DEFAULT '',
+    ship_from_address TEXT NOT NULL DEFAULT '',
+    ship_to_address TEXT NOT NULL DEFAULT '',
+    raw_fba_text TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+}
 async function ensureInventoryReportTables(env){
   await env.DB.batch([
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS inventory_report_settings(
@@ -181,6 +195,7 @@ export async function onRequest(ctx){
   const {request,env}=ctx, url=new URL(request.url), p=url.pathname.replace(/^\/api/,'')||'/', method=request.method;
   try{
     if(p==='/bootstrap'&&method==='GET'){
+      await ensureOutboundMetaTables(env);
       const [products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger]=await Promise.all([
         all(env.DB,`SELECT p.*,
           COALESCE(NULLIF(p.image_url,''),(SELECT ir.public_url FROM image_refs ir WHERE ((ir.product_id=p.id) OR (ir.parent_asin=p.parent_asin AND ir.color=p.color)) AND ir.public_url IS NOT NULL ORDER BY ir.created_at DESC LIMIT 1)) AS resolved_image_url,
@@ -199,7 +214,7 @@ export async function onRequest(ctx){
           COALESCE((SELECT SUM(quantity) FROM production_order_items x WHERE x.production_order_id=pr.id),0) total_qty
           FROM production_orders pr LEFT JOIN purchase_orders po ON po.id=pr.purchase_order_id
           LEFT JOIN suppliers s ON s.id=pr.supplier_id ORDER BY pr.created_at DESC`),
-        all(env.DB,'SELECT o.*,200 AS units_per_carton,CAST((o.total_qty+199)/200 AS INTEGER) AS box_count FROM outbound_orders o ORDER BY created_at DESC'),
+        all(env.DB,`SELECT o.*,200 AS units_per_carton,CAST((o.total_qty+199)/200 AS INTEGER) AS box_count,\n          COALESCE(m.transport_method,'') transport_method,COALESCE(m.fba_shipment_id,'') fba_shipment_id,\n          COALESCE(m.tracking_no,'') tracking_no,COALESCE(m.warehouse_code,'') warehouse_code,\n          COALESCE(m.ship_from_address,'') ship_from_address,COALESCE(m.ship_to_address,'') ship_to_address\n          FROM outbound_orders o LEFT JOIN outbound_shipping_meta m ON m.outbound_order_id=o.id ORDER BY o.created_at DESC`),
         all(env.DB,`SELECT l.*,p.sku FROM inventory_ledger l LEFT JOIN products p ON p.id=l.product_id ORDER BY l.created_at DESC LIMIT 500`)
       ]);
       ctx.waitUntil?.(createDailyBackup(env));
@@ -508,12 +523,15 @@ export async function onRequest(ctx){
     }
 
     if(p==='/outbound-orders'&&method==='POST'){
+      await ensureOutboundMetaTables(env);
       const d=await request.json(), q=Math.trunc(num(d.quantity)), inv=await one(env.DB,'SELECT available_qty FROM inventory WHERE product_id=?',d.product_id);
       if(!inv)throw new Error('库存不存在');if(q<=0)throw new Error('出库数量必须大于0');if(num(inv.available_qty)<q)throw new Error('库存不足');
       const after=num(inv.available_qty)-q, oid=id(), unitsPerCarton=200, box=Math.ceil(q/unitsPerCarton);
       await env.DB.batch([
         env.DB.prepare('INSERT INTO outbound_orders(id,outbound_no,outbound_date,destination,carrier,total_qty,units_per_carton,box_count,status) VALUES(?,?,?,?,?,?,?,?,?)')
           .bind(oid,d.outbound_no,d.outbound_date,d.destination||'',d.carrier||'',q,unitsPerCarton,box,'已出库'),
+        env.DB.prepare('INSERT INTO outbound_shipping_meta(outbound_order_id,transport_method,fba_shipment_id,tracking_no,warehouse_code,ship_from_address,ship_to_address,raw_fba_text) VALUES(?,?,?,?,?,?,?,?)')
+          .bind(oid,d.transport_method||'',d.fba_shipment_id||'',d.tracking_no||'',d.warehouse_code||'',d.ship_from_address||'',d.ship_to_address||'',d.raw_fba_text||''),
         env.DB.prepare('INSERT INTO outbound_order_items(id,outbound_order_id,product_id,quantity) VALUES(?,?,?,?)').bind(id(),oid,d.product_id,q),
         env.DB.prepare('UPDATE inventory SET available_qty=?,updated_at=CURRENT_TIMESTAMP WHERE product_id=?').bind(after,d.product_id),
         env.DB.prepare('INSERT INTO inventory_ledger(id,business_type,reference_no,product_id,qty_change,balance_after,notes) VALUES(?,?,?,?,?,?,?)')
@@ -523,7 +541,13 @@ export async function onRequest(ctx){
     }
     m=p.match(/^\/outbound-orders\/([^/]+)$/);
     if(m&&method==='GET'){
-      const o=await one(env.DB,'SELECT * FROM outbound_orders WHERE id=?',m[1]);if(!o)return err('出库单不存在',404);o.units_per_carton=200;o.box_count=Math.ceil(num(o.total_qty)/200);
+      await ensureOutboundMetaTables(env);
+      const o=await one(env.DB,`SELECT o.*,COALESCE(x.transport_method,'') transport_method,COALESCE(x.fba_shipment_id,'') fba_shipment_id,
+        COALESCE(x.tracking_no,'') tracking_no,COALESCE(x.warehouse_code,'') warehouse_code,
+        COALESCE(x.ship_from_address,'') ship_from_address,COALESCE(x.ship_to_address,'') ship_to_address,
+        COALESCE(x.raw_fba_text,'') raw_fba_text
+        FROM outbound_orders o LEFT JOIN outbound_shipping_meta x ON x.outbound_order_id=o.id WHERE o.id=?`,m[1]);
+      if(!o)return err('出库单不存在',404);o.units_per_carton=200;o.box_count=Math.ceil(num(o.total_qty)/200);
       o.items=await all(env.DB,`SELECT i.*,p.sku,p.internal_code,p.product_name,p.color,p.size,p.image_url,p.parent_asin,p.child_asin
         FROM outbound_order_items i JOIN products p ON p.id=i.product_id WHERE i.outbound_order_id=? ORDER BY p.internal_code`,m[1]);
       return json(o);
@@ -537,6 +561,7 @@ export async function onRequest(ctx){
         batch.push(env.DB.prepare('INSERT INTO inventory_ledger(id,business_type,reference_no,product_id,qty_change,balance_after,notes) VALUES(?,?,?,?,?,?,?)')
           .bind(id(),'撤销出库',o.outbound_no,it.product_id,num(it.quantity),after,'删除错误出库单，自动恢复库存'));
       }
+      batch.push(env.DB.prepare('DELETE FROM outbound_shipping_meta WHERE outbound_order_id=?').bind(o.id));
       batch.push(env.DB.prepare('DELETE FROM outbound_orders WHERE id=?').bind(o.id));
       await env.DB.batch(batch);
       return json({ok:true});
