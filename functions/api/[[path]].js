@@ -6,6 +6,38 @@ async function all(db,sql,...args){return (await db.prepare(sql).bind(...args).a
 async function one(db,sql,...args){return await db.prepare(sql).bind(...args).first()}
 async function exec(db,sql,...args){return await db.prepare(sql).bind(...args).run()}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
+async function enrichProductionOrders(env,orders){
+  return await Promise.all((orders||[]).map(async o=>{
+    const items=await all(env.DB,`SELECT i.quantity,p.internal_code
+      FROM production_order_items i
+      JOIN products p ON p.id=i.product_id
+      WHERE i.production_order_id=?`,o.id);
+    const grouped={};
+    for(const it of items){
+      const mdl=modelOf(it.internal_code||'');
+      if(!mdl)continue;
+      grouped[mdl]=(grouped[mdl]||0)+num(it.quantity);
+    }
+    const material_requirements=[];
+    for(const [mdl,qty] of Object.entries(grouped)){
+      const mats=await all(env.DB,'SELECT id,material_code,name,unit,finished_units_per_material FROM materials WHERE applicable_model=? ORDER BY material_code',mdl);
+      for(const mat of mats){
+        const pairsPerMaterial=Math.max(num(mat.finished_units_per_material)||2,0.0001);
+        material_requirements.push({
+          material_id:mat.id,
+          material_code:mat.material_code||'',
+          name:mat.name||mat.material_code||'耗材',
+          unit:mat.unit||'个',
+          model:mdl,
+          finished_pairs:qty,
+          consumed:Math.ceil(qty/pairsPerMaterial),
+          pairs_per_material:pairsPerMaterial
+        });
+      }
+    }
+    return {...o,material_requirements};
+  }));
+}
 
 export async function onRequest(ctx){
   const {request,env}=ctx, url=new URL(request.url), p=url.pathname.replace(/^\/api/,'')||'/', method=request.method;
@@ -27,7 +59,8 @@ export async function onRequest(ctx){
         all(env.DB,'SELECT * FROM outbound_orders ORDER BY created_at DESC'),
         all(env.DB,`SELECT l.*,p.sku FROM inventory_ledger l LEFT JOIN products p ON p.id=l.product_id ORDER BY l.created_at DESC LIMIT 500`)
       ]);
-      return json({products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger});
+      const production_orders_enriched=await enrichProductionOrders(env,production_orders);
+      return json({products,inventory,suppliers,materials,purchase_orders,production_orders:production_orders_enriched,outbound_orders,ledger});
     }
 
     if(p==='/products'&&method==='POST'){
