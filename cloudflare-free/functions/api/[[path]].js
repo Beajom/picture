@@ -2,6 +2,39 @@ function json(data,status=200){return new Response(JSON.stringify(data),{status,
 function err(e,status=400){return json({error:e instanceof Error?e.message:String(e)},status)}
 const id=()=>crypto.randomUUID();
 const modelOf=(code='')=>String(code).split('-')[0]||'';
+async function enrichProductionOrders(env,orders){
+  return await Promise.all((orders||[]).map(async o=>{
+    const items=await all(env.DB,`SELECT i.quantity,p.internal_code
+      FROM production_order_items i
+      JOIN products p ON p.id=i.product_id
+      WHERE i.production_order_id=?`,o.id);
+    const grouped={};
+    for(const it of items){
+      const mdl=modelOf(it.internal_code||'');
+      if(!mdl)continue;
+      grouped[mdl]=(grouped[mdl]||0)+num(it.quantity);
+    }
+    const material_requirements=[];
+    for(const [mdl,qty] of Object.entries(grouped)){
+      const mats=await all(env.DB,'SELECT id,material_code,name,unit,finished_units_per_material FROM materials WHERE applicable_model=? ORDER BY material_code',mdl);
+      for(const mat of mats){
+        const pairsPerMaterial=Math.max(num(mat.finished_units_per_material)||2,0.0001);
+        const need=Math.ceil(qty/pairsPerMaterial);
+        material_requirements.push({
+          material_id:mat.id,
+          material_code:mat.material_code||'',
+          name:mat.name||mat.material_code||'耗材',
+          unit:mat.unit||'个',
+          model:mdl,
+          finished_pairs:qty,
+          consumed:need,
+          pairs_per_material:pairsPerMaterial
+        });
+      }
+    }
+    return {...o,material_requirements};
+  }));
+}
 async function all(db,sql,...args){return (await db.prepare(sql).bind(...args).all()).results||[]}
 async function one(db,sql,...args){return await db.prepare(sql).bind(...args).first()}
 async function exec(db,sql,...args){return await db.prepare(sql).bind(...args).run()}
@@ -49,7 +82,8 @@ export async function onRequest(ctx){
         all(env.DB,`SELECT l.*,p.sku FROM inventory_ledger l LEFT JOIN products p ON p.id=l.product_id ORDER BY l.created_at DESC LIMIT 500`)
       ]);
       ctx.waitUntil?.(createDailyBackup(env));
-      return json({products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger});
+      const production_orders_enriched=await enrichProductionOrders(env,production_orders);
+      return json({products,inventory,suppliers,materials,purchase_orders,production_orders:production_orders_enriched,outbound_orders,ledger});
     }
 
     if(p==='/backup-status'&&method==='GET'){
