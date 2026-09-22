@@ -47,6 +47,7 @@ jobs:
           Path("/tmp/frontend.js").write_text(s[a+8:b], encoding="utf-8")
           PY
           node --check /tmp/frontend.js
+          node --check cloudflare-free/public/low-stock-images.js
 
       - name: Install Wrangler
         working-directory: cloudflare-free
@@ -66,7 +67,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          CLOUDFLARE_ACCOUNT_ID="$(cat .cloudflare-account-id)"             npx wrangler deploy --config wrangler.deploy.toml --no-x-provision
+          CLOUDFLARE_ACCOUNT_ID="$(cat .cloudflare-account-id)" \
+            npx wrangler deploy --config wrangler.deploy.toml --no-x-provision
 
       - name: Verify deployed production page
         shell: bash
@@ -76,10 +78,13 @@ jobs:
           ok=0
           for i in 1 2 3 4 5 6; do
             curl -fsS -H "Cache-Control: no-cache" "$BASE/?ts=$(date +%s)-$i" > /tmp/index.html
+            curl -fsS -H "Cache-Control: no-cache" "$BASE/low-stock-images.js?ts=$(date +%s)-$i" > /tmp/low-stock-images.js
             if grep -q "生产完成剩余时间" /tmp/index.html &&
                grep -q "预计耗材消耗" /tmp/index.html &&
                grep -q "FBA货件编号" /tmp/index.html &&
-               grep -q "搜索出库单号" /tmp/index.html; then
+               grep -q "搜索出库单号" /tmp/index.html &&
+               grep -q "low-stock-images.js" /tmp/index.html &&
+               grep -q "<th>产品图片</th>" /tmp/low-stock-images.js; then
               ok=1
               break
             fi
