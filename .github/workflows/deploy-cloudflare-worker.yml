@@ -34,6 +34,10 @@ jobs:
             exit 1
           fi
 
+      - name: Patch low-stock product images into main page
+        shell: bash
+        run: node cloudflare-free/scripts/patch-low-stock-images.mjs
+
       - name: Validate frontend JavaScript
         shell: bash
         run: |
@@ -47,7 +51,7 @@ jobs:
           Path("/tmp/frontend.js").write_text(s[a+8:b], encoding="utf-8")
           PY
           node --check /tmp/frontend.js
-          node --check cloudflare-free/public/low-stock-images.js
+          grep -q "<th>产品图片</th>" cloudflare-free/public/index.html
 
       - name: Install Wrangler
         working-directory: cloudflare-free
@@ -78,13 +82,12 @@ jobs:
           ok=0
           for i in 1 2 3 4 5 6; do
             curl -fsS -H "Cache-Control: no-cache" "$BASE/?ts=$(date +%s)-$i" > /tmp/index.html
-            curl -fsS -H "Cache-Control: no-cache" "$BASE/low-stock-images.js?ts=$(date +%s)-$i" > /tmp/low-stock-images.js
             if grep -q "生产完成剩余时间" /tmp/index.html &&
                grep -q "预计耗材消耗" /tmp/index.html &&
                grep -q "FBA货件编号" /tmp/index.html &&
                grep -q "搜索出库单号" /tmp/index.html &&
-               grep -q "low-stock-images.js" /tmp/index.html &&
-               grep -q "<th>产品图片</th>" /tmp/low-stock-images.js; then
+               grep -q "<th>产品图片</th>" /tmp/index.html &&
+               grep -q "load().then(render)" /tmp/index.html; then
               ok=1
               break
             fi
