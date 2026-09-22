@@ -279,7 +279,7 @@ export async function onRequest(ctx){
     m=p.match(/^\/production-orders\/([^/]+)\/advance$/);
     if(m&&method==='POST'){
       const o=await one(env.DB,'SELECT * FROM production_orders WHERE id=?',m[1]);if(!o)return err('生产单不存在',404);
-      const seq=['待生产','生产中','待质检','生产完成','已入库'], i=seq.indexOf(o.status);
+      const seq=['待生产','生产中','待质检','待包装','生产完成','已入库'], i=seq.indexOf(o.status);
       if(i<0||i===seq.length-1)return json({status:o.status});
       const next=seq[i+1];
       const material_consumptions=[];
