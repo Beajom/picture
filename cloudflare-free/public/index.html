@@ -125,12 +125,15 @@ function productionDaysRemaining(o){
 function productionMaterialHTML(o){
   const rows=Array.isArray(o.material_requirements)?o.material_requirements:[];
   if(!rows.length)return '<span class="muted">无关联耗材</span>';
-  return rows.map(x=>'<div style="white-space:nowrap"><b>'+Number(x.consumed||0).toLocaleString()+'</b> '+esc(x.unit||'个')+' <span class="small muted">'+esc(x.name||x.material_code||'耗材')+'</span></div>').join('')
+  const units=[...new Set(rows.map(x=>String(x.unit||'个')))];
+  const total=rows.reduce((s,x)=>s+Number(x.consumed||0),0);
+  const detail=rows.map(x=>'<div style="white-space:nowrap"><b>'+Number(x.consumed||0).toLocaleString()+'</b> '+esc(x.unit||'个')+' <span class="small muted">'+esc(x.name||x.material_code||'耗材')+'</span></div>').join('');
+  return (units.length===1&&rows.length>1?'<div style="margin-bottom:3px"><b>合计 '+total.toLocaleString()+' '+esc(units[0])+'</b></div>':'')+detail
 }
 function productionTableHTML(){
   const rows=cache.production_orders||[];
   if(!rows.length)return '<div class="panel"><div class="empty">暂无生产单</div></div>';
-  return '<div class="panel table"><table><thead><tr><th>生产单</th><th>采购单</th><th>供应商</th><th>数量</th><th>计划完成</th><th>剩余时间</th><th>耗材消耗</th><th>状态</th><th>操作</th></tr></thead><tbody>'+rows.map(o=>{
+  return '<div class="panel table"><table><thead><tr><th>生产单</th><th>采购单</th><th>供应商</th><th>数量</th><th>计划完成</th><th>生产完成剩余时间</th><th>预计耗材消耗</th><th>状态</th><th>操作</th></tr></thead><tbody>'+rows.map(o=>{
     const left=productionDaysRemaining(o);
     const tone=left.tone==='late'?'color:#b42318;font-weight:700':left.tone==='warn'?'color:#b54708;font-weight:700':left.tone==='done'?'color:#067647;font-weight:700':'';
     return '<tr><td>'+esc(o.production_no||'')+'</td><td>'+esc(o.purchase_order_no||'')+'</td><td>'+esc(o.supplier_name||'')+'</td><td>'+Number(o.total_qty||0).toLocaleString()+'</td><td>'+esc(o.planned_finish_date||'-')+'</td><td><span style="'+tone+'">'+esc(left.text)+'</span></td><td>'+productionMaterialHTML(o)+'</td><td>'+esc(o.status||'')+'</td><td><button class="link" onclick="advanceProduction(\''+o.id+'\')">推进状态</button></td></tr>'
