@@ -40,7 +40,7 @@ jobs:
 
       - name: Patch purchase contract generator into main page
         shell: bash
-        run: node cloudflare-free/scripts/patch-purchase-contract.mjs
+        run: node cloudflare-free/scripts/patch-purchase-contract-v2.mjs
 
       - name: Validate frontend JavaScript
         shell: bash
