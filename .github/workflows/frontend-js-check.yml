@@ -1,0 +1,28 @@
+name: Frontend JavaScript Syntax Check
+
+on:
+  push:
+    paths:
+      - "cloudflare-free/public/index.html"
+      - ".github/workflows/frontend-js-check.yml"
+  workflow_dispatch:
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract frontend script
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("cloudflare-free/public/index.html")
+          s=p.read_text(encoding="utf-8")
+          a=s.rfind("<script>")
+          b=s.rfind("</script>")
+          js=s[a+8:b]
+          Path("/tmp/frontend.js").write_text(js, encoding="utf-8")
+          print("frontend.js lines:", js.count("\n")+1)
+          PY
+      - name: Check JavaScript syntax
+        run: node --check /tmp/frontend.js
