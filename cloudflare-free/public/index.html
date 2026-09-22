@@ -283,7 +283,7 @@ purchase(){return '<div class="title"><div><h1>货物采购</h1><p>采购单 →
 materials(){return '<div class="title"><div><h1>辅料 / 包材</h1><p>包装规则：2双 = 1套，每套消耗1个对应包材；采购时只检查需求，成品实际入库时才扣减包材库存</p></div><button class="btn primary" onclick="editMaterial()">＋ 新增辅料</button></div><div class="grid2">'+cache.materials.map(m=>{const pairs=Math.max(Number(m.finished_units_per_material||2),0.0001),setsPerMat=pairs/2;return '<div class="card"><div class="row">'+smartImg(m.resolved_image_url||m.image_url||'','thumb','width:52px;height:52px;object-fit:contain','eager')+'<div><b>'+esc(m.material_code||m.name)+'</b><div>'+esc(m.name)+'</div><div class="small muted">适用 '+esc(m.applicable_model||'未关联')+'</div></div></div><div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><span>库存</span><b>'+Number(m.current_stock||0)+' '+esc(m.unit||'个')+'</b></div><div><span>采购价</span><b>'+money(m.purchase_price)+'</b></div><div><span>消耗规则</span><b>'+ (setsPerMat===1?'1个 / 套':('1个 / '+setsPerMat.toFixed(2)+'套')) +'</b><div class="small muted">'+pairs+'双成品消耗1个</div></div><div><span>可支持成品</span><b>'+Math.floor(Number(m.current_stock||0)*pairs).toLocaleString()+' 双</b><div class="small muted">'+Math.floor(Number(m.current_stock||0)*setsPerMat).toLocaleString()+' 套</div></div></div><div class="actions"><button class="btn" onclick="editMaterial(\''+m.id+'\')">编辑</button></div></div>'}).join('')+'</div>'},
 production(){return '<div class="title"><div><h1>生产进度</h1><p>贸易公司跟单：待生产 / 生产中 / 待质检 / 待包装 / 生产完成 / 已入库；耗材按型号和“每个包材对应成品双数”自动计算，成品入库时正式扣减。</p></div></div>'+productionTableHTML()},
 inventory(){const collapsed=getCollapsedInventoryModels();return '<div class="title"><div><h1>库存中心</h1><p>按型号 → 颜色 → 尺码展示，所有总数由子SKU实时汇总</p></div><div class="row" style="gap:8px"><button class="btn" onclick="collapseAllInventory()">全部收起</button><button class="btn" onclick="expandAllInventory()">全部展开</button><button class="btn primary" onclick="adjustStock()">＋ 库存调整</button></div></div><div class="cards">'+card('库存总双数',cache.inventory.reduce((s,x)=>s+Number(x.available_qty||0),0),'inventory')+inventoryValueCardHTML()+card('父体 / 型号',parentGroups().length,'inventory')+lowStockCardHTML()+card('库存流水',cache.ledger.length,'ledger')+card('待入库',cache.production_orders.filter(x=>x.status==='生产完成').length,'production')+'</div>'+parentGroups().map((g,idx)=>{const colors={};g.rows.forEach(p=>(colors[p.color]??=[]).push(p));const total=g.rows.reduce((s,p)=>s+inventoryQty(p.id),0),key=String(g.model),isCollapsed=collapsed.has(key);return '<div class="inventory-model" data-inventory-model="'+esc(key)+'"><div class="inventory-head" onclick="toggleInventoryModel(\''+esc(key)+'\')" style="cursor:pointer;user-select:none"><div class="row"><img class="thumb" src="'+esc(g.rows[0]?.resolved_parent_image_url||g.rows[0]?.parent_image_url||g.rows[0]?.resolved_image_url||g.rows[0]?.image_url||'')+'" loading="lazy"><div><b style="font-size:18px">'+esc(g.model)+'</b><div>'+esc(g.name)+'</div><div class="small muted">'+esc(g.parent)+'</div></div></div><div class="row" style="gap:12px"><div><span class="muted small">型号小计</span><b style="font-size:22px;margin-left:8px">'+total.toLocaleString()+' 双</b></div><button class="btn inventory-toggle" type="button" data-toggle-model="'+esc(key)+'" onclick="event.stopPropagation();toggleInventoryModel(\''+esc(key)+'\')">'+(isCollapsed?'展开':'收起')+' <span style="display:inline-block;transform:rotate('+(isCollapsed?'0':'180')+'deg);transition:.2s">⌄</span></button></div></div><div class="inventory-colors" data-model-body="'+esc(key)+'" style="'+(isCollapsed?'display:none;':'')+'">'+Object.entries(colors).map(([color,rows])=>'<div class="color-card"><div class="color-side"><img src="'+esc(rows[0]?.resolved_image_url||rows[0]?.image_url||'')+'" loading="lazy"><b>'+esc(color)+'</b><div class="small muted">'+rows.reduce((s,p)=>s+inventoryQty(p.id),0).toLocaleString()+' 双</div></div><div class="size-list">'+rows.sort((a,b)=>sizeRank(a.size)-sizeRank(b.size)).map(p=>'<div class="size-row" style="grid-template-columns:55px 80px 1fr 45px"><span><b>'+esc(p.size)+'</b></span><strong>'+inventoryQty(p.id).toLocaleString()+'</strong><span>'+inventoryAlertInline(p)+'</span><button class="link" onclick="adjustStock(\''+p.id+'\')">调整</button></div>').join('')+'</div></div>').join('')+'</div></div>'}).join('')},
-outbound(){return '<div class="title"><div><h1>出库单</h1><p>选择型号、颜色、尺码，自动扣库存和计算箱数</p></div><button class="btn primary" onclick="newOutbound()">＋ 新建出库单</button></div>'+table(cache.outbound_orders,['outbound_no','outbound_date','destination','total_qty','box_count','status'],['出库单号','日期','目的地','总双数','箱数','状态'],o=>'<button class="link" onclick="viewOutbound(\''+o.id+'\')">查看</button><button class="link" onclick="printOutbound(\''+o.id+'\')">PDF预览</button><button class="link red" onclick="delOutbound(\''+o.id+'\')">删除</button>')},
+outbound(){return '<div class="title"><div><h1>出库单</h1><p>选择型号、颜色、尺码，自动扣库存和计算箱数；支持FBA货件信息识别与检索。</p></div><button class="btn primary" onclick="newOutbound()">＋ 新建出库单</button></div><div class="toolbar" style="margin-bottom:12px"><input class="field" style="width:100%" oninput="filterOutboundRows(this.value)" placeholder="搜索出库单号 / FBA货件编号 / 追踪编号 / 亚马逊仓库号"></div>'+outboundTableHTML(cache.outbound_orders)},
 ledger(){return '<div class="title"><div><h1>库存流水</h1><p>所有库存变化必须有可追溯流水</p></div></div>'+table(cache.ledger,['created_at','business_type','reference_no','sku','qty_change','balance_after','notes'],['时间','类型','单号','SKU','变化','结存','备注'])},
 inventoryReports(){
   setTimeout(loadInventoryReportPage,0);
@@ -713,15 +713,83 @@ function updateOutboundStock(){
   const btn=f.querySelector('button[type="submit"]');
   if(btn)btn.disabled=!pid||stock<=0;
 }
+function parseAmazonShipmentText(raw){
+  const text=String(raw||'').replace(/\*\*/g,'').replace(/\u00a0/g,' ').replace(/\r/g,'').trim();
+  const clean=s=>String(s||'').replace(/^[\s:：-]+|[\s]+$/g,'').trim();
+  const pick=re=>{const m=text.match(re);return m?clean(m[1]):''};
+  let fba=pick(/货件编号\s*[:：]\s*([^\n]+)/i);
+  if(!fba){const m=text.match(/\b(FBA[A-Z0-9-]+)\b/i);fba=m?m[1]:''}
+  let tracking=pick(/货件追踪编号\s*[:：]\s*([^\n]+)/i)||pick(/追踪编号\s*[:：]\s*([^\n]+)/i);
+  const fromMatch=text.match(/发货地址\s*[:：]\s*([\s\S]*?)(?=\n?\s*收货地址\s*[:：]|$)/i);
+  const toMatch=text.match(/收货地址\s*[:：]\s*([\s\S]*)$/i);
+  const shipFrom=clean(fromMatch?fromMatch[1]:'').replace(/\n+/g,' ');
+  const shipTo=clean(toMatch?toMatch[1]:'').replace(/\n+/g,' ');
+  let warehouse='';
+  if(shipTo){
+    const wm=shipTo.match(/^([A-Z]{2,6}\d{0,4})\s*[-–—]/i)||shipTo.match(/^([A-Z]{2,6}\d{0,4})\b/i);
+    warehouse=wm?wm[1].toUpperCase():''
+  }
+  return {fba_shipment_id:fba,tracking_no:tracking,warehouse_code:warehouse,ship_from_address:shipFrom,ship_to_address:shipTo}
+}
+function applyAmazonShipmentText(){
+  const form=document.getElementById('f');
+  if(!form||!form.raw_fba_text)return;
+  const x=parseAmazonShipmentText(form.raw_fba_text.value);
+  if(x.fba_shipment_id)form.fba_shipment_id.value=x.fba_shipment_id;
+  if(x.tracking_no)form.tracking_no.value=x.tracking_no;
+  if(x.warehouse_code)form.warehouse_code.value=x.warehouse_code;
+  if(x.ship_from_address)form.ship_from_address.value=x.ship_from_address;
+  if(x.ship_to_address)form.ship_to_address.value=x.ship_to_address;
+  const p=document.getElementById('fbaParseStatus');
+  if(p){
+    const found=[x.fba_shipment_id&&('货件 '+x.fba_shipment_id),x.tracking_no&&('追踪 '+x.tracking_no),x.warehouse_code&&('仓库 '+x.warehouse_code)].filter(Boolean);
+    p.innerHTML=found.length?'<span style="color:#047857">✓ 已识别：'+esc(found.join(' · '))+'</span>':'<span class="muted">粘贴后将自动识别货件编号、追踪编号、仓库号及地址</span>'
+  }
+}
+function outboundSearchText(o){
+  return [o.outbound_no,o.fba_shipment_id,o.tracking_no,o.warehouse_code,o.destination,o.transport_method,o.outbound_date].join(' ').toLowerCase()
+}
+function outboundTableHTML(rows){
+  if(!rows.length)return '<div class="panel"><div class="empty">暂无出库单</div></div>';
+  return '<div class="panel"><div class="table"><table id="outboundTable"><thead><tr><th>出库单号</th><th>FBA货件编号</th><th>日期</th><th>运输方式</th><th>亚马逊仓库</th><th>总双数</th><th>箱数</th><th>状态</th><th>操作</th></tr></thead><tbody>'+
+    rows.map(o=>'<tr data-outbound-search="'+esc(outboundSearchText(o))+'"><td><b>'+esc(o.outbound_no||'')+'</b></td><td>'+esc(o.fba_shipment_id||'—')+(o.tracking_no?'<div class="small muted">追踪：'+esc(o.tracking_no)+'</div>':'')+'</td><td>'+esc(o.outbound_date||'')+'</td><td>'+esc(o.transport_method||'—')+'</td><td>'+esc(o.warehouse_code||o.destination||'—')+'</td><td>'+Number(o.total_qty||0).toLocaleString()+'</td><td>'+Number(o.box_count||0).toLocaleString()+'</td><td>'+esc(o.status||'')+'</td><td style="white-space:nowrap"><button class="link" onclick="viewOutbound(\''+o.id+'\')">查看</button><button class="link" onclick="printOutbound(\''+o.id+'\')">PDF预览</button><button class="link red" onclick="delOutbound(\''+o.id+'\')">删除</button></td></tr>').join('')+
+    '</tbody></table></div><div id="outboundNoResult" class="empty" style="display:none">没有找到对应的出库单</div></div>'
+}
+function filterOutboundRows(v){
+  const q=String(v||'').trim().toLowerCase(),rows=[...document.querySelectorAll('#outboundTable tbody tr')];
+  let shown=0;
+  rows.forEach(tr=>{const ok=!q||String(tr.dataset.outboundSearch||'').includes(q);tr.style.display=ok?'':'none';if(ok)shown++});
+  const n=document.getElementById('outboundNoResult');if(n)n.style.display=rows.length&&!shown?'block':'none'
+}
 async function newOutbound(){
   const models=outboundModels();
-  openModal('新建出库单','<form id="f" class="form"><label>出库单号<input class="field" name="outbound_no" value="OUT-'+Date.now().toString().slice(-8)+'"></label><label>出库日期<input class="field" type="date" name="outbound_date" value="'+new Date().toISOString().slice(0,10)+'"></label><label>目的地<input class="field" name="destination" value="FBA"></label><label>承运商 / 货代<input class="field" name="carrier"></label><label>型号<select class="field" name="model_select">'+models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join('')+'</select></label><label>颜色<select class="field" name="color_select"></select></label><label>尺码<select class="field" name="size_select"></select></label><label>当前可用库存<div id="outStock" class="field" style="background:#f8fafc;font-weight:700">0 双</div></label><input type="hidden" name="product_id"><label>数量<input class="field" type="number" name="quantity" min="1" value="1"></label><label>每箱装量<input class="field" type="number" name="units_per_carton" value="200" readonly></label><div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button type="submit" class="btn primary">确认出库</button></div></form>');
+  openModal('新建出库单','<form id="f" class="form">'+
+    '<label>出库单号<input class="field" name="outbound_no" value="OUT-'+Date.now().toString().slice(-8)+'"></label>'+
+    '<label>出库日期<input class="field" type="date" name="outbound_date" value="'+new Date().toISOString().slice(0,10)+'"></label>'+
+    '<label>目的地<input class="field" name="destination" value="FBA"></label>'+
+    '<label>运输方式<select class="field" name="transport_method"><option value="">请选择</option><option value="空运">空运</option><option value="海运">海运</option></select></label>'+
+    '<label>承运商 / 货代<input class="field" name="carrier"></label>'+
+    '<label>FBA货件编号<input class="field" name="fba_shipment_id" placeholder="如 FBA19QFR5CJC"></label>'+
+    '<label>货件追踪编号<input class="field" name="tracking_no" placeholder="如 7FFCTSAY"></label>'+
+    '<label>亚马逊仓库号<input class="field" name="warehouse_code" placeholder="如 MCC1"></label>'+
+    '<label class="full">直接粘贴亚马逊货件信息（自动识别）<textarea class="field" name="raw_fba_text" rows="5" oninput="applyAmazonShipmentText()" placeholder="可直接粘贴：货件编号、货件追踪编号、发货地址、收货地址等完整文本"></textarea><div id="fbaParseStatus" class="small muted" style="margin-top:5px">粘贴后将自动识别货件编号、追踪编号、仓库号及地址</div></label>'+
+    '<label class="full">发货地址<textarea class="field" name="ship_from_address" rows="2" placeholder="自动识别后会填入，也可手动修改"></textarea></label>'+
+    '<label class="full">收货地址<textarea class="field" name="ship_to_address" rows="2" placeholder="自动识别后会填入，也可手动修改"></textarea></label>'+
+    '<label>型号<select class="field" name="model_select">'+models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join('')+'</select></label>'+
+    '<label>颜色<select class="field" name="color_select"></select></label>'+
+    '<label>尺码<select class="field" name="size_select"></select></label>'+
+    '<label>当前可用库存<div id="outStock" class="field" style="background:#f8fafc;font-weight:700">0 双</div></label>'+
+    '<input type="hidden" name="product_id">'+
+    '<label>数量<input class="field" type="number" name="quantity" min="1" value="1"></label>'+
+    '<label>每箱装量<input class="field" type="number" name="units_per_carton" value="200" readonly></label>'+
+    '<div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button type="submit" class="btn primary">确认出库</button></div></form>');
   f.model_select.onchange=updateOutboundSelectors;
   f.color_select.onchange=updateOutboundSizes;
   f.size_select.onchange=updateOutboundStock;
   updateOutboundSelectors();
   f.onsubmit=async e=>{
     e.preventDefault();
+    applyAmazonShipmentText();
     const d=Object.fromEntries(new FormData(f).entries());
     delete d.model_select;delete d.color_select;delete d.size_select;
     d.quantity=Number(d.quantity);d.units_per_carton=Number(d.units_per_carton);
@@ -778,7 +846,7 @@ function printOutbound(id){
       '<div class="toolbar"><div><span class="title">PDF 预览 · 出库单</span><span class="hint">200 双/箱 · 2 双/套</span></div><div><button onclick="window.close()">关闭</button><button class="primary" onclick="window.print()">打印 / 保存为 PDF</button></div></div>'+
       '<div class="canvas"><div class="page">'+
       '<div class="head"><div><div class="brand">Amazon Supply</div><h1>出库单</h1></div><div>单号：<b>'+esc(o.outbound_no||'')+'</b></div></div>'+
-      '<div class="meta"><div><span>出库日期</span><b>'+esc(o.outbound_date||'')+'</b></div><div><span>状态</span><b>'+esc(o.status||'')+'</b></div><div><span>目的地</span><b>'+esc(o.destination||'')+'</b></div><div><span>承运商 / 货代</span><b>'+esc(o.carrier||'—')+'</b></div></div>'+
+      '<div class="meta"><div><span>出库日期</span><b>'+esc(o.outbound_date||'')+'</b></div><div><span>状态</span><b>'+esc(o.status||'')+'</b></div><div><span>运输方式</span><b>'+esc(o.transport_method||'—')+'</b></div><div><span>承运商 / 货代</span><b>'+esc(o.carrier||'—')+'</b></div><div><span>FBA货件编号</span><b>'+esc(o.fba_shipment_id||'—')+'</b></div><div><span>货件追踪编号</span><b>'+esc(o.tracking_no||'—')+'</b></div><div><span>亚马逊仓库</span><b>'+esc(o.warehouse_code||o.destination||'—')+'</b></div><div><span>目的地</span><b>'+esc(o.destination||'')+'</b></div></div>'+\n      '<div style="border:1px solid #e5e7eb;padding:10px 12px;margin-bottom:12px;line-height:1.7"><div><b>发货地址：</b>'+esc(o.ship_from_address||'—')+'</div><div><b>收货地址：</b>'+esc(o.ship_to_address||'—')+'</div></div>'+
       '<div class="rule">装箱规则：每箱 200 双；2 双 = 1 套；因此每箱 = 100 套。</div>'+
       '<div class="sum"><div>总双数<b>'+totalPairs.toLocaleString()+' 双</b></div><div>总套数<b>'+totalSets.toLocaleString()+' 套</b></div><div>每箱装量<b>200 双</b></div><div>总箱数<b>'+totalBoxes.toLocaleString()+' 箱</b></div></div>'+
       '<table><thead><tr><th>序号</th><th>图片</th><th>型号</th><th>商品</th><th>颜色</th><th>尺码</th><th>数量（双）</th><th>套数</th><th>箱数</th></tr></thead><tbody>'+rows+'</tbody></table>'+
