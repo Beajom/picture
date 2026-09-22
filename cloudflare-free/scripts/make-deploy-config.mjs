@@ -67,6 +67,9 @@ directory = "./public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 
+[triggers]
+crons = ["*/15 * * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "DB"
