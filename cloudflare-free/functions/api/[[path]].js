@@ -103,8 +103,11 @@ export async function onRequest(ctx){
     let m=p.match(/^\/products\/([^/]+)$/);
     if(m&&method==='PUT'){
       const d=await request.json();
-      await exec(env.DB,`UPDATE products SET parent_asin=?,child_asin=?,sku=?,internal_code=?,product_name=?,color=?,size=?,untaxed_price=?,tax_rate=?,taxed_price=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-        d.parent_asin,d.child_asin||'',d.sku,d.internal_code,d.product_name,d.color,d.size,num(d.untaxed_price),num(d.tax_rate),num(d.taxed_price),m[1]);
+      await env.DB.batch([
+        env.DB.prepare(`UPDATE products SET parent_asin=?,child_asin=?,sku=?,internal_code=?,product_name=?,color=?,size=?,untaxed_price=?,tax_rate=?,taxed_price=?,safety_stock=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+          .bind(d.parent_asin,d.child_asin||'',d.sku,d.internal_code,d.product_name,d.color,d.size,num(d.untaxed_price),num(d.tax_rate),num(d.taxed_price),num(d.safety_stock),m[1]),
+        env.DB.prepare('UPDATE inventory SET safety_stock=?,updated_at=CURRENT_TIMESTAMP WHERE product_id=?').bind(num(d.safety_stock),m[1])
+      ]);
       return json({id:m[1]});
     }
     if(m&&method==='DELETE'){
@@ -212,6 +215,18 @@ export async function onRequest(ctx){
       const remaining=Math.max(0,urls.length-moved);
       return json({ok:true,moved,failed,remaining,total_external:urls.length});
     }
+    if(p==='/inventory/safety-stock'&&method==='POST'){
+      const d=await request.json(), productId=String(d.product_id||''), safety=Math.max(0,Math.trunc(num(d.safety_stock)));
+      if(!productId)throw new Error('缺少产品');
+      const prod=await one(env.DB,'SELECT id FROM products WHERE id=?',productId);
+      if(!prod)throw new Error('商品不存在');
+      await env.DB.batch([
+        env.DB.prepare('UPDATE inventory SET safety_stock=?,updated_at=CURRENT_TIMESTAMP WHERE product_id=?').bind(safety,productId),
+        env.DB.prepare('UPDATE products SET safety_stock=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(safety,productId)
+      ]);
+      return json({ok:true,product_id:productId,safety_stock:safety});
+    }
+
     if(p==='/inventory/adjust'&&method==='POST'){
       const d=await request.json(), q=Math.trunc(num(d.qty_change));
       if(!q)throw new Error('调整数量不能为0');
