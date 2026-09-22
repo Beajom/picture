@@ -57,6 +57,19 @@ if (!d1id || !kvid) {
   process.exit(6);
 }
 
+// Keep product thumbnails fully visible on the deployed site.
+// The source page historically used object-fit: cover, which cropped tall product photos.
+const indexPath = "public/index.html";
+let html = await fs.readFile(indexPath, "utf8");
+const thumbCss = ".thumb{width:68px;height:68px;object-fit:contain;object-position:center center;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:3px;display:block;flex-shrink:0}";
+if (/\.thumb\{[^}]*\}/.test(html)) {
+  html = html.replace(/\.thumb\{[^}]*\}/, thumbCss);
+  await fs.writeFile(indexPath, html, "utf8");
+  console.log("Product thumbnail display fixed: full image, centered, no cropping.");
+} else {
+  console.warn("Thumbnail CSS selector not found; deployment continues without the image-fit patch.");
+}
+
 const toml = `name = "amazon-supply-workbench-free"
 main = "src/worker.js"
 compatibility_date = "2026-09-20"
