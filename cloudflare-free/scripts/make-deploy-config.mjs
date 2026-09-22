@@ -66,6 +66,7 @@ keep_vars = true
 directory = "./public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+run_worker_first = true
 
 [triggers]
 crons = ["*/15 * * * *"]
