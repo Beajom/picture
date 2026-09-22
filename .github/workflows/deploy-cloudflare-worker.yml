@@ -42,6 +42,10 @@ jobs:
         shell: bash
         run: node cloudflare-free/scripts/patch-purchase-contract-v3.mjs
 
+      - name: Enable editable purchase contract content
+        shell: bash
+        run: node cloudflare-free/scripts/patch-contract-editing.mjs
+
       - name: Validate frontend JavaScript
         shell: bash
         run: |
@@ -58,6 +62,8 @@ jobs:
           grep -q "<th>产品图片</th>" cloudflare-free/public/index.html
           grep -q "function previewPurchaseContract(id)" cloudflare-free/public/index.html
           grep -q "出口产品购货合同" cloudflare-free/public/index.html
+          grep -q "contractPaper" cloudflare-free/public/index.html
+          grep -q "保存修改" cloudflare-free/public/index.html
 
       - name: Install Wrangler
         working-directory: cloudflare-free
@@ -95,6 +101,8 @@ jobs:
                grep -q "<th>产品图片</th>" /tmp/index.html &&
                grep -q "function previewPurchaseContract(id)" /tmp/index.html &&
                grep -q "出口产品购货合同" /tmp/index.html &&
+               grep -q "contractPaper" /tmp/index.html &&
+               grep -q "保存修改" /tmp/index.html &&
                grep -q "load().then(render)" /tmp/index.html; then
               ok=1
               break
