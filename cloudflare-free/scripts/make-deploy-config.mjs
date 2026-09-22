@@ -1,22 +1,48 @@
 import fs from "node:fs/promises";
 
 const token = process.env.CLOUDFLARE_API_TOKEN || "";
-const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || "";
+let accountId = process.env.CLOUDFLARE_ACCOUNT_ID || "";
 const workerName = process.env.WORKER_NAME || "amazon-supply-workbench-free";
 
-if (!token || !accountId) {
-  console.error("Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID.");
+if (!token) {
+  console.error("Missing CLOUDFLARE_API_TOKEN.");
   process.exit(2);
 }
 
-const res = await fetch(
-  `https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${workerName}/settings`,
-  { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+async function cf(path) {
+  const res = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+  });
+  const body = await res.json().catch(() => ({}));
+  return { res, body };
+}
+
+if (!accountId) {
+  const { res, body } = await cf("/accounts?per_page=50");
+  if (!res.ok || !body.success || !Array.isArray(body.result)) {
+    console.error("Could not discover Cloudflare account. Token should use the Edit Cloudflare Workers template.");
+    console.error(JSON.stringify(body, null, 2));
+    process.exit(3);
+  }
+  for (const acct of body.result) {
+    const probe = await cf(`/accounts/${acct.id}/workers/scripts/${workerName}/settings`);
+    if (probe.res.ok && probe.body?.success) {
+      accountId = acct.id;
+      break;
+    }
+  }
+  if (!accountId) {
+    console.error(`Could not find existing Worker "${workerName}" in accounts accessible to this token.`);
+    process.exit(4);
+  }
+}
+
+const { res, body: raw } = await cf(
+  `/accounts/${accountId}/workers/scripts/${workerName}/settings`
 );
-const raw = await res.json();
 if (!res.ok || !raw.success) {
   console.error(JSON.stringify(raw, null, 2));
-  process.exit(3);
+  process.exit(5);
 }
 
 const bindings = raw.result?.bindings || [];
@@ -28,7 +54,7 @@ const kvid = kv?.namespace_id || kv?.id;
 if (!d1id || !kvid) {
   console.error("Refusing to deploy: existing DB / IMAGES bindings could not be resolved.");
   console.error(JSON.stringify(bindings, null, 2));
-  process.exit(4);
+  process.exit(6);
 }
 
 const toml = `name = "amazon-supply-workbench-free"
@@ -52,4 +78,5 @@ id = "${kvid}"
 `;
 
 await fs.writeFile("wrangler.deploy.toml", toml, "utf8");
-console.log("Safe deploy config created from the Worker’s current DB/KV bindings.");
+await fs.writeFile(".cloudflare-account-id", accountId, "utf8");
+console.log("Safe deploy config created from the existing Worker bindings. Existing D1 and KV IDs will be reused.");
