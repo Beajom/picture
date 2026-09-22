@@ -39,6 +39,127 @@ async function all(db,sql,...args){return (await db.prepare(sql).bind(...args).a
 async function one(db,sql,...args){return await db.prepare(sql).bind(...args).first()}
 async function exec(db,sql,...args){return await db.prepare(sql).bind(...args).run()}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
+
+function csvCell(v){
+  const s=String(v??'');
+  return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s
+}
+function inventoryStatus(qty,safety){
+  qty=num(qty);safety=Math.max(0,num(safety));
+  if(qty<=0)return '缺货';
+  if(safety<=0)return '未设置预警';
+  if(qty<=Math.max(1,Math.floor(safety*.5)))return '严重预警';
+  if(qty<=safety)return '库存预警';
+  if(qty<=Math.ceil(safety*1.25))return '接近预警';
+  return '正常'
+}
+function suggestPurchase(qty,safety){
+  qty=num(qty);safety=Math.max(0,num(safety));
+  return safety>0?Math.max(0,Math.ceil(safety*2-qty)):0
+}
+async function ensureInventoryReportTables(env){
+  await env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS inventory_report_settings(
+      id TEXT PRIMARY KEY,
+      enabled INTEGER NOT NULL DEFAULT 0,
+      frequency TEXT NOT NULL DEFAULT 'daily',
+      time_local TEXT NOT NULL DEFAULT '09:00',
+      weekday INTEGER NOT NULL DEFAULT 1,
+      day_of_month INTEGER NOT NULL DEFAULT 1,
+      timezone TEXT NOT NULL DEFAULT 'Asia/Shanghai',
+      last_run_period TEXT,
+      last_run_at TEXT,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS inventory_reports(
+      id TEXT PRIMARY KEY,
+      generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      reason TEXT NOT NULL DEFAULT 'manual',
+      period_key TEXT,
+      total_qty INTEGER NOT NULL DEFAULT 0,
+      total_value REAL NOT NULL DEFAULT 0,
+      sku_count INTEGER NOT NULL DEFAULT 0,
+      low_stock_count INTEGER NOT NULL DEFAULT 0,
+      file_key TEXT NOT NULL,
+      file_name TEXT NOT NULL
+    )`)
+  ]);
+  await exec(env.DB,`INSERT OR IGNORE INTO inventory_report_settings(id,enabled,frequency,time_local,weekday,day_of_month,timezone)
+    VALUES('default',0,'daily','09:00',1,1,'Asia/Shanghai')`);
+}
+function zonedParts(ts,timezone){
+  const d=new Date(ts);
+  const parts=new Intl.DateTimeFormat('en-CA',{
+    timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',hour12:false,weekday:'short'
+  }).formatToParts(d).reduce((o,p)=>(o[p.type]=p.value,o),{});
+  const wd={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[parts.weekday]??0;
+  return {year:parts.year,month:parts.month,day:parts.day,hour:Number(parts.hour)%24,minute:Number(parts.minute),weekday:wd,
+    dateKey:parts.year+'-'+parts.month+'-'+parts.day}
+}
+function schedulePeriodKey(settings,z){
+  if(settings.frequency==='monthly')return 'monthly:'+z.year+'-'+z.month;
+  if(settings.frequency==='weekly')return 'weekly:'+z.dateKey;
+  return 'daily:'+z.dateKey
+}
+function reportDue(settings,ts){
+  if(!num(settings.enabled))return {due:false};
+  let z;
+  try{z=zonedParts(ts,settings.timezone||'Asia/Shanghai')}catch(e){z=zonedParts(ts,'Asia/Shanghai')}
+  const hm=String(settings.time_local||'09:00').split(':').map(Number);
+  const targetMinutes=Math.max(0,Math.min(1439,(hm[0]||0)*60+(hm[1]||0)));
+  const nowMinutes=z.hour*60+z.minute;
+  if(nowMinutes<targetMinutes)return {due:false,z};
+  if(settings.frequency==='weekly'&&z.weekday!==Number(settings.weekday))return {due:false,z};
+  if(settings.frequency==='monthly'&&Number(z.day)!==Number(settings.day_of_month))return {due:false,z};
+  const period=schedulePeriodKey(settings,z);
+  return {due:String(settings.last_run_period||'')!==period,period,z}
+}
+async function inventoryReportRows(env){
+  return await all(env.DB,`SELECT
+    p.parent_asin,p.child_asin,p.sku,p.internal_code,p.product_name,p.color,p.size,
+    COALESCE(i.available_qty,0) available_qty,
+    COALESCE(i.safety_stock,p.safety_stock,0) safety_stock,
+    COALESCE(p.untaxed_price,0) unit_cost
+    FROM products p
+    LEFT JOIN inventory i ON i.product_id=p.id
+    ORDER BY p.internal_code,p.color,
+    CASE p.size WHEN 'S' THEN 1 WHEN 'M' THEN 2 WHEN 'L' THEN 3 WHEN 'XL' THEN 4 WHEN '2XL' THEN 5 WHEN '3XL' THEN 6 WHEN '4XL' THEN 7 ELSE 99 END`)
+}
+async function generateInventoryReport(env,reason='manual',periodKey=''){
+  await ensureInventoryReportTables(env);
+  const rows=await inventoryReportRows(env);
+  let totalQty=0,totalValue=0,low=0;
+  const lines=[['型号','父ASIN','子ASIN','SKU','商品名称','颜色','尺码','当前库存(双)','安全库存(双)','单价/库存成本(CNY)','库存货值(CNY)','库存状态','建议采购数量(双)']];
+  for(const r of rows){
+    const qty=num(r.available_qty),safety=num(r.safety_stock),unit=num(r.unit_cost),value=qty*unit,status=inventoryStatus(qty,safety),suggest=suggestPurchase(qty,safety);
+    totalQty+=qty;totalValue+=value;
+    if(qty<=safety)low++;
+    lines.push([
+      modelOf(r.internal_code||''),r.parent_asin||'',r.child_asin||'',r.sku||'',r.product_name||'',r.color||'',r.size||'',
+      Math.trunc(qty),Math.trunc(safety),unit.toFixed(2),value.toFixed(2),status,suggest
+    ])
+  }
+  const csv='\ufeff'+lines.map(row=>row.map(csvCell).join(',')).join('\r\n');
+  const now=new Date();
+  const stamp=now.toISOString().replace(/[:.]/g,'-');
+  const rid=id(),fileName='inventory-report-'+stamp.slice(0,19)+'.csv',fileKey='inventory-reports/'+now.toISOString().slice(0,7)+'/'+rid+'.csv';
+  await env.IMAGES.put(fileKey,csv,{metadata:{contentType:'text/csv;charset=utf-8',fileName}});
+  await exec(env.DB,`INSERT INTO inventory_reports(id,generated_at,reason,period_key,total_qty,total_value,sku_count,low_stock_count,file_key,file_name)
+    VALUES(?,?,?,?,?,?,?,?,?,?)`,rid,now.toISOString(),reason,periodKey,Math.trunc(totalQty),totalValue,rows.length,low,fileKey,fileName);
+  return {id:rid,generated_at:now.toISOString(),reason,period_key:periodKey,total_qty:Math.trunc(totalQty),total_value:totalValue,sku_count:rows.length,low_stock_count:low,file_name:fileName}
+}
+export async function runScheduledInventoryReports(env,scheduledTime=Date.now()){
+  await ensureInventoryReportTables(env);
+  const settings=await one(env.DB,"SELECT * FROM inventory_report_settings WHERE id='default'");
+  const due=reportDue(settings||{},scheduledTime);
+  if(!due.due)return {ok:true,generated:false};
+  const report=await generateInventoryReport(env,'scheduled',due.period);
+  await exec(env.DB,`UPDATE inventory_report_settings SET last_run_period=?,last_run_at=?,updated_at=CURRENT_TIMESTAMP WHERE id='default'`,
+    due.period,report.generated_at);
+  return {ok:true,generated:true,report}
+}
+
 async function createDailyBackup(env){
   try{
     const day=new Date().toISOString().slice(0,10);
@@ -84,6 +205,48 @@ export async function onRequest(ctx){
       ctx.waitUntil?.(createDailyBackup(env));
       const production_orders_enriched=await enrichProductionOrders(env,production_orders);
       return json({products,inventory,suppliers,materials,purchase_orders,production_orders:production_orders_enriched,outbound_orders,ledger});
+    }
+
+    if(p==='/inventory-report/settings'&&method==='GET'){
+      await ensureInventoryReportTables(env);
+      const settings=await one(env.DB,"SELECT * FROM inventory_report_settings WHERE id='default'");
+      return json(settings||{});
+    }
+    if(p==='/inventory-report/settings'&&method==='POST'){
+      await ensureInventoryReportTables(env);
+      const d=await request.json();
+      const frequency=['daily','weekly','monthly'].includes(String(d.frequency))?String(d.frequency):'daily';
+      const timeLocal=/^([01]\d|2[0-3]):[0-5]\d$/.test(String(d.time_local||''))?String(d.time_local):'09:00';
+      let timezone=String(d.timezone||'Asia/Shanghai');
+      try{new Intl.DateTimeFormat('en-US',{timeZone:timezone}).format(new Date())}catch(e){timezone='Asia/Shanghai'}
+      const weekday=Math.max(0,Math.min(6,Math.trunc(num(d.weekday))));
+      const dayOfMonth=Math.max(1,Math.min(28,Math.trunc(num(d.day_of_month)||1)));
+      await exec(env.DB,`UPDATE inventory_report_settings
+        SET enabled=?,frequency=?,time_local=?,weekday=?,day_of_month=?,timezone=?,updated_at=CURRENT_TIMESTAMP
+        WHERE id='default'`,d.enabled?1:0,frequency,timeLocal,weekday,dayOfMonth,timezone);
+      return json(await one(env.DB,"SELECT * FROM inventory_report_settings WHERE id='default'"));
+    }
+    if(p==='/inventory-report/generate'&&method==='POST'){
+      const report=await generateInventoryReport(env,'manual','manual:'+new Date().toISOString());
+      return json(report);
+    }
+    if(p==='/inventory-report/list'&&method==='GET'){
+      await ensureInventoryReportTables(env);
+      const rows=await all(env.DB,'SELECT * FROM inventory_reports ORDER BY generated_at DESC LIMIT 100');
+      return json({reports:rows});
+    }
+    let reportMatch=p.match(/^\/inventory-report\/download\/([^/]+)$/);
+    if(reportMatch&&method==='GET'){
+      await ensureInventoryReportTables(env);
+      const row=await one(env.DB,'SELECT * FROM inventory_reports WHERE id=?',reportMatch[1]);
+      if(!row)return new Response('Not found',{status:404});
+      const obj=await env.IMAGES.getWithMetadata(row.file_key,'arrayBuffer');
+      if(!obj.value)return new Response('Report file not found',{status:404});
+      return new Response(obj.value,{headers:{
+        'content-type':'text/csv;charset=utf-8',
+        'content-disposition':'attachment; filename="'+String(row.file_name||'inventory-report.csv').replace(/[^a-zA-Z0-9._-]/g,'_')+'"',
+        'cache-control':'no-store'
+      }});
     }
 
     if(p==='/backup-status'&&method==='GET'){
