@@ -34,6 +34,20 @@ jobs:
             exit 1
           fi
 
+      - name: Validate frontend JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("cloudflare-free/public/index.html").read_text(encoding="utf-8")
+          a=s.rfind("<script>")
+          b=s.rfind("</script>")
+          if a < 0 or b < 0 or b <= a:
+              raise SystemExit("frontend script block not found")
+          Path("/tmp/frontend.js").write_text(s[a+8:b], encoding="utf-8")
+          PY
+          node --check /tmp/frontend.js
+
       - name: Install Wrangler
         working-directory: cloudflare-free
         run: npm install --no-audit --no-fund
@@ -63,4 +77,6 @@ jobs:
           curl -fsS "$BASE/" > /tmp/index.html
           grep -q "生产完成剩余时间" /tmp/index.html
           grep -q "预计耗材消耗" /tmp/index.html
+          grep -q "FBA货件编号" /tmp/index.html
+          grep -q "搜索出库单号" /tmp/index.html
           echo "Deployment verified."
