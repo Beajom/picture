@@ -2,114 +2,65 @@ name: Deploy Amazon Supply Workbench to Cloudflare Workers
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - "cloudflare-free/**"
       - ".github/workflows/deploy-cloudflare-worker.yml"
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 permissions:
   contents: read
 
-concurrency:
-  group: cloudflare-amazon-supply-workbench-free
-  cancel-in-progress: false
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cloudflare-free
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      WORKER_NAME: amazon-supply-workbench-free
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Verify Cloudflare credentials are configured
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-            echo "::error::Missing GitHub repository secrets CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID."
-            exit 1
-          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
+      - name: Verify Cloudflare secrets
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID repository secret."
+            exit 1
+          fi
+
       - name: Install Wrangler
+        working-directory: cloudflare-free
         run: npm install --no-audit --no-fund
 
-      - name: Read current Worker bindings and build safe deploy config
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsS             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/settings"             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             -H "Content-Type: application/json"             > .worker-settings.json
+      - name: Build safe deploy config from existing bindings
+        working-directory: cloudflare-free
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WORKER_NAME: amazon-supply-workbench-free
+        run: node scripts/make-deploy-config.mjs
 
-          node <<'NODE'
-          const fs = require('fs');
-          const raw = JSON.parse(fs.readFileSync('.worker-settings.json','utf8'));
-          if (!raw.success) {
-            console.error(raw.errors || raw);
-            process.exit(1);
-          }
-          const bindings = raw.result?.bindings || [];
-          const d1 = bindings.find(b => b.name === 'DB' && ['d1','d1_database'].includes(b.type));
-          const kv = bindings.find(b => b.name === 'IMAGES' && b.type === 'kv_namespace');
-          const d1id = d1?.id || d1?.database_id;
-          const kvid = kv?.namespace_id || kv?.id;
-
-          if (!d1id || !kvid) {
-            console.error('Refusing to deploy: existing DB / IMAGES bindings could not be resolved.');
-            console.error(JSON.stringify(bindings, null, 2));
-            process.exit(1);
-          }
-
-          const toml = `name = "amazon-supply-workbench-free"
-main = "src/worker.js"
-compatibility_date = "2026-09-20"
-keep_vars = true
-
-[assets]
-directory = "./public"
-binding = "ASSETS"
-not_found_handling = "single-page-application"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "DB"
-database_id = "${d1id}"
-
-[[kv_namespaces]]
-binding = "IMAGES"
-id = "${kvid}"
-`;
-          fs.writeFileSync('wrangler.deploy.toml', toml);
-          console.log('Safe deploy config generated using the currently-bound D1 and KV resources.');
-          NODE
-
-      - name: Deploy without provisioning new storage
+      - name: Deploy Worker and static assets
+        working-directory: cloudflare-free
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --config wrangler.deploy.toml --no-x-provision
 
-      - name: Smoke test deployed site
+      - name: Verify deployed production page
         shell: bash
         run: |
-          set -euo pipefail
           BASE="https://amazon-supply-workbench-free.chongyu0502.workers.dev"
-          for i in 1 2 3 4 5 6; do
-            if curl -fsS "${BASE}/health" | grep -q '"ok":true'; then
-              break
-            fi
-            sleep 10
-          done
-          curl -fsS "${BASE}/" > /tmp/deployed-index.html
-          grep -q "生产完成剩余时间" /tmp/deployed-index.html
-          grep -q "预计耗材消耗" /tmp/deployed-index.html
-          echo "Cloudflare deployment and production-table smoke test passed."
+          sleep 8
+          curl -fsS "$BASE/health" | grep -q '"ok":true'
+          curl -fsS "$BASE/" > /tmp/index.html
+          grep -q "生产完成剩余时间" /tmp/index.html
+          grep -q "预计耗材消耗" /tmp/index.html
+          echo "Deployment verified."
