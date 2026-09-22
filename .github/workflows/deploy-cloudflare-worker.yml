@@ -72,11 +72,18 @@ jobs:
         shell: bash
         run: |
           BASE="https://amazon-supply-workbench-free.chongyu0502.workers.dev"
-          sleep 8
-          curl -fsS "$BASE/health" | grep -q '"ok":true'
-          curl -fsS "$BASE/" > /tmp/index.html
-          grep -q "生产完成剩余时间" /tmp/index.html
-          grep -q "预计耗材消耗" /tmp/index.html
-          grep -q "FBA货件编号" /tmp/index.html
-          grep -q "搜索出库单号" /tmp/index.html
+          curl -fsS "$BASE/health?ts=$(date +%s)" | grep -q '"ok":true'
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            curl -fsS -H "Cache-Control: no-cache" "$BASE/?ts=$(date +%s)-$i" > /tmp/index.html
+            if grep -q "生产完成剩余时间" /tmp/index.html &&
+               grep -q "预计耗材消耗" /tmp/index.html &&
+               grep -q "FBA货件编号" /tmp/index.html &&
+               grep -q "搜索出库单号" /tmp/index.html; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" = "1"
           echo "Deployment verified."
