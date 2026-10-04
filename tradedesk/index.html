@@ -109,7 +109,7 @@
 .bulkbar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f5f8ff;border-bottom:1px solid #dbe7ff;font-size:10px}.bulkbar b{color:#155eef}
 .col-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.col-menu label{display:flex;align-items:center;gap:6px;font-size:10px;border:1px solid #e4e7ec;border-radius:8px;padding:7px 8px;background:#fff}
 @media(max-width:900px){.backup-grid,.team-grid{grid-template-columns:1fr}}
-</style>
+.column-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.column-settings label{display:flex;align-items:center;gap:8px;border:1px solid #e4e7ec;border-radius:9px;padding:9px 10px;background:#fff;font-size:11px}.column-settings input{width:auto}.sort-head{cursor:pointer;user-select:none}.sort-head:hover{background:#f5f8ff}.sort-mark{margin-left:5px;color:#98a2b3;font-size:9px}.bulkbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 14px;border-top:1px solid #eef1f5;border-bottom:1px solid #eef1f5;background:#fbfcfe;font-size:10px}.bulkbar label{display:flex;align-items:center;gap:5px}.bulkbar input{width:auto}@media(max-width:720px){.column-settings{grid-template-columns:1fr}}</style>
 </head>
 <body>
 <div id="app">加载中...</div>
@@ -235,7 +235,7 @@ const TABLE_COLUMNS={
 function sortRowsBy(list,key,field){const s=state.sorting[key];if(!s||s.field!==field)return list;const dir=s.dir==='desc'?-1:1;return [...list].sort((a,b)=>{let x=a?.[field],y=b?.[field];if(typeof x==='number'||typeof y==='number')return (Number(x||0)-Number(y||0))*dir;return String(x??'').localeCompare(String(y??''),undefined,{numeric:true,sensitivity:'base'})*dir})}
 function sortHead(label,key,field){const s=state.sorting[key],mark=s?.field===field?(s.dir==='asc'?'▲':'▼'):'↕';return `<th class="sort-head" onclick="window.toggleTableSort('${key}','${field}')">${label}<span class="sort-mark">${mark}</span></th>`}
 function selectedIds(key){return Array.isArray(state.selected[key])?state.selected[key]:[]}
-function tableBulkBar(key,visibleIds){const ids=selectedIds(key),n=ids.length;return `<div class="bulkbar"><label><input type="checkbox" onchange="window.toggleAllRows('${key}',${JSON.stringify(visibleIds).replace(/"/g,'&quot;')},this.checked)" ${visibleIds.length&&visibleIds.every(id=>ids.includes(id))?'checked':''}> 当前页全选</label><b>已选 ${n} 条</b><button class="btn small" ${n?'':'disabled'} onclick="window.bulkExport('${key}')">导出 CSV</button><button class="btn small danger" ${n?'':'disabled'} onclick="window.bulkRecycle('${key}')">批量移入回收站</button><button class="btn small" onclick="window.openColumnSettings('${key}')">列设置</button></div>`}
+function tableBulkBar(key,visibleIds){const ids=selectedIds(key),n=ids.length,canDelete=['owner','admin'].includes(state.userRole);return `<div class="bulkbar"><label><input type="checkbox" onchange="window.toggleAllRows('${key}',${JSON.stringify(visibleIds).replace(/"/g,'&quot;')},this.checked)" ${visibleIds.length&&visibleIds.every(id=>ids.includes(id))?'checked':''}> 当前页全选</label><b>已选 ${n} 条</b><button class="btn small" ${n?'':'disabled'} onclick="window.bulkExport('${key}')">导出 CSV</button>${canDelete?`<button class="btn small danger" ${n?'':'disabled'} onclick="window.bulkRecycle('${key}')">批量移入回收站</button>`:''}<button class="btn small" onclick="window.openColumnSettings('${key}')">列设置</button></div>`}
 function hiddenColumnIndexes(key){try{return JSON.parse(localStorage.getItem('tradedesk_hidden_cols_'+key)||'[]')}catch(e){return[]}}
 function applyTableColumnVisibility(){document.querySelectorAll('table[data-config-key]').forEach(table=>{const key=table.dataset.configKey,hidden=hiddenColumnIndexes(key);[...table.rows].forEach(row=>[...row.cells].forEach((cell,i)=>{cell.style.display=hidden.includes(i)?'none':''}))})}
 function rowCheck(key,id){return `<input type="checkbox" onclick="event.stopPropagation()" onchange="window.toggleRowSelect('${key}','${id}',this.checked)" ${selectedIds(key).includes(id)?'checked':''}>`}
@@ -661,6 +661,34 @@ window.doBatchConvert=async id=>{if(state.saving)return;const src=db.documents.f
 window.saveSettings=async()=>{if(state.saving)return;const u=await fastUser();if(!u)return;const keys=['name','nameCn','address','addressCn','purchaseContact','purchasePhone','phone','email','website','taxNo','beneficiary','bankName','bankAddress','accountNo','swift','defaultCurrency','defaultIncoterm','defaultPayment'],company={};for(const k of keys)company[k]=$(`#set_${k}`).value.trim();if(!company.name)return toast('公司英文名不能为空','warn');const prefs={...db.prefs};for(const code of ['USD','GBP','EUR','AUD','CAD','JPY'])prefs['fx'+code]=Number($(`#set_fx${code}`)?.value||0);const btn=$('#saveSettingsBtn');state.saving=true;busy(btn,true,'保存中');const mediaChanges=Object.entries(state.mediaDirty||{});const res=await supabase.from('trade_settings').upsert({user_id:state.dataOwnerId||u.id,company,preferences:prefs,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(res.error){state.saving=false;busy(btn,false,'保存设置');return toast('公司设置保存失败','err',niceError(res.error))}if(mediaChanges.length){busy(btn,true,'保存图片');const rows=mediaChanges.map(([asset_key,data_url])=>({user_id:state.dataOwnerId||u.id,asset_key,data_url,updated_at:new Date().toISOString()}));const mr=await supabase.from('trade_media_assets').upsert(rows,{onConflict:'user_id,asset_key'});if(mr.error){state.saving=false;busy(btn,false,'保存设置');return toast('图片保存失败','err',niceError(mr.error))}}db.company={...db.company,...company,...Object.fromEntries(mediaChanges)};db.prefs={...seedPrefs,...prefs};state.mediaDirty={};state.saving=false;busy(btn,false,'保存设置');render();toast(mediaChanges.length?'公司设置和图片已保存':'公司设置已快速保存到云端','ok',mediaChanges.length?'图片仅在变更时上传':'未重新上传 Logo / 章 / 签名')};
 window.runCloudTest=async()=>{const u=await ensureUser();if(!u)return;const {data,error}=await supabase.from('trade_products').select('id',{count:'exact',head:false}).eq('user_id',state.dataOwnerId||u.id).limit(1);state.cloudOk=!error;render();if(error)toast('云端连接失败','err',niceError(error));else toast('云端连接正常','ok','当前账号可正常读取数据库。')};
 
+
+function tableRowsForKey(key){
+  if(key==='products')return db.products;
+  if(key==='customers')return db.customers;
+  if(key==='suppliers')return db.suppliers;
+  if(key==='orders')return db.salesOrders;
+  if(key==='purchases')return db.purchaseContracts;
+  if(key==='payments')return db.payments;
+  if(String(key).startsWith('docs_')){const t=String(key).slice(5);return db.documents.filter(x=>x.type===t)}
+  return [];
+}
+function tableRecycleInfo(key,id){
+  if(key==='products')return {table:'trade_products',item:db.products.find(x=>x.id===id),name:x=>x?.sku||id};
+  if(key==='customers')return {table:'trade_customers',item:db.customers.find(x=>x.id===id),name:x=>x?.company||id};
+  if(key==='suppliers')return {table:'trade_suppliers',item:db.suppliers.find(x=>x.id===id),name:x=>x?.company||id};
+  if(key==='orders')return {table:'trade_sales_orders',item:db.salesOrders.find(x=>x.id===id),name:x=>x?.no||id};
+  if(key==='purchases')return {table:'trade_purchase_contracts',item:db.purchaseContracts.find(x=>x.id===id),name:x=>x?.no||id};
+  if(key==='payments')return {table:'trade_payment_records',item:db.payments.find(x=>x.id===id),name:x=>x?`${x.date} · ${money(x.amount,x.currency)}`:id};
+  if(String(key).startsWith('docs_'))return {table:'trade_documents',item:db.documents.find(x=>x.id===id),name:x=>x?.no||id};
+  return null;
+}
+window.toggleTableSort=(key,field)=>{const cur=state.sorting[key];state.sorting[key]={field,dir:cur?.field===field&&cur.dir==='asc'?'desc':'asc'};state.pagination[key]=1;render()};
+window.toggleRowSelect=(key,id,checked)=>{const set=new Set(selectedIds(key));if(checked)set.add(id);else set.delete(id);state.selected[key]=[...set];render()};
+window.toggleAllRows=(key,ids,checked)=>{const set=new Set(selectedIds(key));for(const id of (ids||[])){if(checked)set.add(id);else set.delete(id)}state.selected[key]=[...set];render()};
+window.bulkExport=key=>{const ids=selectedIds(key);if(!ids.length)return;const rows=tableRowsForKey(key).filter(x=>ids.includes(x.id));if(!rows.length)return toast('没有可导出的记录','warn');downloadBlob(`tradedesk-${key}-selected-${today()}.csv`,'\ufeff'+csvText(rows),'text/csv;charset=utf-8');toast('已导出选中记录','ok',`${rows.length} 条`)};
+window.bulkRecycle=async key=>{if(!['owner','admin'].includes(state.userRole))return toast('当前账号没有批量删除权限','warn');const ids=selectedIds(key);if(!ids.length)return;if(!confirm(`确认将选中的 ${ids.length} 条记录移入回收站？\n之后仍可在“回收站”恢复。`))return;const u=await fastUser();if(!u)return;let ok=0,fail=0;for(const id of ids){const info=tableRecycleInfo(key,id);if(!info?.item){fail++;continue}const res=await supabase.from(info.table).update({deleted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id).eq('user_id',state.dataOwnerId||u.id);if(res.error)fail++;else ok++}state.selected[key]=[];await loadCloud();render();toast('批量操作完成',fail?'warn':'ok',`已移入回收站 ${ok} 条${fail?` · 失败 ${fail} 条`:''}`)};
+window.openColumnSettings=key=>{const table=document.querySelector(`table[data-config-key="${CSS.escape(key)}"]`);if(!table)return toast('当前表格暂不支持列设置','warn');const heads=[...table.querySelectorAll('tr:first-child th')],hidden=hiddenColumnIndexes(key);showModal('列显示设置',`<div class="notice">取消勾选即可隐藏列；设置只保存在当前浏览器，不影响其他账号。</div><div class="column-settings">${heads.map((h,i)=>`<label><input type="checkbox" name="colSetting" value="${i}" ${hidden.includes(i)?'':'checked'}> <span>${esc(h.textContent.replace(/[▲▼↕]/g,'').trim()||('第 '+(i+1)+' 列'))}</span></label>`).join('')}</div>`,`window.saveColumnSettings('${key}')`,'保存列设置')};
+window.saveColumnSettings=key=>{const shown=[...document.querySelectorAll('input[name="colSetting"]:checked')].map(x=>Number(x.value)),all=[...document.querySelectorAll('input[name="colSetting"]')].map(x=>Number(x.value)),hidden=all.filter(i=>!shown.includes(i));localStorage.setItem('tradedesk_hidden_cols_'+key,JSON.stringify(hidden));state.modal='';render();toast('列设置已保存','ok')};
 window.toggleSidebar=()=>{state.sidebarCollapsed=!state.sidebarCollapsed;localStorage.setItem('tradedesk_sidebar_collapsed',state.sidebarCollapsed?'1':'0');render()};
 window.setListPage=(key,p)=>{state.pagination[key]=Math.max(1,Number(p||1));render()};
 window.setPageSize=(key,n)=>{localStorage.setItem('tradedesk_page_size_'+key,String(Number(n)||20));state.pagination[key]=1;render()};
