@@ -229,8 +229,8 @@ function todoItems(){const items=[];for(const o of db.salesOrders){const risk=pa
 const TABLE_COLUMNS={
   products:['选择','SKU','产品','图片','采购价','销售价','单件毛利 RMB','产品毛利率','默认供应商','尺寸 / 体积','装箱 / 重量','操作'],
   orders:['选择','订单号','日期','客户','状态','订单金额','已收 / 未收','净利润 RMB','出货','操作'],
-  customers:['选择','公司','联系人','国家/地区','邮箱 / 电话','累计订单','累计销售额 RMB','累计回款 RMB','未收款 RMB','累计毛利 RMB','操作'],
-  suppliers:['选择','供应商','联系人','电话 / 邮箱','税号','1688 / 下单','付款条件','操作']
+  customers:['选择','公司','联系人','国家','定金','实际订单数','累计采购数量','累计销售额 RMB','累计回款 RMB','未收款 RMB','累计毛利 RMB','操作'],
+  suppliers:['选择','供应商','联系人','电话 / 邮箱','税号','银行账户','1688 / 下单','关联产品','操作']
 };
 function sortRowsBy(list,key,field){const s=state.sorting[key];if(!s||s.field!==field)return list;const dir=s.dir==='desc'?-1:1;return [...list].sort((a,b)=>{let x=a?.[field],y=b?.[field];if(typeof x==='number'||typeof y==='number')return (Number(x||0)-Number(y||0))*dir;return String(x??'').localeCompare(String(y??''),undefined,{numeric:true,sensitivity:'base'})*dir})}
 function sortHead(label,key,field){const s=state.sorting[key],mark=s?.field===field?(s.dir==='asc'?'▲':'▼'):'↕';return `<th class="sort-head" onclick="window.toggleTableSort('${key}','${field}')">${label}<span class="sort-mark">${mark}</span></th>`}
