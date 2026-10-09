@@ -37,16 +37,16 @@ nav button{background:transparent;color:#475467;white-space:nowrap;box-shadow:no
 nav button.active{background:#eaf3ff;color:var(--b);box-shadow:inset 0 0 0 1px #d3e5ff}
 main{width:min(1660px,calc(100% - 48px));margin:24px auto;padding:0 0 60px}
 .tab{display:none}.tab.active{display:block}
-h2{font-size:22px;margin:4px 0 14px;letter-spacing:.1px}
+h2{font-size:22px;margin:18px 0 14px;letter-spacing:.1px}#home>.notice+h2{margin-top:16px}
 h3{margin:0 0 8px;font-size:18px}
 label{display:block;color:#344054;font-weight:650}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .card b{display:block;font-size:28px;margin:7px 0 4px;line-height:1.15}
-.card small{font-size:12px}
+.card small{font-size:12px}.card.priority-1{border-color:#f3b4b4;background:linear-gradient(180deg,#fff,#fff8f8)}.card.priority-2{border-color:#ffd3a1;background:linear-gradient(180deg,#fff,#fffaf4)}.card.priority-3{border-color:#cfe0f6;background:linear-gradient(180deg,#fff,#f8fbff)}.card .rank{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#eef3f8;color:#475467;font-size:11px;font-weight:800;margin-bottom:7px}.card.priority-1 .rank{background:#fee4e2;color:#b42318}.card.priority-2 .rank{background:#ffead5;color:#b54708}
 .muted{color:var(--m)}.good{color:var(--g)}.bad{color:var(--r)}.warn{color:var(--o)}
 .notice{background:#fff8ed;border:1px solid #f7d9ad;color:#92400e;padding:15px 17px;border-radius:12px;line-height:1.65;box-shadow:0 4px 14px rgba(146,64,14,.04)}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .summary .panel ul{margin:10px 0 0;padding-left:20px}
 table{width:100%;border-collapse:collapse}
 th{background:#f7f9fc;color:#475467;font-weight:700}
@@ -74,6 +74,7 @@ canvas{max-height:500px;min-height:360px}
 @media(max-width:1200px){
   main{width:min(1180px,calc(100% - 32px))}
   header,nav{padding-left:16px;padding-right:16px}
+  .cards,.summary{grid-template-columns:repeat(2,minmax(0,1fr))}
   #upload.active{grid-template-columns:1fr}
   #upload.active>h2{grid-column:auto}
 }
@@ -84,7 +85,8 @@ canvas{max-height:500px;min-height:360px}
   nav{padding:8px 10px}
   nav button{padding:8px 11px}
   main{width:calc(100% - 20px);margin:16px auto;padding-bottom:40px}
-  .grid,.summary{grid-template-columns:1fr}
+  .grid{grid-template-columns:1fr}
+  .summary{grid-template-columns:1fr}
   .cards{grid-template-columns:1fr 1fr;gap:10px}
   .panel{padding:16px}
   .item{align-items:flex-start;flex-direction:column}
@@ -190,12 +192,36 @@ function dist(m,v){let lo=Number(m.ref_low),hi=Number(m.ref_high);if(Number.isFi
 function assess(m,a,b){if(a==null)return ['暂无对比','muted'];a=Number(a);b=Number(b);if(a===b)return ['基本持平','muted'];if(m.direction==='down')return b<a?['方向改善','good']:['方向不利','bad'];if(m.direction==='up')return b>a?['方向改善','good']:['方向不利','bad'];let da=dist(m,a),dbb=dist(m,b);return dbb<da?['更接近正常','good']:dbb>da?['偏离正常','bad']:['基本持平','muted']}
 function state(m,v){let lo=Number(m.ref_low),hi=Number(m.ref_high);if(Number.isFinite(lo)&&v<lo)return'低于参考';if(Number.isFinite(hi)&&v>hi)return'高于参考';return'参考范围内'}
 function home(){
- let key=['PLT','WBC','PCT','CRP','LAC','CREA','TBIL','NTPROBNP'],good=[],bad=[],risk=[];
- e('cards').innerHTML=key.map(function(k){let m=defs.find(x=>x.code===k),s=series(k);if(!m||!s.length)return'';let z=s[s.length-1],p=s.length>1?s[s.length-2]:null,a=assess(m,p&&p.value,z.value);return'<div class="card"><span class="muted">'+safe(m.name)+'</span><b>'+safe(z.value)+' <small>'+safe(z.unit||m.unit||'')+'</small></b><span class="'+a[1]+'">'+a[0]+'</span><br><small class="muted">'+stateR(m,z)+' · 参考范围：'+safe(refLabel(m,z))+' '+safe(z.unit||m.unit||'')+'</small></div>'}).join('');
- defs.forEach(function(m){let s=series(m.code);if(!s.length)return;let z=s[s.length-1],p=s.length>1?s[s.length-2]:null,a=assess(m,p&&p.value,z.value);if(a[1]==='good')good.push(m.name);if(a[1]==='bad')bad.push(m.name);if(stateR(m,z)!=='参考范围内')risk.push(m.name)});
- function list(title,arr,cls){return'<div class="panel"><b class="'+cls+'">'+title+'</b><ul>'+(arr.length?arr.slice(0,12).map(x=>'<li>'+safe(x)+'</li>').join(''):'<li>暂无</li>')+'</ul></div>'}
- e('summary').innerHTML=list('改善方向',good,'good')+list('不利方向',bad,'bad')+list('仍需关注',risk,'warn');
-e('rangeTable').innerHTML=defs.map(function(m){let s=series(m.code),z=s.length?s[s.length-1]:null;return'<tr><td>'+safe(m.system_group)+'</td><td>'+safe(m.name)+' <span class="muted">('+safe(m.code)+')</span></td><td>'+safe(refLabel(m,z))+'</td><td>'+safe((z&&z.unit)||m.unit||'')+'</td></tr>'}).join('')
+ const priority=['PLT','WBC','PCT','CREA','CRP','LAC','TBIL','NTPROBNP'];
+ const priorityLabel={PLT:'1',WBC:'2',PCT:'3',CREA:'4',CRP:'5',LAC:'6',TBIL:'7',NTPROBNP:'8'};
+ const level={PLT:1,WBC:1,PCT:1,CREA:2,CRP:2,LAC:3,TBIL:3,NTPROBNP:2};
+ let good=[],bad=[],risk=[];
+ e('cards').innerHTML=priority.map(function(k){
+   let m=defs.find(x=>x.code===k),s=series(k);if(!m||!s.length)return'';
+   let z=s[s.length-1],p=s.length>1?s[s.length-2]:null,a=assess(m,p&&p.value,z.value),lv=level[k]||3;
+   return '<div class="card priority-'+lv+'"><span class="rank">优先 '+priorityLabel[k]+'</span><span class="muted">'+safe(m.name)+'</span><b>'+safe(z.value)+' <small>'+safe(z.unit||m.unit||'')+'</small></b><span class="'+a[1]+'">'+a[0]+'</span><br><small class="muted">'+stateR(m,z)+' · 参考范围：'+safe(refLabel(m,z))+' '+safe(z.unit||m.unit||'')+'</small></div>'
+ }).join('');
+ defs.forEach(function(m){
+   let s=series(m.code);if(!s.length)return;
+   let z=s[s.length-1],p=s.length>1?s[s.length-2]:null,a=assess(m,p&&p.value,z.value);
+   if(a[1]==='good')good.push(m.name);
+   if(a[1]==='bad')bad.push(m.name);
+   if(stateR(m,z)!=='参考范围内')risk.push(m.name)
+ });
+ const priorityNames=priority.map(k=>{let m=defs.find(x=>x.code===k),s=series(k);return m&&s.length&&stateR(m,s[s.length-1])!=='参考范围内'?m.name:null}).filter(Boolean);
+ const otherRisk=risk.filter(x=>!priorityNames.includes(x));
+ function list(title,arr,cls){
+   return '<div class="panel"><b class="'+cls+'">'+title+'</b><ul>'+(arr.length?arr.slice(0,10).map(x=>'<li>'+safe(x)+'</li>').join(''):'<li>暂无</li>')+'</ul></div>'
+ }
+ e('summary').innerHTML=
+   list('重点关注（优先）',priorityNames,'warn')+
+   list('趋势不利',bad,'bad')+
+   list('趋势改善',good,'good')+
+   list('其他异常',otherRisk,'warn');
+ e('rangeTable').innerHTML=defs.map(function(m){
+   let s=series(m.code),z=s.length?s[s.length-1]:null;
+   return '<tr><td>'+safe(m.system_group)+'</td><td>'+safe(m.name)+' <span class="muted">('+safe(m.code)+')</span></td><td>'+safe(refLabel(m,z))+'</td><td>'+safe((z&&z.unit)||m.unit||'')+'</td></tr>'
+ }).join('')
 }
 e('save').onclick=async function(){let m=defs.find(x=>x.code===e('metric').value),v=Number(e('value').value),t=e('entryTime').value;if(!m||!t||!Number.isFinite(v)){e('entryMsg').textContent='请填写有效时间和数值';return}let row={user_id:sess.user.id,collected_at:chinaIso(t),metric_code:m.code,metric_name:m.name,system_group:m.system_group,value:v,unit:e('unit').value||m.unit,ref_low:e('low').value===''?m.ref_low:Number(e('low').value),ref_high:e('high').value===''?m.ref_high:Number(e('high').value),direction:m.direction};let r=await db.from('results').insert(row);e('entryMsg').textContent=r.error?r.error.message:'已保存';if(!r.error){e('value').value='';await load()}};
 
