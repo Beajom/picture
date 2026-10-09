@@ -81,10 +81,27 @@
     await renderDataV3();return true;
   }
   async function loadGuestV3(code){
-    let r=await db.rpc('get_family_dashboard',{p_code:code});
-    if(r.error||!r.data)return false;
-    defs=r.data.metrics||[];vals=r.data.results||[];reps=[];
-    await renderDataV3();return true;
+    try{
+      let r=await db.rpc('get_family_dashboard',{p_code:code});
+      if(r.error||!r.data){
+        console.error('family dashboard load failed',r.error);
+        return false;
+      }
+      let data=r.data;
+      if(typeof data==='string'){try{data=JSON.parse(data)}catch(_e){}}
+      if(!data||typeof data!=='object')return false;
+      let metrics=data.metrics||[],results=data.results||[];
+      if(typeof metrics==='string'){try{metrics=JSON.parse(metrics)}catch(_e){metrics=[]}}
+      if(typeof results==='string'){try{results=JSON.parse(results)}catch(_e){results=[]}}
+      defs=Array.isArray(metrics)?metrics:[];
+      vals=Array.isArray(results)?results:[];
+      reps=[];
+      await renderDataV3();
+      return defs.length>0;
+    }catch(err){
+      console.error('family dashboard exception',err);
+      return false;
+    }
   }
 
   async function routeAccessV3(){
@@ -107,7 +124,7 @@
     if(code.length<8){e('familyMsg').textContent='请输入正确的家属访问码';return}
     e('familyMsg').textContent='验证中…';
     const ok=await loadGuestV3(code);
-    if(!ok){e('familyMsg').textContent='访问码不正确';return}
+    if(!ok){e('familyMsg').textContent='未能读取数据。请先确认访问码；若访问码正确，请刷新页面后重试。';return}
     guestCodeV3=code;localStorage.setItem('familyAccessCode',code);
     e('familyGate').classList.add('hidden');e('app').classList.remove('hidden');e('app').classList.add('guest-mode');e('familyMsg').textContent='';
   }
@@ -230,4 +247,5 @@
   e('logout').onclick=async()=>{await db.auth.signOut()};
 
   routeAccessV3();
+  window.addEventListener('pageshow',()=>{if(!sess && localStorage.getItem('familyAccessCode'))routeAccessV3()});
 })();
