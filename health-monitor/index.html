@@ -6,17 +6,91 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <title>老人病情监测</title>
 <style>
-:root{--b:#155eef;--bg:#f5f8fc;--t:#172033;--m:#667085;--line:#e5e7eb;--r:#b42318;--g:#067647;--o:#b54708}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--t)}
-.hidden{display:none!important}.auth{min-height:100vh;display:grid;place-items:center;padding:20px}.box,.panel,.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}.auth .box{width:min(420px,100%);box-shadow:0 12px 40px #1232}
-input,select,textarea{width:100%;padding:10px;border:1px solid #ccd4df;border-radius:8px;font:inherit;margin:6px 0 10px}button{border:0;border-radius:8px;padding:10px 14px;background:var(--b);color:#fff;font-weight:700;cursor:pointer}button.alt{background:#eef2f6;color:#344054}
-.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}header{background:#12365a;color:#fff;padding:18px max(14px,calc((100vw - 1150px)/2));display:flex;justify-content:space-between;gap:18px;align-items:center}header h1{margin:0;font-size:24px}
-nav{display:flex;gap:6px;overflow:auto;padding:10px max(10px,calc((100vw - 1150px)/2));background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}nav button{background:#fff;color:#344054;white-space:nowrap}nav button.active{background:#eff6ff;color:var(--b)}
-main{max-width:1150px;margin:20px auto;padding:0 14px 50px}.tab{display:none}.tab.active{display:block}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.card b{display:block;font-size:26px;margin:6px 0}.muted{color:var(--m)}.good{color:var(--g)}.bad{color:var(--r)}.warn{color:var(--o)}
-.notice{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:13px;border-radius:10px;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.summary .panel ul{margin:8px 0;padding-left:20px}
-table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}.scroll{overflow:auto}.list{display:grid;gap:9px}.item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px}
-canvas{max-height:420px}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2f6}.msg{margin-top:8px;white-space:pre-wrap;color:var(--m)}
-@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.grid,.summary{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}}
+:root{
+  --b:#1769e8;--b2:#0f4fa8;--navy:#153b61;--bg:#f3f7fb;--t:#172033;--m:#667085;
+  --line:#e1e8f0;--r:#b42318;--g:#067647;--o:#b54708;--shadow:0 8px 26px rgba(31,51,73,.07)
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#f7faff 0,#f3f7fb 240px);color:var(--t);font-size:15px}
+.hidden{display:none!important}
+.auth{min-height:100vh;display:grid;place-items:center;padding:24px}
+.box,.panel,.card{background:rgba(255,255,255,.98);border:1px solid var(--line);border-radius:16px}
+.auth .box{width:min(440px,100%);padding:26px;box-shadow:0 18px 50px rgba(20,54,90,.14)}
+.panel{padding:22px;box-shadow:var(--shadow)}
+.card{padding:18px;box-shadow:0 5px 16px rgba(31,51,73,.05);transition:.18s ease}
+.card:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(31,51,73,.09)}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cfd9e6;border-radius:10px;background:#fff;color:var(--t);font:inherit;margin:7px 0 12px;outline:none;transition:.16s ease}
+input:focus,select:focus,textarea:focus{border-color:#75a7f5;box-shadow:0 0 0 3px rgba(23,105,232,.10)}
+input[type=file]{padding:9px;background:#f9fbfd;border-style:dashed}
+textarea{resize:vertical;min-height:110px}
+button{border:0;border-radius:9px;padding:10px 16px;background:linear-gradient(135deg,var(--b),#0b5bd3);color:#fff;font-weight:700;cursor:pointer;box-shadow:0 4px 10px rgba(23,105,232,.15);transition:.16s ease}
+button:hover{transform:translateY(-1px);filter:brightness(.99)}
+button.alt{background:#eef3f8;color:#344054;box-shadow:none}
+button.alt:hover{background:#e5edf6}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+header{background:linear-gradient(110deg,#173f67,#113557);color:#fff;padding:19px max(24px,calc((100vw - 1660px)/2));display:flex;justify-content:space-between;gap:20px;align-items:center;box-shadow:0 3px 14px rgba(17,53,87,.16)}
+header h1{margin:0 0 3px;font-size:24px;letter-spacing:.2px}
+header small{opacity:.82}
+nav{display:flex;gap:8px;overflow:auto;padding:10px max(24px,calc((100vw - 1660px)/2));background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;box-shadow:0 2px 10px rgba(31,51,73,.03)}
+nav button{background:transparent;color:#475467;white-space:nowrap;box-shadow:none;padding:9px 14px}
+nav button.active{background:#eaf3ff;color:var(--b);box-shadow:inset 0 0 0 1px #d3e5ff}
+main{width:min(1660px,calc(100% - 48px));margin:24px auto;padding:0 0 60px}
+.tab{display:none}.tab.active{display:block}
+h2{font-size:22px;margin:4px 0 14px;letter-spacing:.1px}
+h3{margin:0 0 8px;font-size:18px}
+label{display:block;color:#344054;font-weight:650}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.card b{display:block;font-size:28px;margin:7px 0 4px;line-height:1.15}
+.card small{font-size:12px}
+.muted{color:var(--m)}.good{color:var(--g)}.bad{color:var(--r)}.warn{color:var(--o)}
+.notice{background:#fff8ed;border:1px solid #f7d9ad;color:#92400e;padding:15px 17px;border-radius:12px;line-height:1.65;box-shadow:0 4px 14px rgba(146,64,14,.04)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.summary .panel ul{margin:10px 0 0;padding-left:20px}
+table{width:100%;border-collapse:collapse}
+th{background:#f7f9fc;color:#475467;font-weight:700}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+tbody tr:hover{background:#fafcff}
+.scroll{overflow:auto}
+.list{display:grid;gap:10px}
+.item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 4px 14px rgba(31,51,73,.04)}
+canvas{max-height:500px;min-height:360px}
+.pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef3f8;color:#475467;font-size:13px}
+.msg{margin-top:8px;white-space:pre-wrap;color:var(--m);font-size:13px}
+
+/* 上传页桌面端改为双栏，充分利用宽屏 */
+#upload.active{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:18px;align-items:start}
+#upload.active>h2{grid-column:1/-1;margin-bottom:-2px}
+#upload>.panel{min-height:100%}
+#upload>.panel:first-of-type{background:linear-gradient(180deg,#fff 0,#fbfdff 100%)}
+#upload>.panel:nth-of-type(2){background:linear-gradient(180deg,#fff 0,#fafcff 100%)}
+#upload #uploadBtn{min-width:150px}
+#ocrText{min-height:230px}
+
+/* 录入页、趋势页、历史页保持更宽但不空 */
+#entry .panel,#trend .panel,#history .list,#backup .panel{width:100%}
+
+@media(max-width:1200px){
+  main{width:min(1180px,calc(100% - 32px))}
+  header,nav{padding-left:16px;padding-right:16px}
+  #upload.active{grid-template-columns:1fr}
+  #upload.active>h2{grid-column:auto}
+}
+@media(max-width:760px){
+  body{font-size:14px}
+  header{align-items:flex-start;flex-direction:column;padding:16px}
+  header h1{font-size:21px}
+  nav{padding:8px 10px}
+  nav button{padding:8px 11px}
+  main{width:calc(100% - 20px);margin:16px auto;padding-bottom:40px}
+  .grid,.summary{grid-template-columns:1fr}
+  .cards{grid-template-columns:1fr 1fr;gap:10px}
+  .panel{padding:16px}
+  .item{align-items:flex-start;flex-direction:column}
+  canvas{min-height:300px}
+}
+@media(max-width:480px){.cards{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
