@@ -9,6 +9,18 @@
   .overall-judgment strong{display:block;font-size:18px;color:#183b5f;margin-bottom:7px}
   .overall-judgment .detail{font-size:13px;color:#475467;line-height:1.7}
   .access-panel{max-width:760px}.access-panel .access-status{margin:8px 0 16px;padding:12px 14px;border-radius:10px;background:#f7f9fc;color:#475467;font-size:13px}
+.auto-review-panel{margin-top:18px;border-color:#cfe1f6;background:linear-gradient(180deg,#fff,#f8fbff)}
+.auto-review-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.auto-review-head h3{margin:0 0 5px}.auto-review-head p{margin:0;color:#667085;font-size:13px}
+.auto-review-table input{margin:0;padding:7px 8px}.auto-review-table input[type=checkbox]{width:auto}
+.auto-review-table td,.auto-review-table th{vertical-align:middle}
+.auto-progress{padding:12px 14px;border-radius:10px;background:#eef6ff;color:#24527d;margin:12px 0;font-size:13px;line-height:1.6}
+.batch-report{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 4px 14px rgba(31,51,73,.04)}
+.batch-report+.batch-report{margin-top:10px}.batch-report-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.batch-report-files{margin-top:10px;border-top:1px solid #eef2f6;padding-top:8px;display:grid;gap:6px}
+.batch-report-file{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:13px}
+.batch-state{font-size:12px;font-weight:750;padding:4px 8px;border-radius:999px;background:#f2f4f7;color:#475467}
+.batch-state.missing{background:#fff0ef;color:#b42318}.batch-state.ready{background:#ecfdf3;color:#067647}
   `;
   document.head.appendChild(style);
 
@@ -197,7 +209,214 @@
     return {ok:true,message:overwrite?'已覆盖重复项并保存':'已保留原值，仅保存新增项'};
   }
 
+
+  let autoReviewStateV3={items:[],time:''};
+
+  function ensureAutoReviewUIV3(){
+    if(e('autoReviewPanel'))return;
+    const panel=document.createElement('div');
+    panel.id='autoReviewPanel';panel.className='panel auto-review-panel hidden';
+    panel.innerHTML='<div class="auto-review-head"><div><h3>自动识别结果</h3><p>原报告已经保存。请核对识别结果后再更新趋势，避免OCR误识别。</p></div><span class="pill">保存后自动刷新总览与趋势</span></div><div id="autoRecognizeMsg" class="auto-progress">等待识别</div><div class="scroll"><table class="auto-review-table"><thead><tr><th>保存</th><th>指标</th><th>识别结果</th><th>单位</th><th>参考下限</th><th>参考上限</th><th>来源</th></tr></thead><tbody id="autoReviewRows"></tbody></table></div><div class="row" style="margin-top:14px"><button id="saveAutoReview">确认并更新趋势</button><button id="cancelAutoReview" class="alt">暂不保存</button></div>';
+    const upload=e('upload');
+    const firstPanel=upload.querySelector('.panel');
+    firstPanel.insertAdjacentElement('afterend',panel);
+    e('saveAutoReview').onclick=saveAutoReviewV3;
+    e('cancelAutoReview').onclick=()=>{panel.classList.add('hidden');autoReviewStateV3={items:[],time:''}};
+  }
+
+  const OCR_ALIASES_V3={
+    WBC:['白细胞计数','白细胞数'],PLT:['血小板计数'],CRP:['C反应蛋白','超敏C反应蛋白'],PCT:['降钙素原'],
+    CREA:['肌酐','CREA','Cr'],UREA:['尿素'],CYSC:['胱抑素C','CysC'],UA:['尿酸'],
+    TBIL:['总胆红素','T-BIL','TBIL'],DBIL:['直接胆红素','D-BIL','DBIL'],IBIL:['间接胆红素','I-BIL','IBIL'],
+    ALT:['丙氨酸氨基转移酶','谷丙转氨酶','ALT'],AST:['天门冬氨酸氨基转移酶','谷草转氨酶','AST'],
+    TP:['总蛋白'],ALB:['白蛋白'],NH3:['血氨'],
+    LAC:['乳酸','Lac'],NTPROBNP:['NT-proBNP','NTproBNP','N末端B型钠尿肽前体','N末端脑钠肽前体'],
+    TNT:['肌钙蛋白T','高敏肌钙蛋白T','cTnT','hs-cTnT'],MYO:['肌红蛋白','Myo'],
+    DD:['D-二聚体','D二聚体'],PT:['凝血酶原时间'],PTR:['凝血酶原比值'],PTA:['凝血酶原活动度'],
+    INR:['国际标准化比值'],APTT:['活化部分凝血活酶时间'],TT:['凝血酶时间'],FIB:['纤维蛋白原'],
+    IL6:['白介素-6','IL-6'],HGB:['血红蛋白','HGB'],THB:['总血红蛋白','tHb'],HCT:['红细胞压积','HCT'],
+    PH:['pH'],PCO2:['PCO2','二氧化碳分压'],PO2:['PO2','氧分压'],HCO3:['实际碳酸氢根','HCO3'],
+    HCO3STD:['标准碳酸氢根'],BEE:['BE-ecf','细胞外液碱剩余'],BEB:['BE-B','血碱剩余'],
+    NA:['Na+','钠'],K:['K+','钾'],CL:['Cl-','氯'],ICA:['iCa','离子钙'],CA:['总钙'],MG:['镁'],
+    AG:['阴离子间隙','AG'],GLU:['葡萄糖','Glu'],SO2:['血氧饱和度','SO2'],PF:['PF氧合指数','氧合指数','P/F']
+  };
+
+  function cleanOcrLineV3(s){
+    return String(s||'').replace(/[，,]/g,'.').replace(/[：:]/g,' ').replace(/[（(]/g,' ').replace(/[）)]/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  function parseNumberNearAliasV3(line,alias){
+    const low=line.toLowerCase(),a=alias.toLowerCase(),i=low.indexOf(a);
+    if(i<0)return null;
+    const before=line.slice(0,i),after=line.slice(i+alias.length);
+    const numsAfter=(after.match(/-?\d+(?:\.\d+)?/g)||[]).map(Number).filter(Number.isFinite);
+    if(numsAfter.length)return numsAfter[0];
+    const numsBefore=(before.match(/-?\d+(?:\.\d+)?/g)||[]).map(Number).filter(Number.isFinite);
+    return numsBefore.length?numsBefore[numsBefore.length-1]:null;
+  }
+
+  function parseOcrTextV3(text,reportId,fileName){
+    const lines=String(text||'').split(/\r?\n/).map(cleanOcrLineV3).filter(Boolean);
+    const found=[];
+    defs.forEach(m=>{
+      const aliases=[m.name,...(OCR_ALIASES_V3[m.code]||[])];
+      if(String(m.code).length>=3)aliases.push(m.code);
+      let hit=null;
+      for(const alias of [...new Set(aliases)].sort((a,b)=>b.length-a.length)){
+        for(const line of lines){
+          if(!line.toLowerCase().includes(String(alias).toLowerCase()))continue;
+          const value=parseNumberNearAliasV3(line,String(alias));
+          if(value!=null&&Number.isFinite(value)){hit=value;break}
+        }
+        if(hit!=null)break;
+      }
+      if(hit!=null)found.push({m,value:hit,reportId,fileName,ref_low:m.ref_low,ref_high:m.ref_high,unit:m.unit||''});
+    });
+    return found;
+  }
+
+  function mergeRecognizedV3(items){
+    const map=new Map();
+    items.forEach(x=>{if(!map.has(x.m.code))map.set(x.m.code,x)});
+    return [...map.values()];
+  }
+
+  async function ocrOneFileV3(file,index,total){
+    e('autoRecognizeMsg').textContent='正在识别 '+(index+1)+' / '+total+'：'+file.name;
+    const r=await Tesseract.recognize(file,'chi_sim+eng',{logger:m=>{
+      if(m.progress!=null)e('autoRecognizeMsg').textContent='正在识别 '+(index+1)+' / '+total+'：'+file.name+' · '+Math.round(m.progress*100)+'%';
+    }});
+    return r.data.text||'';
+  }
+
+  async function recognizeAndReviewV3(files,reportRows,time){
+    ensureAutoReviewUIV3();
+    const panel=e('autoReviewPanel');panel.classList.remove('hidden');
+    e('autoReviewRows').innerHTML='';
+    const imagePairs=[];
+    files.forEach((file,i)=>{
+      if(file.type.startsWith('image/')){
+        imagePairs.push({file,report:reportRows[i]||null});
+      }
+    });
+    if(!imagePairs.length){
+      e('autoRecognizeMsg').textContent='原报告已上传，但当前自动识别仅支持 JPG / PNG / WEBP 图片。PDF 请使用手动录入或 Excel 导入。';
+      return;
+    }
+    let all=[];
+    for(let i=0;i<imagePairs.length;i++){
+      const pair=imagePairs[i];
+      try{
+        const txt=await ocrOneFileV3(pair.file,i,imagePairs.length);
+        all.push(...parseOcrTextV3(txt,pair.report&&pair.report.id,pair.file.name));
+      }catch(err){
+        console.error(err);
+      }
+    }
+    const merged=mergeRecognizedV3(all);
+    if(!merged.length){
+      e('autoRecognizeMsg').textContent='报告原图已保存，但没有可靠提取到已知指标。可以使用下面的本地OCR或手动录入。';
+      return;
+    }
+    autoReviewStateV3={items:merged,time};
+    e('autoRecognizeMsg').textContent='识别到 '+merged.length+' 个指标。请核对数值和参考范围，确认后再写入趋势数据库。';
+    e('autoReviewRows').innerHTML=merged.map((x,i)=>'<tr data-i="'+i+'"><td><input class="auto-use" type="checkbox" checked></td><td><b>'+safe(x.m.name)+'</b><br><span class="muted">'+safe(x.m.code)+'</span></td><td><input class="auto-value" type="number" step="any" value="'+safe(x.value)+'"></td><td><input class="auto-unit" value="'+safe(x.unit)+'"></td><td><input class="auto-low" type="number" step="any" value="'+(x.ref_low==null?'':safe(x.ref_low))+'"></td><td><input class="auto-high" type="number" step="any" value="'+(x.ref_high==null?'':safe(x.ref_high))+'"></td><td>'+safe(x.fileName||'')+'</td></tr>').join('');
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  async function saveAutoReviewV3(){
+    if(!sess)return alert('请先管理员登录');
+    const time=autoReviewStateV3.time||e('reportTime').value||inputTime();
+    const rows=[...e('autoReviewRows').querySelectorAll('tr[data-i]')].filter(tr=>tr.querySelector('.auto-use').checked).map(tr=>{
+      const x=autoReviewStateV3.items[Number(tr.dataset.i)],value=Number(tr.querySelector('.auto-value').value);
+      if(!Number.isFinite(value))return null;
+      const low=tr.querySelector('.auto-low').value,high=tr.querySelector('.auto-high').value;
+      return {user_id:sess.user.id,report_id:x.reportId||null,collected_at:chinaIso(time),metric_code:x.m.code,metric_name:x.m.name,system_group:x.m.system_group,value,unit:tr.querySelector('.auto-unit').value||x.m.unit,ref_low:low===''?null:Number(low),ref_high:high===''?null:Number(high),direction:x.m.direction};
+    }).filter(Boolean);
+    if(!rows.length)return alert('请至少保留一个有效指标');
+    e('saveAutoReview').disabled=true;e('autoRecognizeMsg').textContent='正在保存并刷新趋势…';
+    try{
+      const r=await writeResultsV3(rows,'报告指标');
+      if(!r.ok)throw r.error;
+      e('autoRecognizeMsg').textContent=r.message+'，总览和趋势已更新。';
+      await load();
+      document.querySelector('[data-tab="home"]').click();
+    }catch(err){
+      e('autoRecognizeMsg').textContent='保存失败：'+(err.message||err);
+    }finally{e('saveAutoReview').disabled=false}
+  }
+
+  async function recognizeStoredBatchV3(group){
+    ensureAutoReviewUIV3();
+    document.querySelector('[data-tab="upload"]').click();
+    const t=group[0].collected_at||group[0].created_at;
+    e('reportTime').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(t)).replace(' ','T');
+    e('autoReviewPanel').classList.remove('hidden');
+    e('autoRecognizeMsg').textContent='正在读取历史原图…';
+    const files=[],rows=[];
+    for(const r of group){
+      if(!r.file_path||!(/\.(png|jpe?g|webp)$/i.test(r.file_name||r.file_path)))continue;
+      const s=await db.storage.from('medical-reports').createSignedUrl(r.file_path,300);
+      if(s.error)continue;
+      const resp=await fetch(s.data.signedUrl);if(!resp.ok)continue;
+      const blob=await resp.blob();
+      files.push(new File([blob],r.file_name||'report.png',{type:blob.type||'image/png'}));rows.push(r);
+    }
+    if(!files.length){e('autoRecognizeMsg').textContent='这批报告没有可识别的图片原图。';return}
+    await recognizeAndReviewV3(files,rows,e('reportTime').value);
+  }
+
+  function reportListV3(){
+    if(!reps.length){e('reportList').innerHTML='<div class="panel">暂无报告</div>';return}
+    const groups=new Map();
+    reps.forEach(r=>{
+      const key=r.collected_at||r.report_date||r.created_at||r.id;
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(r);
+    });
+    const entries=[...groups.entries()].sort((a,b)=>new Date(b[0])-new Date(a[0]));
+    e('reportList').innerHTML=entries.map(([key,group],gi)=>{
+      const t=group[0].collected_at||group[0].created_at;
+      const hasData=vals.some(v=>Math.abs(new Date(v.collected_at)-new Date(t))<60000);
+      const canRecognize=group.some(r=>r.file_path&&/\.(png|jpe?g|webp)$/i.test(r.file_name||r.file_path));
+      const files=group.map(r=>{
+        const action=r.file_path?'<button class="alt" data-view-path="'+safe(r.file_path)+'">查看原图</button>':'<span class="missing-file">无原图</span>';
+        return '<div class="batch-report-file"><span>'+safe(r.file_name||r.report_type||'历史报告')+'</span><span>'+action+'</span></div>';
+      }).join('');
+      return '<div class="batch-report" data-group="'+gi+'"><div class="batch-report-head"><div><b>'+safe(fmtChina(t))+' 报告</b><div class="muted">'+group.length+' 张原报告</div></div><div class="row"><span class="batch-state '+(hasData?'ready':'missing')+'">'+(hasData?'已有指标数据':'尚未识别指标')+'</span>'+(canRecognize?'<button class="alt recognize-batch" data-group="'+gi+'">批量识别数据</button>':'')+'</div></div><div class="batch-report-files">'+files+'</div></div>';
+    }).join('');
+    e('reportList').querySelectorAll('[data-view-path]').forEach(b=>b.onclick=async()=>{let x=await db.storage.from('medical-reports').createSignedUrl(b.dataset.viewPath,300);if(x.error)return alert(x.error.message);window.open(x.data.signedUrl,'_blank')});
+    e('reportList').querySelectorAll('.recognize-batch').forEach(b=>b.onclick=()=>recognizeStoredBatchV3(entries[Number(b.dataset.group)][1]));
+  }
+
   function patchWriteHandlers(){
+    ensureAutoReviewUIV3();
+
+    e('uploadBtn').onclick=async function(){
+      if(!sess){alert('家属只读模式不能上传报告，请管理员登录');return}
+      const files=[...e('reportFiles').files],time=e('reportTime').value;
+      if(!files.length){e('uploadMsg').textContent='请选择文件';return}
+      if(!time){e('uploadMsg').textContent='请选择采样时间';return}
+      e('uploadBtn').disabled=true;e('uploadMsg').textContent='正在上传原报告…';
+      const reportRows=[];
+      try{
+        for(let i=0;i<files.length;i++){
+          const file=files[i],name=file.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=sess.user.id+'/'+Date.now()+'-'+crypto.randomUUID()+'-'+name;
+          e('uploadMsg').textContent='正在上传 '+(i+1)+' / '+files.length+'：'+file.name;
+          let u=await db.storage.from('medical-reports').upload(path,file);if(u.error)throw u.error;
+          let r=await db.from('reports').insert({user_id:sess.user.id,collected_at:chinaIso(time),report_date:time.slice(0,10),file_name:file.name,file_path:path,notes:e('reportNotes').value}).select().single();
+          if(r.error)throw r.error;
+          reportRows.push(r.data);
+        }
+        e('uploadMsg').textContent='原报告上传完成，正在自动识别检验数据…';
+        await recognizeAndReviewV3(files,reportRows,time);
+        e('reportFiles').value='';
+        await loadAdminV3();
+      }catch(err){
+        e('uploadMsg').textContent='处理失败：'+(err.message||err);
+      }finally{e('uploadBtn').disabled=false}
+    };
+
     e('save').onclick=async function(){
       if(!sess){alert('家属只读模式不能修改数据，请管理员登录');return}
       let m=defs.find(x=>x.code===e('metric').value),v=Number(e('value').value),t=e('entryTime').value;
@@ -237,6 +456,7 @@
   }
 
   ensureFamilyGate();ensureHeader();ensureAccessSettings();patchWriteHandlers();
+  reportList=reportListV3;
 
   show=routeAccessV3;
   load=async()=>sess?loadAdminV3():loadGuestV3(guestCodeV3);
