@@ -60,6 +60,32 @@ canvas{max-height:500px;min-height:360px}
 .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef3f8;color:#475467;font-size:13px}
 .msg{margin-top:8px;white-space:pre-wrap;color:var(--m);font-size:13px}.guest-only{display:none}.guest-mode .admin-only{display:none!important}.guest-mode .guest-only{display:inline-flex}.guest-badge{padding:6px 10px;border-radius:999px;background:#eaf3ff;color:#155eef;font-size:12px;font-weight:700}
 
+/* 每次报告更新总结 */
+.report-summary-hero{background:linear-gradient(135deg,#ffffff 0%,#f7fbff 100%);border:1px solid #dce8f5;border-radius:18px;padding:22px 24px;box-shadow:0 10px 28px rgba(31,51,73,.07);margin-bottom:18px}
+.report-summary-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:15px}
+.report-summary-title{font-size:18px;font-weight:850;color:#20364d;margin-bottom:4px}
+.report-summary-sub{font-size:12px;color:#667085;line-height:1.6}
+.report-summary-score{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.sum-chip{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:750;white-space:nowrap;background:#f2f4f7;color:#475467}
+.sum-chip.good{background:#ecfdf3;color:#067647}.sum-chip.bad{background:#fff0ef;color:#b42318}.sum-chip.warn{background:#fff7e8;color:#b54708}
+.report-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.report-summary-col{border:1px solid #e7edf4;border-radius:13px;padding:14px 15px;background:#fff;min-height:120px}
+.report-summary-col h4{margin:0 0 8px;font-size:14px}
+.report-summary-col ul{margin:0;padding-left:19px;line-height:1.72;color:#344054;font-size:13px}
+.report-summary-col li+li{margin-top:2px}
+.report-summary-note{margin-top:12px;padding-top:11px;border-top:1px dashed #dce5ef;color:#667085;font-size:12px;line-height:1.65}
+.history-summary-wrap{display:grid;gap:10px;margin-bottom:18px}
+.history-summary{background:#fff;border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 4px 14px rgba(31,51,73,.04)}
+.history-summary summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;justify-content:space-between;gap:14px;align-items:center}
+.history-summary summary::-webkit-details-marker{display:none}
+.history-summary summary:after{content:"＋";font-size:18px;color:#98a2b3}
+.history-summary[open] summary:after{content:"−"}
+.history-summary-title{font-weight:800;color:#344054}.history-summary-meta{font-size:12px;color:#667085;margin-top:3px}
+.history-summary-body{padding:0 16px 15px;border-top:1px solid #eef2f6}
+.history-summary-body .report-summary-grid{margin-top:13px}
+.summary-empty{color:#98a2b3;font-size:13px}
+@media(max-width:980px){.report-summary-grid{grid-template-columns:1fr}.report-summary-head{flex-direction:column}.report-summary-score{justify-content:flex-start}}
+
 /* 上传页桌面端改为双栏，充分利用宽屏 */
 #upload.active{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:18px;align-items:start}
 #upload.active>h2{grid-column:1/-1;margin-bottom:-2px}
@@ -155,7 +181,11 @@ canvas{max-height:500px;min-height:360px}
 <main>
 <section id="home" class="tab active">
 <div class="notice">若出现意识突然恶化、抽搐、明显出血、血压持续下降、呼吸困难或尿量显著减少，请立即联系主管医生/护士。本网页不用于急救决策。</div>
-<h2>今日变化</h2><div id="summary" class="summary"></div>
+<h2>最新报告总结</h2>
+<div id="latestReportSummary"></div>
+<h2>历史更新总结</h2>
+<div id="reportSummaryHistory" class="history-summary-wrap"></div>
+<h2>当前全局状态</h2><div id="summary" class="summary"></div>
 <h2>重点指标</h2><div id="cards" class="cards"></div>
 <h2>全部指标参考范围</h2>
 <div class="panel scroll"><table><thead><tr><th>系统</th><th>指标</th><th>正常/参考范围</th><th>单位</th></tr></thead><tbody id="rangeTable"></tbody></table></div>
@@ -275,7 +305,77 @@ function series(code){return vals.filter(x=>x.metric_code===code).sort((a,b)=>ne
 function dist(m,v){let lo=Number(m.ref_low),hi=Number(m.ref_high);if(Number.isFinite(lo)&&v<lo)return lo-v;if(Number.isFinite(hi)&&v>hi)return v-hi;return 0}
 function assess(m,a,b){if(a==null)return ['暂无对比','muted'];a=Number(a);b=Number(b);if(a===b)return ['基本持平','muted'];if(m.direction==='down')return b<a?['方向改善','good']:['方向不利','bad'];if(m.direction==='up')return b>a?['方向改善','good']:['方向不利','bad'];let da=dist(m,a),dbb=dist(m,b);return dbb<da?['更接近正常','good']:dbb>da?['偏离正常','bad']:['基本持平','muted']}
 function state(m,v){let lo=Number(m.ref_low),hi=Number(m.ref_high);if(Number.isFinite(lo)&&v<lo)return'低于参考';if(Number.isFinite(hi)&&v>hi)return'高于参考';return'参考范围内'}
+function updateBatches(){
+  let xs=[...vals].filter(x=>x.collected_at).sort((a,b)=>new Date(a.collected_at)-new Date(b.collected_at));
+  if(!xs.length)return[];
+  let batches=[],cur=[],last=null;
+  xs.forEach(function(r){
+    let t=new Date(r.collected_at).getTime();
+    if(last!==null && t-last>90*60*1000){batches.push(cur);cur=[]}
+    cur.push(r);last=t
+  });
+  if(cur.length)batches.push(cur);
+  return batches
+}
+function batchAnalysis(batch){
+  if(!batch||!batch.length)return null;
+  let start=new Date(batch[0].collected_at),end=new Date(batch[batch.length-1].collected_at);
+  let codes=[...new Set(batch.map(x=>x.metric_code))];
+  const priority=['PLT','WBC','PCT','CREA','LAC','CRP','TBIL','NTPROBNP','DD','UREA','ALB'];
+  codes.sort((a,b)=>{
+    let ia=priority.indexOf(a),ib=priority.indexOf(b);
+    ia=ia<0?999:ia;ib=ib<0?999:ib;return ia-ib
+  });
+  let improved=[],worse=[],attention=[],normal=[];
+  codes.forEach(function(code){
+    let m=defs.find(x=>x.code===code);if(!m)return;
+    let inBatch=batch.filter(x=>x.metric_code===code).sort((a,b)=>new Date(a.collected_at)-new Date(b.collected_at));
+    let z=inBatch[inBatch.length-1];
+    let before=series(code).filter(x=>new Date(x.collected_at)<start).at(-1);
+    let a=assess(m,before&&before.value,z.value),st=stateR(m,z),unit=z.unit||m.unit||'';
+    let text=m.name+' '+z.value+(unit?' '+unit:'');
+    if(before) text+='（上次 '+before.value+(before.unit||unit?' '+(before.unit||unit):'')+'）';
+    if(a[1]==='good') improved.push({code,text,state:st});
+    else if(a[1]==='bad') worse.push({code,text,state:st});
+    if(st!=='参考范围内' && a[1]!=='bad') attention.push({code,text,state:st});
+    if(st==='参考范围内') normal.push({code,text,state:st});
+  });
+  function dedupe(arr){let seen=new Set();return arr.filter(x=>!seen.has(x.code)&&seen.add(x.code))}
+  improved=dedupe(improved);worse=dedupe(worse);attention=dedupe(attention.filter(x=>!worse.some(y=>y.code===x.code)));
+  return {start,end,count:codes.length,improved,worse,attention,normal}
+}
+function summaryList(items,empty){
+  return items.length?'<ul>'+items.slice(0,8).map(x=>'<li>'+safe(x.text)+(x.state!=='参考范围内'?' <span class="muted">· '+safe(x.state)+'</span>':'')+'</li>').join('')+'</ul>':'<div class="summary-empty">'+empty+'</div>'
+}
+function batchSummaryHtml(a,hero){
+  if(!a)return'<div class="panel summary-empty">暂无可用于比较的检验数据。</div>';
+  let timeText=fmtChina(a.start.toISOString());
+  if(a.end-a.start>5*60*1000)timeText+=' ～ '+fmtChina(a.end.toISOString());
+  return '<div class="'+(hero?'report-summary-hero':'')+'">'+
+    (hero?'<div class="report-summary-head"><div><div class="report-summary-title">本轮检验趋势总结</div><div class="report-summary-sub">采样时间：'+safe(timeText)+' · 本轮更新 '+a.count+' 个指标</div></div><div class="report-summary-score"><span class="sum-chip good">改善 '+a.improved.length+'</span><span class="sum-chip bad">不利 '+a.worse.length+'</span><span class="sum-chip warn">仍异常 '+a.attention.length+'</span></div></div>':'')+
+    '<div class="report-summary-grid">'+
+      '<div class="report-summary-col"><h4 class="good">✓ 好转/改善</h4>'+summaryList(a.improved,'本轮暂无明确改善趋势')+'</div>'+
+      '<div class="report-summary-col"><h4 class="bad">! 需要注意</h4>'+summaryList(a.worse,'本轮暂无明确恶化趋势')+'</div>'+
+      '<div class="report-summary-col"><h4 class="warn">○ 仍未恢复正常</h4>'+summaryList(a.attention,'本轮未发现额外持续异常')+'</div>'+
+    '</div>'+
+    (hero?'<div class="report-summary-note">自动总结只比较“本次结果、上一次结果、医院报告参考范围”，用于帮助家属看趋势；它不能判断感染是否控制、是否需要透析/输血/调整药物，也不能替代主管医生结合生命体征、尿量、影像和治疗反应的判断。</div>':'')+
+  '</div>'
+}
+function renderReportSummaries(){
+  let batches=updateBatches();
+  if(!batches.length){e('latestReportSummary').innerHTML=batchSummaryHtml(null,true);e('reportSummaryHistory').innerHTML='';return}
+  let analyses=batches.map(batchAnalysis).filter(Boolean);
+  let latest=analyses[analyses.length-1];
+  e('latestReportSummary').innerHTML=batchSummaryHtml(latest,true);
+  let prev=analyses.slice(0,-1).reverse().slice(0,8);
+  e('reportSummaryHistory').innerHTML=prev.length?prev.map(function(a,i){
+    let time=fmtChina(a.start.toISOString());
+    return '<details class="history-summary" '+(i===0?'':'')+'><summary><div><div class="history-summary-title">'+safe(time)+' 更新</div><div class="history-summary-meta">更新 '+a.count+' 项 · 改善 '+a.improved.length+' · 不利 '+a.worse.length+' · 仍异常 '+a.attention.length+'</div></div></summary><div class="history-summary-body">'+batchSummaryHtml(a,false)+'</div></details>'
+  }).join(''):'<div class="panel summary-empty">还没有更早的更新记录。</div>'
+}
+
 function home(){
+ renderReportSummaries();
  const priority=['PLT','WBC','PCT','CREA','CRP','LAC','TBIL','NTPROBNP'];
  const priorityLabel={PLT:'1',WBC:'2',PCT:'3',CREA:'4',CRP:'5',LAC:'6',TBIL:'7',NTPROBNP:'8'};
  const level={PLT:1,WBC:1,PCT:1,CREA:2,CRP:2,LAC:3,TBIL:3,NTPROBNP:2};
