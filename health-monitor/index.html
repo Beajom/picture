@@ -57,7 +57,7 @@ tbody tr:hover{background:#fafcff}
 .item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 4px 14px rgba(31,51,73,.04)}
 canvas{max-height:500px;min-height:360px}
 .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef3f8;color:#475467;font-size:13px}
-.msg{margin-top:8px;white-space:pre-wrap;color:var(--m);font-size:13px}
+.msg{margin-top:8px;white-space:pre-wrap;color:var(--m);font-size:13px}.guest-only{display:none}.guest-mode .admin-only{display:none!important}.guest-mode .guest-only{display:inline-flex}.guest-badge{padding:6px 10px;border-radius:999px;background:#eaf3ff;color:#155eef;font-size:12px;font-weight:700}
 
 /* 上传页桌面端改为双栏，充分利用宽屏 */
 #upload.active{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:18px;align-items:start}
@@ -96,20 +96,20 @@ canvas{max-height:500px;min-height:360px}
 </style>
 </head>
 <body>
-<div id="auth" class="auth">
+<div id="auth" class="auth hidden">
   <div class="box">
-    <h1>老人病情监测</h1><p class="muted">私人使用 · 登录后查看</p>
+    <h1>管理员登录</h1><p class="muted">仅用于上传、录入和管理数据。查看病情趋势不需要密码。</p>
     <input id="email" type="email" placeholder="邮箱">
-    <input id="password" type="password" placeholder="密码（至少6位）">
-    <div class="row"><button id="login">登录</button><button id="signup" class="alt">注册</button></div>
+    <input id="password" type="password" placeholder="密码">
+    <div class="row"><button id="login">登录</button><button id="cancelLogin" class="alt">返回公开查看</button></div>
     <div id="authmsg" class="msg"></div>
   </div>
 </div>
 
-<div id="app" class="hidden">
-<header><div><h1>老人病情监测</h1><small>按真实采样时间记录 · 仅供趋势整理，不能替代主管医生/ICU决策</small></div><div class="row"><span id="who"></span><button id="logout" class="alt">退出</button></div></header>
+<div id="app" class="guest-mode">
+<header><div><h1>老人病情监测</h1><small>按真实采样时间记录 · 仅供趋势整理，不能替代主管医生/ICU决策</small></div><div class="row"><span class="guest-only guest-badge">公开只读</span><span id="who" class="admin-only"></span><button id="adminLoginBtn" class="alt guest-only">管理员登录</button><button id="logout" class="alt admin-only">退出</button></div></header>
 <nav>
-<button class="active" data-tab="home">总览</button><button data-tab="upload">上传报告</button><button data-tab="entry">录入/导入</button><button data-tab="trend">趋势</button><button data-tab="history">历史报告</button><button data-tab="backup">备份</button>
+<button class="active" data-tab="home">总览</button><button class="admin-only" data-tab="upload">上传报告</button><button class="admin-only" data-tab="entry">录入/导入</button><button data-tab="trend">趋势</button><button class="admin-only" data-tab="history">历史报告</button><button class="admin-only" data-tab="backup">备份</button>
 </nav>
 <main>
 <section id="home" class="tab active">
@@ -172,19 +172,28 @@ const stateR=(m,z)=>{let v=Number(z.value),lo=z.ref_low!=null?Number(z.ref_low):
 e('reportTime').value=inputTime();e('entryTime').value=inputTime();
 
 async function start(){let x=await db.auth.getSession();sess=x.data.session;show();db.auth.onAuthStateChange(function(_x,s){sess=s;show()})}
-function show(){e('auth').classList.toggle('hidden',!!sess);e('app').classList.toggle('hidden',!sess);if(sess){e('who').textContent=sess.user.email||'';load()}}
-e('login').onclick=async()=>{e('authmsg').textContent='登录中…';let r=await db.auth.signInWithPassword({email:e('email').value.trim(),password:e('password').value});e('authmsg').textContent=r.error?r.error.message:''};
-e('signup').onclick=async()=>{e('authmsg').textContent='注册中…';let r=await db.auth.signUp({email:e('email').value.trim(),password:e('password').value});e('authmsg').textContent=r.error?r.error.message:'注册成功。如系统要求邮箱确认，请先查收确认邮件。'};
-e('logout').onclick=()=>db.auth.signOut();
+function show(){
+  e('auth').classList.add('hidden');
+  e('app').classList.remove('hidden');
+  e('app').classList.toggle('guest-mode',!sess);
+  e('who').textContent=sess?(sess.user.email||'管理员'):'';
+  load()
+}
+e('adminLoginBtn').onclick=()=>{e('auth').classList.remove('hidden');e('app').classList.add('hidden');e('authmsg').textContent=''};
+e('cancelLogin').onclick=()=>{e('auth').classList.add('hidden');e('app').classList.remove('hidden')};
+e('login').onclick=async()=>{e('authmsg').textContent='登录中…';let r=await db.auth.signInWithPassword({email:e('email').value.trim(),password:e('password').value});e('authmsg').textContent=r.error?(r.error.message==='Invalid login credentials'?'邮箱或密码不正确。公开查看无需登录。':r.error.message):''};
+e('logout').onclick=async()=>{await db.auth.signOut();document.querySelector('[data-tab="home"]').click()};
 
 document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));e(b.dataset.tab).classList.add('active');if(b.dataset.tab==='trend')draw();if(b.dataset.tab==='history')reportList()}});
 
 async function load(){
- let a=await Promise.all([db.from('metric_definitions').select('*').order('system_group').order('name'),db.from('results').select('*').order('collected_at'),db.from('reports').select('*').order('collected_at',{ascending:false})]);
- if(a[0].error||a[1].error||a[2].error)return;
- defs=a[0].data;vals=a[1].data;reps=a[2].data;
+ let tasks=[db.from('metric_definitions').select('*').order('system_group').order('name'),db.from('results').select('*').order('collected_at')];
+ if(sess)tasks.push(db.from('reports').select('*').order('collected_at',{ascending:false}));
+ let a=await Promise.all(tasks);
+ if(a[0].error||a[1].error)return;
+ defs=a[0].data||[];vals=a[1].data||[];reps=sess&&a[2]&&!a[2].error?(a[2].data||[]):[];
  let op=defs.map(m=>'<option value="'+safe(m.code)+'">'+safe(m.name)+' ('+safe(m.code)+')</option>').join('');
- e('metric').innerHTML=op;e('trendMetric').innerHTML=op;e('metric').onchange=sync;e('trendMetric').onchange=draw;sync();home();reportList();draw()
+ e('metric').innerHTML=op;e('trendMetric').innerHTML=op;e('metric').onchange=sync;e('trendMetric').onchange=draw;sync();home();if(sess)reportList();draw()
 }
 function sync(){let m=defs.find(x=>x.code===e('metric').value);if(!m)return;e('unit').value=m.unit||'';e('low').value=m.ref_low==null?'':m.ref_low;e('high').value=m.ref_high==null?'':m.ref_high}
 function series(code){return vals.filter(x=>x.metric_code===code).sort((a,b)=>new Date(a.collected_at)-new Date(b.collected_at))}
@@ -223,14 +232,14 @@ function home(){
    return '<tr><td>'+safe(m.system_group)+'</td><td>'+safe(m.name)+' <span class="muted">('+safe(m.code)+')</span></td><td>'+safe(refLabel(m,z))+'</td><td>'+safe((z&&z.unit)||m.unit||'')+'</td></tr>'
  }).join('')
 }
-e('save').onclick=async function(){let m=defs.find(x=>x.code===e('metric').value),v=Number(e('value').value),t=e('entryTime').value;if(!m||!t||!Number.isFinite(v)){e('entryMsg').textContent='请填写有效时间和数值';return}let row={user_id:sess.user.id,collected_at:chinaIso(t),metric_code:m.code,metric_name:m.name,system_group:m.system_group,value:v,unit:e('unit').value||m.unit,ref_low:e('low').value===''?m.ref_low:Number(e('low').value),ref_high:e('high').value===''?m.ref_high:Number(e('high').value),direction:m.direction};let r=await db.from('results').insert(row);e('entryMsg').textContent=r.error?r.error.message:'已保存';if(!r.error){e('value').value='';await load()}};
+e('save').onclick=async function(){if(!sess){alert('公开查看模式不能修改数据，请管理员登录');return;}let m=defs.find(x=>x.code===e('metric').value),v=Number(e('value').value),t=e('entryTime').value;if(!m||!t||!Number.isFinite(v)){e('entryMsg').textContent='请填写有效时间和数值';return}let row={user_id:sess.user.id,collected_at:chinaIso(t),metric_code:m.code,metric_name:m.name,system_group:m.system_group,value:v,unit:e('unit').value||m.unit,ref_low:e('low').value===''?m.ref_low:Number(e('low').value),ref_high:e('high').value===''?m.ref_high:Number(e('high').value),direction:m.direction};let r=await db.from('results').insert(row);e('entryMsg').textContent=r.error?r.error.message:'已保存';if(!r.error){e('value').value='';await load()}};
 
-e('uploadBtn').onclick=async function(){let fs=[...e('reportFiles').files],t=e('reportTime').value;if(!fs.length){e('uploadMsg').textContent='请选择文件';return}e('uploadBtn').disabled=true;e('uploadMsg').textContent='上传中…';try{for(let f of fs){let name=f.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=sess.user.id+'/'+Date.now()+'-'+crypto.randomUUID()+'-'+name;let u=await db.storage.from('medical-reports').upload(path,f);if(u.error)throw u.error;let r=await db.from('reports').insert({user_id:sess.user.id,collected_at:t?chinaIso(t):null,report_date:t?t.slice(0,10):null,file_name:f.name,file_path:path,notes:e('reportNotes').value});if(r.error)throw r.error}e('uploadMsg').textContent='上传完成';e('reportFiles').value='';await load()}catch(err){e('uploadMsg').textContent=err.message||String(err)}finally{e('uploadBtn').disabled=false}};
+e('uploadBtn').onclick=async function(){if(!sess){alert('公开查看模式不能上传报告，请管理员登录');return;}let fs=[...e('reportFiles').files],t=e('reportTime').value;if(!fs.length){e('uploadMsg').textContent='请选择文件';return}e('uploadBtn').disabled=true;e('uploadMsg').textContent='上传中…';try{for(let f of fs){let name=f.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=sess.user.id+'/'+Date.now()+'-'+crypto.randomUUID()+'-'+name;let u=await db.storage.from('medical-reports').upload(path,f);if(u.error)throw u.error;let r=await db.from('reports').insert({user_id:sess.user.id,collected_at:t?chinaIso(t):null,report_date:t?t.slice(0,10):null,file_name:f.name,file_path:path,notes:e('reportNotes').value});if(r.error)throw r.error}e('uploadMsg').textContent='上传完成';e('reportFiles').value='';await load()}catch(err){e('uploadMsg').textContent=err.message||String(err)}finally{e('uploadBtn').disabled=false}};
 async function reportList(){if(!reps.length){e('reportList').innerHTML='<div class="panel">暂无报告</div>';return}e('reportList').innerHTML=reps.map(r=>'<div class="item"><div><b>'+safe(r.file_name||'报告')+'</b><div class="muted">'+fmtChina(r.collected_at||r.created_at)+(r.notes?' · '+safe(r.notes):'')+'</div></div>'+(r.file_path?'<button class="alt" data-p="'+safe(r.file_path)+'">查看原图</button>':'<span class="pill">历史数据已导入</span>')+'</div>').join('');e('reportList').querySelectorAll('button[data-p]').forEach(function(b){b.onclick=async function(){let x=await db.storage.from('medical-reports').createSignedUrl(b.dataset.p,300);if(x.error)return alert(x.error.message);window.open(x.data.signedUrl,'_blank')}})}
 
 function draw(){if(!defs.length)return;let k=e('trendMetric').value||defs[0].code,m=defs.find(x=>x.code===k),s=series(k);e('dir').textContent=m.direction==='down'?'通常下降为好':m.direction==='up'?'通常上升为好':'回到参考范围最好';let z=s.length?s[s.length-1]:null,lo=z&&z.ref_low!=null?Number(z.ref_low):(m.ref_low!=null?Number(m.ref_low):null),hi=z&&z.ref_high!=null?Number(z.ref_high):(m.ref_high!=null?Number(m.ref_high):null),ds=[{label:m.name+(m.unit?' ('+m.unit+')':''),data:s.map(x=>Number(x.value)),tension:.25,borderWidth:3}];if(lo!=null)ds.push({label:'参考下限 '+lo,data:s.map(()=>lo),borderDash:[6,6],pointRadius:0,borderWidth:1});if(hi!=null)ds.push({label:'参考上限 '+hi,data:s.map(()=>hi),borderDash:[6,6],pointRadius:0,borderWidth:1});if(graph)graph.destroy();graph=new Chart(e('chart'),{type:'line',data:{labels:s.map(x=>fmtChina(x.collected_at)),datasets:ds},options:{responsive:true,maintainAspectRatio:false}});if(s.length){let p=s.length>1?s[s.length-2]:null,a=assess(m,p&&p.value,z.value);e('trendInfo').innerHTML='最新：<b>'+z.value+'</b> '+safe(z.unit||m.unit||'')+' · '+stateR(m,z)+' · 参考范围：<b>'+safe(refLabel(m,z))+' '+safe(z.unit||m.unit||'')+'</b> · <span class="'+a[1]+'">'+a[0]+'</span>'}else e('trendInfo').textContent='暂无数据'}
 
-e('importBtn').onclick=async function(){let f=e('sheet').files[0];if(!f){e('importMsg').textContent='请选择文件';return}e('importMsg').textContent='读取中…';try{let wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true}),sn=wb.SheetNames.includes('全部指标')?'全部指标':wb.SheetNames[0],arr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''}),out=[];for(let row of arr){let tm=row['采样时间']||row['时间']||row['日期时间']||row['date'],mt=String(row['指标']||row['项目']||row['metric']||'').trim(),v=Number(row['结果']||row['数值']||row['value']);if(!tm||!mt||!Number.isFinite(v))continue;let m=defs.find(x=>x.code.toLowerCase()===mt.toLowerCase()||x.name===mt||mt.includes(x.code)||mt.includes(x.name));if(!m)continue;let iso=tm instanceof Date?tm.toISOString():chinaIso(String(tm).replace(' ','T').slice(0,16));if(!iso)continue;out.push({user_id:sess.user.id,collected_at:iso,metric_code:m.code,metric_name:m.name,system_group:m.system_group,value:v,unit:row['单位']||m.unit,ref_low:m.ref_low,ref_high:m.ref_high,direction:m.direction})}if(!out.length)throw new Error('没有识别到可导入的指标');for(let i=0;i<out.length;i+=150){let r=await db.from('results').insert(out.slice(i,i+150));if(r.error)throw r.error}e('importMsg').textContent='已导入 '+out.length+' 条';await load()}catch(err){e('importMsg').textContent='导入失败：'+(err.message||err)}};
+e('importBtn').onclick=async function(){if(!sess){alert('公开查看模式不能导入数据，请管理员登录');return;}let f=e('sheet').files[0];if(!f){e('importMsg').textContent='请选择文件';return}e('importMsg').textContent='读取中…';try{let wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true}),sn=wb.SheetNames.includes('全部指标')?'全部指标':wb.SheetNames[0],arr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''}),out=[];for(let row of arr){let tm=row['采样时间']||row['时间']||row['日期时间']||row['date'],mt=String(row['指标']||row['项目']||row['metric']||'').trim(),v=Number(row['结果']||row['数值']||row['value']);if(!tm||!mt||!Number.isFinite(v))continue;let m=defs.find(x=>x.code.toLowerCase()===mt.toLowerCase()||x.name===mt||mt.includes(x.code)||mt.includes(x.name));if(!m)continue;let iso=tm instanceof Date?tm.toISOString():chinaIso(String(tm).replace(' ','T').slice(0,16));if(!iso)continue;out.push({user_id:sess.user.id,collected_at:iso,metric_code:m.code,metric_name:m.name,system_group:m.system_group,value:v,unit:row['单位']||m.unit,ref_low:m.ref_low,ref_high:m.ref_high,direction:m.direction})}if(!out.length)throw new Error('没有识别到可导入的指标');for(let i=0;i<out.length;i+=150){let r=await db.from('results').insert(out.slice(i,i+150));if(r.error)throw r.error}e('importMsg').textContent='已导入 '+out.length+' 条';await load()}catch(err){e('importMsg').textContent='导入失败：'+(err.message||err)}};
 
 e('ocrBtn').onclick=async function(){let f=e('ocrFile').files[0];if(!f){e('ocrMsg').textContent='请选择图片';return}e('ocrBtn').disabled=true;e('ocrMsg').textContent='加载OCR模型中…';try{let r=await Tesseract.recognize(f,'chi_sim+eng',{logger:function(m){if(m.progress!=null)e('ocrMsg').textContent=(m.status||'识别中')+' '+Math.round(m.progress*100)+'%'}});e('ocrText').value=r.data.text||'';e('ocrMsg').textContent='识别完成，请人工校对'}catch(err){e('ocrMsg').textContent='OCR失败：'+(err.message||err)}finally{e('ocrBtn').disabled=false}};
 function regEsc(s){return String(s).replace(/[.*+?^{}()|[\]\\$]/g,'\\$&')}
