@@ -55,7 +55,7 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;font
 tbody tr:hover{background:#fafcff}
 .scroll{overflow:auto}
 .list{display:grid;gap:10px}
-.item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 4px 14px rgba(31,51,73,.04)}
+.item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 4px 14px rgba(31,51,73,.04)}.item-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.missing-file{font-size:12px;color:#98a2b3}
 canvas{max-height:500px;min-height:360px}
 .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef3f8;color:#475467;font-size:13px}
 .msg{margin-top:8px;white-space:pre-wrap;color:var(--m);font-size:13px}.guest-only{display:none}.guest-mode .admin-only{display:none!important}.guest-mode .guest-only{display:inline-flex}.guest-badge{padding:6px 10px;border-radius:999px;background:#eaf3ff;color:#155eef;font-size:12px;font-weight:700}
@@ -410,7 +410,32 @@ function home(){
 e('save').onclick=async function(){if(!sess){alert('公开查看模式不能修改数据，请管理员登录');return;}let m=defs.find(x=>x.code===e('metric').value),v=Number(e('value').value),t=e('entryTime').value;if(!m||!t||!Number.isFinite(v)){e('entryMsg').textContent='请填写有效时间和数值';return}let row={user_id:sess.user.id,collected_at:chinaIso(t),metric_code:m.code,metric_name:m.name,system_group:m.system_group,value:v,unit:e('unit').value||m.unit,ref_low:e('low').value===''?m.ref_low:Number(e('low').value),ref_high:e('high').value===''?m.ref_high:Number(e('high').value),direction:m.direction};let r=await db.from('results').insert(row);e('entryMsg').textContent=r.error?r.error.message:'已保存';if(!r.error){e('value').value='';await load()}};
 
 e('uploadBtn').onclick=async function(){if(!sess){alert('公开查看模式不能上传报告，请管理员登录');return;}let fs=[...e('reportFiles').files],t=e('reportTime').value;if(!fs.length){e('uploadMsg').textContent='请选择文件';return}e('uploadBtn').disabled=true;e('uploadMsg').textContent='上传中…';try{for(let f of fs){let name=f.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=sess.user.id+'/'+Date.now()+'-'+crypto.randomUUID()+'-'+name;let u=await db.storage.from('medical-reports').upload(path,f);if(u.error)throw u.error;let r=await db.from('reports').insert({user_id:sess.user.id,collected_at:t?chinaIso(t):null,report_date:t?t.slice(0,10):null,file_name:f.name,file_path:path,notes:e('reportNotes').value});if(r.error)throw r.error}e('uploadMsg').textContent='上传完成';e('reportFiles').value='';await load()}catch(err){e('uploadMsg').textContent=err.message||String(err)}finally{e('uploadBtn').disabled=false}};
-async function reportList(){if(!reps.length){e('reportList').innerHTML='<div class="panel">暂无报告</div>';return}e('reportList').innerHTML=reps.map(r=>'<div class="item"><div><b>'+safe(r.file_name||'报告')+'</b><div class="muted">'+fmtChina(r.collected_at||r.created_at)+(r.notes?' · '+safe(r.notes):'')+'</div></div>'+(r.file_path?'<button class="alt" data-p="'+safe(r.file_path)+'">查看原图</button>':'<span class="pill">历史数据已导入</span>')+'</div>').join('');e('reportList').querySelectorAll('button[data-p]').forEach(function(b){b.onclick=async function(){let x=await db.storage.from('medical-reports').createSignedUrl(b.dataset.p,300);if(x.error)return alert(x.error.message);window.open(x.data.signedUrl,'_blank')}})}
+async function reportList(){
+  if(!reps.length){e('reportList').innerHTML='<div class="panel">暂无报告</div>';return}
+  e('reportList').innerHTML=reps.map(function(r){
+    let action=r.file_path
+      ?'<button class="alt" data-p="'+safe(r.file_path)+'">查看原图</button>'
+      :'<span class="missing-file">历史导入，无原图</span><button class="alt add-original" data-time="'+safe(r.collected_at||'')+'" data-title="'+safe(r.report_type||r.file_name||'历史报告')+'">补充原图</button>';
+    return '<div class="item"><div><b>'+safe(r.file_name||r.report_type||'历史报告')+'</b><div class="muted">'+fmtChina(r.collected_at||r.created_at)+(r.notes?' · '+safe(r.notes):'')+'</div></div><div class="item-actions">'+action+'</div></div>'
+  }).join('');
+  e('reportList').querySelectorAll('button[data-p]').forEach(function(b){
+    b.onclick=async function(){
+      let x=await db.storage.from('medical-reports').createSignedUrl(b.dataset.p,300);
+      if(x.error)return alert(x.error.message);
+      window.open(x.data.signedUrl,'_blank')
+    }
+  });
+  e('reportList').querySelectorAll('.add-original').forEach(function(b){
+    b.onclick=function(){
+      let t=b.dataset.time?new Date(b.dataset.time):new Date();
+      let parts=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(t).replace(' ','T');
+      e('reportTime').value=parts;
+      e('reportNotes').value='补充历史原图：'+(b.dataset.title||'历史报告');
+      document.querySelector('[data-tab="upload"]').click();
+      setTimeout(()=>e('reportFiles').scrollIntoView({behavior:'smooth',block:'center'}),100)
+    }
+  })
+}
 
 function draw(){
   if(!defs.length)return;
