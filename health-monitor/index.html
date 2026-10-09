@@ -536,6 +536,6 @@ e('xlsx').onclick=function(){let w=XLSX.utils.book_new();XLSX.utils.book_append_
 e('csv').onclick=function(){let ws=XLSX.utils.json_to_sheet(exportRows());dl('病情趋势备份.csv','\\ufeff'+XLSX.utils.sheet_to_csv(ws),'text/csv')};
 e('json').onclick=function(){dl('病情趋势备份.json',JSON.stringify({results:vals,reports:reps},null,2),'application/json')};
 function dl(n,c,t){let a=document.createElement('a');a.href=window.URL.createObjectURL(new Blob([c],{type:t}));a.download=n;a.click();setTimeout(()=>window.URL.revokeObjectURL(a.href),800)}
-start();
+// 启动逻辑由 secure-v3.js 统一接管，避免旧匿名加载与家属访问码加载互相覆盖。
 </script>
 <script src="./secure-v3.js"></script>\n</body></html>
