@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>老人病情监测</title>
+<style>
+:root{--b:#155eef;--bg:#f5f8fc;--t:#172033;--m:#667085;--line:#e5e7eb;--r:#b42318;--g:#067647;--o:#b54708}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--t)}
+.hidden{display:none!important}.auth{min-height:100vh;display:grid;place-items:center;padding:20px}.box,.panel,.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}.auth .box{width:min(420px,100%);box-shadow:0 12px 40px #1232}
+input,select,textarea{width:100%;padding:10px;border:1px solid #ccd4df;border-radius:8px;font:inherit;margin:6px 0 10px}button{border:0;border-radius:8px;padding:10px 14px;background:var(--b);color:#fff;font-weight:700;cursor:pointer}button.alt{background:#eef2f6;color:#344054}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}header{background:#12365a;color:#fff;padding:18px max(14px,calc((100vw - 1150px)/2));display:flex;justify-content:space-between;gap:18px;align-items:center}header h1{margin:0;font-size:24px}
+nav{display:flex;gap:6px;overflow:auto;padding:10px max(10px,calc((100vw - 1150px)/2));background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}nav button{background:#fff;color:#344054;white-space:nowrap}nav button.active{background:#eff6ff;color:var(--b)}
+main{max-width:1150px;margin:20px auto;padding:0 14px 50px}.tab{display:none}.tab.active{display:block}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.card b{display:block;font-size:26px;margin:6px 0}.muted{color:var(--m)}.good{color:var(--g)}.bad{color:var(--r)}.warn{color:var(--o)}
+.notice{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:13px;border-radius:10px;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.summary .panel ul{margin:8px 0;padding-left:20px}
+table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}.scroll{overflow:auto}.list{display:grid;gap:9px}.item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px}
+canvas{max-height:420px}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2f6}.msg{margin-top:8px;white-space:pre-wrap;color:var(--m)}
+@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.grid,.summary{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div id="auth" class="auth">
+  <div class="box">
+    <h1>老人病情监测</h1><p class="muted">私人使用 · 登录后查看</p>
+    <input id="email" type="email" placeholder="邮箱">
+    <input id="password" type="password" placeholder="密码（至少6位）">
+    <div class="row"><button id="login">登录</button><button id="signup" class="alt">注册</button></div>
+    <div id="authmsg" class="msg"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<header><div><h1>老人病情监测</h1><small>按真实采样时间记录 · 仅供趋势整理，不能替代主管医生/ICU决策</small></div><div class="row"><span id="who"></span><button id="logout" class="alt">退出</button></div></header>
+<nav>
+<button class="active" data-tab="home">总览</button><button data-tab="upload">上传报告</button><button data-tab="entry">录入/导入</button><button data-tab="trend">趋势</button><button data-tab="history">历史报告</button><button data-tab="backup">备份</button>
+</nav>
+<main>
+<section id="home" class="tab active">
+<div class="notice">若出现意识突然恶化、抽搐、明显出血、血压持续下降、呼吸困难或尿量显著减少，请立即联系主管医生/护士。本网页不用于急救决策。</div>
+<h2>今日变化</h2><div id="summary" class="summary"></div>
+<h2>重点指标</h2><div id="cards" class="cards"></div>
+</section>
+
+<section id="upload" class="tab">
+<h2>上传报告</h2><div class="panel">
+<label>采样时间</label><input id="reportTime" type="datetime-local">
+<label>图片/PDF</label><input id="reportFiles" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf">
+<label>备注</label><textarea id="reportNotes" rows="3"></textarea>
+<button id="uploadBtn">上传到私人云端</button><div id="uploadMsg" class="msg"></div>
+</div>
+<div class="panel">
+<h3>免费本地OCR（实验）</h3><p class="muted">只在当前浏览器识别图片；识别可能出错，必须人工确认后保存。</p>
+<input id="ocrFile" type="file" accept="image/jpeg,image/png,image/webp"><button id="ocrBtn" class="alt">识别图片文字</button>
+<div id="ocrMsg" class="msg"></div><textarea id="ocrText" rows="9" placeholder="识别文字"></textarea>
+<button id="parseOcr" class="alt">提取已知指标</button><div id="ocrRows"></div>
+</div>
+</section>
+
+<section id="entry" class="tab">
+<h2>手动录入</h2><div class="panel grid">
+<label>采样时间<input id="entryTime" type="datetime-local"></label>
+<label>指标<select id="metric"></select></label>
+<label>结果<input id="value" type="number" step="any"></label>
+<label>单位<input id="unit"></label>
+<label>参考下限<input id="low" type="number" step="any"></label>
+<label>参考上限<input id="high" type="number" step="any"></label>
+<div><button id="save">保存</button><div id="entryMsg" class="msg"></div></div>
+</div>
+<h2>导入 Excel / CSV</h2><div class="panel"><input id="sheet" type="file" accept=".xlsx,.xls,.csv"><button id="importBtn" class="alt">导入</button><div id="importMsg" class="msg"></div></div>
+</section>
+
+<section id="trend" class="tab"><h2>趋势曲线</h2><div class="panel"><div class="row"><select id="trendMetric" style="max-width:340px"></select><span id="dir" class="pill"></span></div><canvas id="chart"></canvas><div id="trendInfo" class="msg"></div></div></section>
+<section id="history" class="tab"><h2>历史报告</h2><div id="reportList" class="list"></div></section>
+<section id="backup" class="tab"><h2>备份导出</h2><div class="panel row"><button id="xlsx">导出Excel</button><button id="csv" class="alt">导出CSV</button><button id="json" class="alt">导出JSON</button></div></section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const SUPA_URL='https://wmfnogyqnhdtpnuiccxg.supabase.co';
+const KEY='sb_publishable_ADg1T3wRRCk7bicq1uiFMQ_2M7fDWFr';
+const db=supabase.createClient(SUPA_URL,KEY);
+let sess=null,defs=[],vals=[],reps=[],graph=null,ocr=[];
+const e=id=>document.getElementById(id), safe=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inputTime=()=>{let d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
+e('reportTime').value=inputTime();e('entryTime').value=inputTime();
+
+async function start(){let x=await db.auth.getSession();sess=x.data.session;show();db.auth.onAuthStateChange(function(_x,s){sess=s;show()})}
+function show(){e('auth').classList.toggle('hidden',!!sess);e('app').classList.toggle('hidden',!sess);if(sess){e('who').textContent=sess.user.email||'';load()}}
+e('login').onclick=async()=>{e('authmsg').textContent='登录中…';let r=await db.auth.signInWithPassword({email:e('email').value.trim(),password:e('password').value});e('authmsg').textContent=r.error?r.error.message:''};
+e('signup').onclick=async()=>{e('authmsg').textContent='注册中…';let r=await db.auth.signUp({email:e('email').value.trim(),password:e('password').value});e('authmsg').textContent=r.error?r.error.message:'注册成功。如系统要求邮箱确认，请先查收确认邮件。'};
+e('logout').onclick=()=>db.auth.signOut();
+
+document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));e(b.dataset.tab).classList.add('active');if(b.dataset.tab==='trend')draw();if(b.dataset.tab==='history')reportList()}});
+
+async function load(){
+ let a=await Promise.all([db.from('metric_definitions').select('*').order('system_group').order('name'),db.from('results').select('*').order('collected_at'),db.from('reports').select('*').order('collected_at',{ascending:false})]);
+ if(a[0].error||a[1].error||a[2].error)return;
+ defs=a[0].data;vals=a[1].data;reps=a[2].data;
+ let op=defs.map(m=>'<option value="'+safe(m.code)+'">'+safe(m.name)+' ('+safe(m.code)+')</option>').join('');
+ e('metric').innerHTML=op;e('trendMetric').innerHTML=op;e('metric').onchange=sync;e('trendMetric').onchange=draw;sync();home();reportList();draw()
+}
+function sync(){let m=defs.find(x=>x.code===e('metric').value);if(!m)return;e('unit').value=m.unit||'';e('low').value=m.ref_low==null?'':m.ref_low;e('high').value=m.ref_high==null?'':m.ref_high}
+function series(code){return vals.filter(x=>x.metric_code===code).sort((a,b)=>new Date(a.collected_at)-new Date(b.collected_at))}
+function dist(m,v){let lo=Number(m.ref_low),hi=Number(m.ref_high);if(Number.isFinite(lo)&&v<lo)return lo-v;if(Number.isFinite(hi)&&v>hi)return v-hi;return 0}
+function assess(m,a,b){if(a==null)return ['暂无对比','muted'];a=Number(a);b=Number(b);if(a===b)return ['基本持平','muted'];if(m.direction==='down')return b<a?['方向改善','good']:['方向不利','bad'];if(m.direction==='up')return b>a?['方向改善','good']:['方向不利','bad'];let da=dist(m,a),dbb=dist(m,b);return dbb<da?['更接近正常','good']:dbb>da?['偏离正常','bad']:['基本持平','muted']}
+function state(m,v){let lo=Number(m.ref_low),hi=Number(m.ref_high);if(Number.isFinite(lo)&&v<lo)return'低于参考';if(Number.isFinite(hi)&&v>hi)return'高于参考';return'参考范围内'}
+function home(){
+ let key=['PLT','WBC','PCT','CRP','LAC','CREA','TBIL','NTPROBNP'],good=[],bad=[],risk=[];
+ e('cards').innerHTML=key.map(function(k){let m=defs.find(x=>x.code===k),s=series(k);if(!m||!s.length)return'';let z=s[s.length-1],p=s.length>1?s[s.length-2]:null,a=assess(m,p&&p.value,z.value);return'<div class="card"><span class="muted">'+safe(m.name)+'</span><b>'+safe(z.value)+' <small>'+safe(z.unit||m.unit||'')+'</small></b><span class="'+a[1]+'">'+a[0]+'</span><br><small class="muted">'+state(m,Number(z.value))+'</small></div>'}).join('');
+ defs.forEach(function(m){let s=series(m.code);if(!s.length)return;let z=s[s.length-1],p=s.length>1?s[s.length-2]:null,a=assess(m,p&&p.value,z.value);if(a[1]==='good')good.push(m.name);if(a[1]==='bad')bad.push(m.name);if(state(m,Number(z.value))!=='参考范围内')risk.push(m.name)});
+ function list(title,arr,cls){return'<div class="panel"><b class="'+cls+'">'+title+'</b><ul>'+(arr.length?arr.slice(0,12).map(x=>'<li>'+safe(x)+'</li>').join(''):'<li>暂无</li>')+'</ul></div>'}
+ e('summary').innerHTML=list('改善方向',good,'good')+list('不利方向',bad,'bad')+list('仍需关注',risk,'warn')
+}
+e('save').onclick=async function(){let m=defs.find(x=>x.code===e('metric').value),v=Number(e('value').value),t=e('entryTime').value;if(!m||!t||!Number.isFinite(v)){e('entryMsg').textContent='请填写有效时间和数值';return}let row={user_id:sess.user.id,collected_at:new Date(t).toISOString(),metric_code:m.code,metric_name:m.name,system_group:m.system_group,value:v,unit:e('unit').value||m.unit,ref_low:e('low').value===''?m.ref_low:Number(e('low').value),ref_high:e('high').value===''?m.ref_high:Number(e('high').value),direction:m.direction};let r=await db.from('results').insert(row);e('entryMsg').textContent=r.error?r.error.message:'已保存';if(!r.error){e('value').value='';await load()}};
+
+e('uploadBtn').onclick=async function(){let fs=[...e('reportFiles').files],t=e('reportTime').value;if(!fs.length){e('uploadMsg').textContent='请选择文件';return}e('uploadBtn').disabled=true;e('uploadMsg').textContent='上传中…';try{for(let f of fs){let name=f.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=sess.user.id+'/'+Date.now()+'-'+crypto.randomUUID()+'-'+name;let u=await db.storage.from('medical-reports').upload(path,f);if(u.error)throw u.error;let r=await db.from('reports').insert({user_id:sess.user.id,collected_at:t?new Date(t).toISOString():null,report_date:t?t.slice(0,10):null,file_name:f.name,file_path:path,notes:e('reportNotes').value});if(r.error)throw r.error}e('uploadMsg').textContent='上传完成';e('reportFiles').value='';await load()}catch(err){e('uploadMsg').textContent=err.message||String(err)}finally{e('uploadBtn').disabled=false}};
+async function reportList(){if(!reps.length){e('reportList').innerHTML='<div class="panel">暂无报告</div>';return}e('reportList').innerHTML=reps.map(r=>'<div class="item"><div><b>'+safe(r.file_name||'报告')+'</b><div class="muted">'+new Date(r.collected_at||r.created_at).toLocaleString('zh-CN')+(r.notes?' · '+safe(r.notes):'')+'</div></div><button class="alt" data-p="'+safe(r.file_path)+'">查看</button></div>').join('');e('reportList').querySelectorAll('button[data-p]').forEach(function(b){b.onclick=async function(){let x=await db.storage.from('medical-reports').createSignedUrl(b.dataset.p,300);if(x.error)return alert(x.error.message);window.open(x.data.signedUrl,'_blank')}})}
+
+function draw(){if(!defs.length)return;let k=e('trendMetric').value||defs[0].code,m=defs.find(x=>x.code===k),s=series(k);e('dir').textContent=m.direction==='down'?'通常下降为好':m.direction==='up'?'通常上升为好':'回到参考范围最好';if(graph)graph.destroy();graph=new Chart(e('chart'),{type:'line',data:{labels:s.map(x=>new Date(x.collected_at).toLocaleString('zh-CN')),datasets:[{label:m.name+(m.unit?' ('+m.unit+')':''),data:s.map(x=>Number(x.value)),tension:.25}]},options:{responsive:true,maintainAspectRatio:false}});if(s.length){let z=s[s.length-1],p=s.length>1?s[s.length-2]:null,a=assess(m,p&&p.value,z.value);e('trendInfo').innerHTML='最新：<b>'+z.value+'</b> '+safe(z.unit||m.unit||'')+' · '+state(m,Number(z.value))+' · <span class="'+a[1]+'">'+a[0]+'</span>'}else e('trendInfo').textContent='暂无数据'}
+
+e('importBtn').onclick=async function(){let f=e('sheet').files[0];if(!f){e('importMsg').textContent='请选择文件';return}e('importMsg').textContent='读取中…';try{let wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true}),sn=wb.SheetNames.includes('全部指标')?'全部指标':wb.SheetNames[0],arr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''}),out=[];for(let row of arr){let tm=row['采样时间']||row['时间']||row['日期时间']||row['date'],mt=String(row['指标']||row['项目']||row['metric']||'').trim(),v=Number(row['结果']||row['数值']||row['value']);if(!tm||!mt||!Number.isFinite(v))continue;let m=defs.find(x=>x.code.toLowerCase()===mt.toLowerCase()||x.name===mt||mt.includes(x.code)||mt.includes(x.name));if(!m)continue;let d=tm instanceof Date?tm:new Date(String(tm).replace(' ','T'));if(isNaN(d))continue;out.push({user_id:sess.user.id,collected_at:d.toISOString(),metric_code:m.code,metric_name:m.name,system_group:m.system_group,value:v,unit:row['单位']||m.unit,ref_low:m.ref_low,ref_high:m.ref_high,direction:m.direction})}if(!out.length)throw new Error('没有识别到可导入的指标');for(let i=0;i<out.length;i+=150){let r=await db.from('results').insert(out.slice(i,i+150));if(r.error)throw r.error}e('importMsg').textContent='已导入 '+out.length+' 条';await load()}catch(err){e('importMsg').textContent='导入失败：'+(err.message||err)}};
+
+e('ocrBtn').onclick=async function(){let f=e('ocrFile').files[0];if(!f){e('ocrMsg').textContent='请选择图片';return}e('ocrBtn').disabled=true;e('ocrMsg').textContent='加载OCR模型中…';try{let r=await Tesseract.recognize(f,'chi_sim+eng',{logger:function(m){if(m.progress!=null)e('ocrMsg').textContent=(m.status||'识别中')+' '+Math.round(m.progress*100)+'%'}});e('ocrText').value=r.data.text||'';e('ocrMsg').textContent='识别完成，请人工校对'}catch(err){e('ocrMsg').textContent='OCR失败：'+(err.message||err)}finally{e('ocrBtn').disabled=false}};
+function regEsc(s){return String(s).replace(/[.*+?^{}()|[\]\\$]/g,'\\$&')}
+e('parseOcr').onclick=function(){let tx=e('ocrText').value;ocr=[];defs.forEach(function(m){for(let a of [m.code,m.name]){let rx=new RegExp(regEsc(a)+'[^0-9-]{0,18}(-?[0-9]+(?:\\\\.[0-9]+)?)','i'),z=tx.match(rx);if(z){ocr.push({m:m,value:Number(z[1])});break}}});renderOcr()};
+function renderOcr(){if(!ocr.length){e('ocrRows').innerHTML='<p class="muted">没有自动提取到已知指标，请手动录入。</p>';return}e('ocrRows').innerHTML='<div class="scroll"><table><tr><th>指标</th><th>识别值</th><th>单位</th></tr>'+ocr.map((x,i)=>'<tr><td>'+safe(x.m.name)+'</td><td><input data-i="'+i+'" type="number" step="any" value="'+x.value+'"></td><td>'+safe(x.m.unit||'')+'</td></tr>').join('')+'</table></div><button id="saveOcr">确认无误并保存</button>';e('ocrRows').querySelectorAll('input[data-i]').forEach(function(x){x.oninput=function(){ocr[Number(x.dataset.i)].value=Number(x.value)}});e('saveOcr').onclick=async function(){let t=e('reportTime').value||inputTime(),p=ocr.filter(x=>Number.isFinite(x.value)).map(x=>({user_id:sess.user.id,collected_at:new Date(t).toISOString(),metric_code:x.m.code,metric_name:x.m.name,system_group:x.m.system_group,value:x.value,unit:x.m.unit,ref_low:x.m.ref_low,ref_high:x.m.ref_high,direction:x.m.direction}));let r=await db.from('results').insert(p);if(r.error)return alert(r.error.message);alert('已保存 '+p.length+' 条经人工确认的数据');ocr=[];renderOcr();await load()}}
+
+function exportRows(){return vals.map(r=>({'采样时间':r.collected_at,'系统':r.system_group,'指标':r.metric_name,'代码':r.metric_code,'结果':r.value,'单位':r.unit,'参考下限':r.ref_low,'参考上限':r.ref_high,'方向':r.direction}))}
+e('xlsx').onclick=function(){let w=XLSX.utils.book_new();XLSX.utils.book_append_sheet(w,XLSX.utils.json_to_sheet(exportRows()),'全部指标');XLSX.writeFile(w,'病情趋势备份.xlsx')};
+e('csv').onclick=function(){let ws=XLSX.utils.json_to_sheet(exportRows());dl('病情趋势备份.csv','\\ufeff'+XLSX.utils.sheet_to_csv(ws),'text/csv')};
+e('json').onclick=function(){dl('病情趋势备份.json',JSON.stringify({results:vals,reports:reps},null,2),'application/json')};
+function dl(n,c,t){let a=document.createElement('a');a.href=window.URL.createObjectURL(new Blob([c],{type:t}));a.download=n;a.click();setTimeout(()=>window.URL.revokeObjectURL(a.href),800)}
+start();
+</script>
+</body></html>
