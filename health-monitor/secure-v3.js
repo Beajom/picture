@@ -246,6 +246,15 @@
   e('login').onclick=async()=>{e('authmsg').textContent='登录中…';let r=await db.auth.signInWithPassword({email:e('email').value.trim(),password:e('password').value});e('authmsg').textContent=r.error?(r.error.message==='Invalid login credentials'?'邮箱或密码不正确':r.error.message):''};
   e('logout').onclick=async()=>{await db.auth.signOut()};
 
-  routeAccessV3();
+  async function bootSecureV3(){
+    const current=await db.auth.getSession();
+    sess=current.data.session;
+    await routeAccessV3();
+    db.auth.onAuthStateChange(async function(_event,s){
+      sess=s;
+      await routeAccessV3();
+    });
+  }
+  bootSecureV3();
   window.addEventListener('pageshow',()=>{if(!sess && localStorage.getItem('familyAccessCode'))routeAccessV3()});
 })();
