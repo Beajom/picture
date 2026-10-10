@@ -129,13 +129,15 @@ canvas{max-height:500px;min-height:360px}
 .trend-detail-toolbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
 .trend-detail-toolbar .left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .trend-detail-toolbar select{margin:0}
-.trend-search-wrap{position:relative;min-width:420px;max-width:min(760px,78vw);flex:1 1 620px}
+.trend-search-wrap{position:relative;min-width:0;max-width:none;flex:1 1 auto}
 .trend-search-wrap input{margin:0;padding:11px 42px 11px 38px;background:#fff;font-weight:650;cursor:text}
 .trend-search-wrap:before{content:"⌕";position:absolute;left:12px;top:20px;transform:translateY(-50%);color:#667085;font-size:20px;line-height:1;pointer-events:none;z-index:2}
 .trend-search-clear{position:absolute;right:8px;top:8px;width:30px;height:30px;padding:0;border-radius:8px;background:transparent;color:#98a2b3;box-shadow:none;font-size:18px;display:none;z-index:3}
 .trend-search-clear:hover{background:#f2f4f7;color:#475467;transform:none}
 .trend-search-wrap.has-text .trend-search-clear{display:block}
-.trend-metric-native{display:none!important}
+.trend-picker-stack{display:grid;gap:8px;min-width:420px;max-width:min(760px,78vw);flex:1 1 620px}
+.trend-picker-stack .trend-search-wrap{min-width:0;max-width:none;width:100%;flex:none}
+.trend-picker-stack #trendMetric{display:block!important;width:100%;min-width:0;max-width:none;margin:0}
 .trend-search-menu{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;background:#fff;border:1px solid #d9e2ec;border-radius:12px;box-shadow:0 14px 34px rgba(31,51,73,.16);max-height:360px;overflow:auto;padding:6px}
 .trend-search-menu.hidden{display:none!important}
 .trend-search-item{width:100%;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;text-align:left;background:#fff;color:#344054;box-shadow:none;padding:10px 12px;border-radius:9px;font-weight:600}
@@ -173,6 +175,7 @@ canvas{max-height:500px;min-height:360px}
   .trend-mini-canvas{height:190px}
   .trend-detail-toolbar{align-items:stretch}
   .trend-detail-toolbar .left{width:100%}
+  .trend-picker-stack{width:100%;min-width:0;max-width:none;flex:1 1 100%}
   .trend-search-wrap{width:100%;min-width:0;max-width:none;flex:1 1 100%}
   .trend-detail-toolbar select{width:100%;max-width:none!important}
   .panel{padding:16px}
@@ -299,7 +302,7 @@ canvas{max-height:500px;min-height:360px}
 </div>
 <div class="panel trend-detail">
   <div class="trend-detail-toolbar">
-    <div class="left"><span class="trend-detail-title">详细趋势</span><div id="trendSearchWrap" class="trend-search-wrap"><input id="trendMetricSearch" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" placeholder="输入指标名称或代码，如：红细胞压积 / HCT"><button id="trendSearchClear" class="trend-search-clear" type="button" aria-label="清空">×</button><div id="trendSearchMenu" class="trend-search-menu hidden" role="listbox"></div></div><select id="trendMetric" class="trend-metric-native" aria-hidden="true" tabindex="-1"></select><span id="trendSearchCount" class="trend-search-count"></span><span id="dir" class="pill"></span></div>
+    <div class="left"><span class="trend-detail-title">详细趋势</span><div class="trend-picker-stack"><div id="trendSearchWrap" class="trend-search-wrap"><input id="trendMetricSearch" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" placeholder="搜索指标，如：红细胞压积 / HCT / 血小板"><button id="trendSearchClear" class="trend-search-clear" type="button" aria-label="清空">×</button><div id="trendSearchMenu" class="trend-search-menu hidden" role="listbox"></div></div><select id="trendMetric"></select></div><span id="trendSearchCount" class="trend-search-count"></span><span id="dir" class="pill"></span></div>
     <span class="trend-hint">虚线为医院报告参考范围边界</span>
   </div>
   <div id="trendMetricExplain" class="trend-metric-explain"></div>
@@ -506,6 +509,15 @@ function setupTrendMetricSearch(){
   };
   if(clear)clear.onclick=function(){
     input.value='';if(wrap)wrap.classList.remove('has-text');input.focus();renderTrendSearchMenu('');
+  };
+  sel.onchange=function(){
+    const m=defs.find(x=>x.code===sel.value);
+    if(m){
+      input.value=trendMetricDisplay(m);
+      if(wrap)wrap.classList.add('has-text');
+      hideTrendSearchMenu();
+      drawDetailTrend();
+    }
   };
   document.addEventListener('mousedown',function(ev){
     if(wrap&&!wrap.contains(ev.target))hideTrendSearchMenu();
