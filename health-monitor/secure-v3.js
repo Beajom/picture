@@ -250,51 +250,78 @@
 
   function overallJudgmentV3(a){
     const r=readableListsV5();
-    const goodNames=r.improved.slice(0,3).map(x=>x.cfg.label);
-    const badNames=r.worse.slice(0,3).map(x=>x.cfg.label);
+
+    const plt=keyTrendV5('PLT'),wbc=keyTrendV5('WBC'),pct=keyTrendV5('PCT'),crp=keyTrendV5('CRP');
+    const lac=keyTrendV5('LAC'),crea=keyTrendV5('CREA'),tbil=keyTrendV5('TBIL'),hgb=keyTrendV5('HGB');
+    const inr=keyTrendV5('INR'),ica=keyTrendV5('ICA'),hco3=keyTrendV5('HCO3'),nt=keyTrendV5('NTPROBNP');
+
+    const infectionBetter=[wbc,pct,crp].filter(x=>x&&x.trend==='good').length>=2;
+    const kidneyBetter=!!(crea&&crea.trend==='good');
+    const circulationBetter=!!(lac&&lac.trend==='good');
+    const acidBetter=!!(hco3&&hco3.trend==='good');
+    const plateletBetter=!!(plt&&plt.trend==='good');
+
+    const goodDomains=[];
+    if(infectionBetter)goodDomains.push('感染控制');
+    if(kidneyBetter)goodDomains.push('肾功能');
+    if(circulationBetter)goodDomains.push('循环供血');
+    if(acidBetter)goodDomains.push('酸碱状态');
+    if(plateletBetter)goodDomains.push('血小板');
+
+    const concernDomains=[];
+    if(tbil&&tbil.trend==='bad')concernDomains.push('胆道/肝脏');
+    if(hgb&&hgb.trend==='bad')concernDomains.push('血红蛋白');
+    if(inr&&inr.trend==='bad')concernDomains.push('凝血');
+    if(ica&&ica.trend==='bad')concernDomains.push('电解质');
+    if(nt&&nt.state!=='参考范围内')concernDomains.push('心脏负荷');
 
     let title='总体看：';
-    if(goodNames.length&&badNames.length){
-      title+='有好转，但还没有稳定。'+goodNames.join('、')+'在往好的方向走；'+badNames.join('、')+'这次有些变差。';
-    }else if(goodNames.length){
-      title+='比上一次好一些，但还没有完全恢复。'+goodNames.join('、')+'正在改善。';
-    }else if(badNames.length){
-      title+='这次有几项变差，需要继续重点观察。主要是'+badNames.join('、')+'。';
+    if(goodDomains.length&&concernDomains.length){
+      title+=goodDomains.slice(0,4).join('、')+'在好转，但'+concernDomains.slice(0,4).join('、')+'还没有稳定。';
+    }else if(goodDomains.length){
+      title+=goodDomains.slice(0,5).join('、')+'在往好的方向走，但身体还没有完全恢复。';
+    }else if(concernDomains.length){
+      title+='目前还没有明显稳定下来，'+concernDomains.slice(0,4).join('、')+'需要继续重点观察。';
     }else{
       title+='和上一次相比变化不大，目前还需要继续观察。';
     }
 
-    const plt=keyTrendV5('PLT'),wbc=keyTrendV5('WBC'),pct=keyTrendV5('PCT'),crp=keyTrendV5('CRP');
-    const lac=keyTrendV5('LAC'),crea=keyTrendV5('CREA'),tbil=keyTrendV5('TBIL'),hgb=keyTrendV5('HGB'),inr=keyTrendV5('INR'),ica=keyTrendV5('ICA');
-
-    const infectionBetter=[wbc,pct,crp].filter(x=>x&&x.trend==='good').length>=2;
-    const sentences=[];
-
-    if(infectionBetter)sentences.push('感染指标在下降，说明感染控制比前几天好一些。');
-    if(plt&&plt.trend==='good')sentences.push('血小板在回升，这是好现象，但数值还低，出血风险还没有完全解除。');
-    if(lac&&lac.trend==='good'){
-      sentences.push(lac.state==='参考范围内'?'乳酸已经回到或接近正常，循环情况比之前更好。':'乳酸在下降，说明循环灌注比之前有所改善。');
-    }else if(lac&&lac.trend==='bad'){
-      sentences.push('乳酸这次升高，要继续注意血压、循环和感染有没有反复。');
+    const parts=[];
+    if(infectionBetter){
+      const names=[wbc&&wbc.trend==='good'?'白细胞':null,pct&&pct.trend==='good'?'降钙素原':null,crp&&crp.trend==='good'?'CRP':null].filter(Boolean);
+      parts.push('感染方面在好转：'+names.join('、')+'都在下降，说明全身感染和炎症反应比前几天减轻。');
     }
-    if(crea&&crea.trend==='good')sentences.push('肾功能指标在改善，说明肾脏比最严重的时候恢复了一些。');
-    if(tbil&&tbil.trend==='bad')sentences.push('胆红素又升高，说明胆道和肝脏这部分还没有稳定。');
-    if(hgb&&hgb.trend==='bad')sentences.push('血红蛋白下降了一些，要继续看有没有贫血或出血。');
-    if(inr&&inr.trend==='bad')sentences.push('凝血指标比之前差一点，需要继续防范出血风险。');
-    if(ica&&ica.trend==='bad')sentences.push('离子钙下降，需要继续监测电解质。');
-
-    if(!sentences.length)sentences.push('目前还不能只看化验单判断是否安全，仍要结合血压、尿量、意识、呼吸和医生床旁判断。');
-
-    let plain='';
-    if(infectionBetter || (plt&&plt.trend==='good') || (crea&&crea.trend==='good')){
-      plain='家属可以简单理解为：老人有一些指标确实在好转，但身体还没有完全稳定，现在仍需要继续观察和治疗。';
-    }else if(badNames.length){
-      plain='家属可以简单理解为：目前还没有稳定下来，这次有几项需要特别注意。';
-    }else{
-      plain='家属可以简单理解为：目前整体变化不大，还需要继续观察。';
+    if(kidneyBetter){
+      parts.push('肾脏方面在好转：肌酐明显下降，说明肾功能比最严重的时候恢复了一部分。');
+    }
+    if(circulationBetter){
+      parts.push(lac&&lac.state==='参考范围内'
+        ?'循环供血方面在好转：乳酸已经降到接近或回到正常范围，说明组织供血和循环状态比之前更好。'
+        :'循环供血方面在好转：乳酸在下降，说明身体组织缺血缺氧的情况比之前减轻。');
+    }
+    if(acidBetter){
+      parts.push('酸碱平衡也在改善：碳酸氢根回升，说明之前的代谢性酸负担有所减轻。');
+    }
+    if(plateletBetter){
+      parts.push('血小板在回升，说明凝血系统有一定恢复，不过目前数值仍低，出血风险还没有完全解除。');
     }
 
-    return {title,detail:plain+' '+sentences.slice(0,4).join(' ')};
+    const cautions=[];
+    if(tbil&&tbil.trend==='bad')cautions.push('胆道和肝脏这部分仍有反复，胆红素升高，说明胆汁淤积或胆道问题还没有完全稳定');
+    if(hgb&&hgb.trend==='bad')cautions.push('血红蛋白下降，要继续留意贫血或出血');
+    if(inr&&inr.trend==='bad')cautions.push('凝血指标变差一点，仍要注意出血风险');
+    if(ica&&ica.trend==='bad')cautions.push('电解质还有波动，需要继续监测');
+    if(nt&&nt.state!=='参考范围内')cautions.push('心脏负荷指标仍很高，心脏和循环仍需要密切观察');
+    if(cautions.length)parts.push('目前还没有完全稳定：'+cautions.slice(0,4).join('；')+'。');
+
+    if(!parts.length)parts.push('目前化验指标没有显示出非常明确的新变化，仍要结合血压、尿量、意识、呼吸和医生床旁观察来判断。');
+
+    const plain='可以理解为：身体不是所有地方一起变好或一起变差，而是“部分器官正在恢复、部分问题仍在反复”。'+
+      (goodDomains.length?'目前比较明确在好转的是'+goodDomains.join('、')+'。':'')+
+      (concernDomains.length?'目前还需要重点盯住的是'+concernDomains.join('、')+'。':'')+
+      '所以现在可以说有恢复迹象，但还不能认为已经稳定或脱离危险。';
+
+    return {title,detail:plain+' '+parts.slice(0,6).join(' ')};
   }
   function readableListHtmlV5(items,empty){
     if(!items.length)return '<div class="summary-empty">'+empty+'</div>';
@@ -318,7 +345,7 @@
         '<div class="report-summary-col"><h4 class="bad">! 这次需要特别注意</h4>'+readableListHtmlV5(bad,'这次没有看到重点指标明显变差')+'</div>'+
         '<div class="report-summary-col"><h4 class="warn">○ 比之前好，但还没恢复正常</h4>'+readableListHtmlV5(recovering,'重点指标目前没有额外持续异常')+'</div>'+
       '</div>'+
-      (hero?'<div class="report-summary-note">这里用尽量简单的话说明主要变化。绿色不代表已经康复，红色也不代表一定恶化；最终还要结合血压、尿量、意识、呼吸和主管医生的判断。</div>':'')+
+      (hero?'<div class="report-summary-note">这里用尽量简单的话说明身体各方面的变化。绿色不代表已经康复，红色也不代表一定恶化；最终还要结合血压、尿量、意识、呼吸和主管医生的判断。</div>':'')+
     '</div>';
   };
 
