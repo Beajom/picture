@@ -116,7 +116,12 @@ canvas{max-height:500px;min-height:360px}
 .trend-filter-card .name{font-weight:800;color:#344054;line-height:1.35}
 .trend-filter-card .code{font-size:11px;color:#98a2b3;margin-left:4px}
 .trend-filter-card .value{font-size:22px;font-weight:850;margin:8px 0 4px}
-.trend-filter-card .meta{font-size:11px;color:#667085;line-height:1.55}
+.trend-filter-card .meta{font-size:11px;color:#667085;line-height:1.65}
+.trend-filter-card .statusline{margin-top:8px;padding:8px 9px;border-radius:9px;background:#f8fafc;font-size:11px;line-height:1.55;color:#475467}
+.trend-filter-card .statusline.recovered{background:#ecfdf3;color:#067647}
+.trend-filter-card .statusline.always{background:#f2f4f7;color:#475467}
+.trend-filter-card .statusline.abnormal{background:#fff4ed;color:#b54708}
+.trend-filter-note{grid-column:1/-1;padding:10px 12px;border-radius:10px;background:#fffaf2;border:1px solid #f3dfbd;color:#7a4d0b;font-size:12px;line-height:1.65}
 .trend-filter-card .oktag{background:#ecfdf3;color:#067647;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap}
 .trend-filter-card .badtag{background:#fff0ef;color:#b42318;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap}
 .trend-filter-empty{grid-column:1/-1;padding:28px;text-align:center;background:#fff;border:1px dashed #d5dde8;border-radius:14px;color:#667085}
@@ -728,25 +733,97 @@ function metricHasReference(m,z){
   const hi=z&&z.ref_high!=null?Number(z.ref_high):(m&&m.ref_high!=null?Number(m.ref_high):null);
   return Number.isFinite(lo)||Number.isFinite(hi);
 }
+function pointStateForMetric(m,z){
+  return metricHasReference(m,z)?stateR(m,z):'无参考范围';
+}
+function metricStateHistory(m){
+  const raw=series(m.code).filter(z=>metricHasReference(m,z));
+  if(!raw.length)return null;
+  const pts=raw.map(z=>({z,state:pointStateForMetric(m,z),time:new Date(z.collected_at).getTime()}));
+  const latest=pts[pts.length-1];
+  const latestNormal=latest.state==='参考范围内';
+
+  let streakStart=pts.length-1;
+  while(streakStart>0){
+    const prevNormal=pts[streakStart-1].state==='参考范围内';
+    if(prevNormal!==latestNormal)break;
+    streakStart--;
+  }
+
+  let transitions=0;
+  for(let i=1;i<pts.length;i++){
+    if((pts[i-1].state==='参考范围内')!==(pts[i].state==='参考范围内'))transitions++;
+  }
+
+  const everAbnormal=pts.some(p=>p.state!=='参考范围内');
+  const everNormal=pts.some(p=>p.state==='参考范围内');
+  const first=pts[0];
+  const streak=pts[streakStart];
+
+  let historyLabel='',historyClass='',sortTime=streak.time;
+  if(latestNormal){
+    if(!everAbnormal){
+      historyLabel='从首次记录 '+fmtChina(first.z.collected_at)+' 起一直在参考范围内';
+      historyClass='always';
+      sortTime=0;
+    }else{
+      historyLabel='本轮于 '+fmtChina(streak.z.collected_at)+' 恢复到参考范围';
+      historyClass='recovered';
+    }
+  }else{
+    if(!everNormal){
+      historyLabel='从首次记录 '+fmtChina(first.z.collected_at)+' 起一直未回到参考范围';
+    }else{
+      historyLabel='本轮于 '+fmtChina(streak.z.collected_at)+' 再次超出参考范围';
+    }
+    historyClass='abnormal';
+  }
+
+  return {
+    latest:latest.z,
+    state:latest.state,
+    latestNormal,
+    first:first.z,
+    streakStart:streak.z,
+    transitions,
+    everAbnormal,
+    everNormal,
+    historyLabel,
+    historyClass,
+    sortTime
+  };
+}
 function trendFilterItems(mode){
   const items=defs.map(m=>{
-    const z=latestMetricPoint(m.code);
-    if(!z)return null;
-    const hasRef=metricHasReference(m,z);
-    const st=hasRef?stateR(m,z):'无参考范围';
-    return {m,z,state:st,hasRef,time:new Date(z.collected_at).getTime()};
+    const h=metricStateHistory(m);
+    if(!h)return null;
+    return {m,z:h.latest,state:h.state,hasRef:true,time:new Date(h.latest.collected_at).getTime(),history:h};
   }).filter(Boolean);
-  if(mode==='normal')return items.filter(x=>x.hasRef&&x.state==='参考范围内').sort((a,b)=>b.time-a.time);
-  if(mode==='abnormal')return items.filter(x=>x.hasRef&&x.state!=='参考范围内').sort((a,b)=>b.time-a.time);
+
+  if(mode==='normal'){
+    return items.filter(x=>x.history.latestNormal).sort((a,b)=>{
+      const ar=a.history.everAbnormal?1:0, br=b.history.everAbnormal?1:0;
+      if(ar!==br)return br-ar;
+      return b.history.sortTime-a.history.sortTime;
+    });
+  }
+  if(mode==='abnormal'){
+    return items.filter(x=>!x.history.latestNormal).sort((a,b)=>b.history.sortTime-a.history.sortTime);
+  }
   return items.sort((a,b)=>b.time-a.time);
 }
 function renderTrendStateFilter(){
   const sel=e('trendStateFilter'),priority=e('trendPriorityGrid'),grid=e('trendFilteredGrid'),summary=e('trendFilterSummary');
   if(!sel||!priority||!grid)return;
   const mode=sel.value||'priority';
-  const normalCount=trendFilterItems('normal').length;
-  const abnormalCount=trendFilterItems('abnormal').length;
-  if(summary)summary.textContent='正常 '+normalCount+' 项 · 异常 '+abnormalCount+' 项';
+  const normals=trendFilterItems('normal');
+  const abnormals=trendFilterItems('abnormal');
+  const recoveredCount=normals.filter(x=>x.history.everAbnormal).length;
+  const alwaysNormalCount=normals.filter(x=>!x.history.everAbnormal).length;
+
+  if(summary){
+    summary.textContent='正常 '+normals.length+' 项（恢复正常 '+recoveredCount+' · 一直正常 '+alwaysNormalCount+'） · 异常 '+abnormals.length+' 项';
+  }
 
   if(mode==='priority'){
     priority.classList.remove('hidden');
@@ -763,13 +840,22 @@ function renderTrendStateFilter(){
     return;
   }
 
-  grid.innerHTML=items.map(x=>{
+  let note='';
+  if(mode==='normal'){
+    note='<div class="trend-filter-note">“目前正常”只代表最新一次结果在医院参考范围内。这里会标明是“一开始就正常”，还是“治疗过程中从异常恢复正常”。后续如果再次超出参考范围，会自动转到“仍异常”。</div>';
+  }else if(mode==='abnormal'){
+    note='<div class="trend-filter-note">“仍异常”会显示本轮从什么时候开始异常；如果后续复查恢复到参考范围，会自动转到“目前正常”。</div>';
+  }
+
+  grid.innerHTML=note+items.map(x=>{
     const unit=x.z.unit||x.m.unit||'';
-    const tag=x.state==='参考范围内'?'<span class="oktag">参考范围内</span>':x.state==='无参考范围'?'<span class="oktag">无固定范围</span>':'<span class="badtag">'+safe(x.state)+'</span>';
+    const tag=x.state==='参考范围内'?'<span class="oktag">参考范围内</span>':'<span class="badtag">'+safe(x.state)+'</span>';
+    const transitionText=x.history.transitions>0?' · 历史状态切换 '+x.history.transitions+' 次':'';
     return '<div class="trend-filter-card" data-code="'+safe(x.m.code)+'">'+
       '<div class="top"><div class="name">'+safe(x.m.name)+' <span class="code">'+safe(x.m.code)+'</span></div>'+tag+'</div>'+
       '<div class="value">'+safe(x.z.value)+' <small>'+safe(unit)+'</small></div>'+
-      '<div class="meta">参考：'+safe(refLabel(x.m,x.z))+(unit?' '+safe(unit):'')+'<br>最新：'+safe(fmtChina(x.z.collected_at))+'<br>'+safe(metricExplain(x.m))+'</div>'+
+      '<div class="meta">参考：'+safe(refLabel(x.m,x.z))+(unit?' '+safe(unit):'')+'<br>最新采样：'+safe(fmtChina(x.z.collected_at))+'<br>'+safe(metricExplain(x.m))+'</div>'+
+      '<div class="statusline '+safe(x.history.historyClass)+'">'+safe(x.history.historyLabel)+safe(transitionText)+'</div>'+
     '</div>'
   }).join('');
 
