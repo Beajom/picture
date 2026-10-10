@@ -114,7 +114,7 @@ canvas{max-height:500px;min-height:360px}
 .trend-mini-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#77a9e8}
 .trend-mini-card.critical:before{background:#e85b5b}.trend-mini-card.warning:before{background:#f1a44a}.trend-mini-card.stable:before{background:#55a778}
 .trend-mini-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:5px}
-.trend-mini-name{font-size:14px;color:#475467;font-weight:750}
+.trend-mini-name{font-size:14px;color:#475467;font-weight:750}.trend-mini-desc{font-size:11px;color:#8a97a8;line-height:1.45;margin-top:2px;max-width:290px}
 .trend-mini-value{font-size:26px;font-weight:850;line-height:1.12;margin-top:3px;letter-spacing:-.3px}
 .trend-mini-value small{font-size:11px;font-weight:650;color:#667085;margin-left:3px}
 .trend-mini-meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:11px;color:#667085}
@@ -230,53 +230,53 @@ canvas{max-height:500px;min-height:360px}
 </div>
 <div class="trend-mini-grid">
   <div class="trend-mini-card" data-mini="PLT">
-    <div class="trend-mini-top"><div><span class="mini-priority">优先 1</span><div class="trend-mini-name">血小板 PLT</div><div id="miniValPLT" class="trend-mini-value">—</div></div><span id="miniStatePLT" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority">优先 1</span><div class="trend-mini-name">血小板 PLT</div><div class="trend-mini-desc">凝血 / 出血风险（太低容易出血）</div><div id="miniValPLT" class="trend-mini-value">—</div></div><span id="miniStatePLT" class="trend-mini-status">—</span></div>
     <div id="miniMetaPLT" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniPLT"></canvas></div>
   </div>
   <div class="trend-mini-card" data-mini="CREA">
-    <div class="trend-mini-top"><div><span class="mini-priority">优先 2</span><div class="trend-mini-name">肌酐 CREA</div><div id="miniValCREA" class="trend-mini-value">—</div></div><span id="miniStateCREA" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority">优先 2</span><div class="trend-mini-name">肌酐 CREA</div><div class="trend-mini-desc">肾功能（升高提示肾脏滤过变差）</div><div id="miniValCREA" class="trend-mini-value">—</div></div><span id="miniStateCREA" class="trend-mini-status">—</span></div>
     <div id="miniMetaCREA" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniCREA"></canvas></div>
   </div>
   <div class="trend-mini-card" data-mini="LAC">
-    <div class="trend-mini-top"><div><span class="mini-priority">优先 3</span><div class="trend-mini-name">乳酸 LAC</div><div id="miniValLAC" class="trend-mini-value">—</div></div><span id="miniStateLAC" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority">优先 3</span><div class="trend-mini-name">乳酸 LAC</div><div class="trend-mini-desc">循环灌注（升高提示组织供血不足）</div><div id="miniValLAC" class="trend-mini-value">—</div></div><span id="miniStateLAC" class="trend-mini-status">—</span></div>
     <div id="miniMetaLAC" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniLAC"></canvas></div>
   </div>
   <div class="trend-mini-card" data-mini="PCT">
-    <div class="trend-mini-top"><div><span class="mini-priority">优先 4</span><div class="trend-mini-name">降钙素原 PCT</div><div id="miniValPCT" class="trend-mini-value">—</div></div><span id="miniStatePCT" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority">优先 4</span><div class="trend-mini-name">降钙素原 PCT</div><div class="trend-mini-desc">细菌感染 / 脓毒症（越高通常感染越重）</div><div id="miniValPCT" class="trend-mini-value">—</div></div><span id="miniStatePCT" class="trend-mini-status">—</span></div>
     <div id="miniMetaPCT" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniPCT"></canvas></div>
   </div>
 
   <div class="trend-mini-card" data-mini="WBC">
-    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 5</span><div class="trend-mini-name">白细胞 WBC</div><div id="miniValWBC" class="trend-mini-value">—</div></div><span id="miniStateWBC" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 5</span><div class="trend-mini-name">白细胞 WBC</div><div class="trend-mini-desc">感染 / 炎症（过高常见于感染或应激）</div><div id="miniValWBC" class="trend-mini-value">—</div></div><span id="miniStateWBC" class="trend-mini-status">—</span></div>
     <div id="miniMetaWBC" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniWBC"></canvas></div>
   </div>
   <div class="trend-mini-card" data-mini="CRP">
-    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 6</span><div class="trend-mini-name">C反应蛋白 CRP</div><div id="miniValCRP" class="trend-mini-value">—</div></div><span id="miniStateCRP" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 6</span><div class="trend-mini-name">C反应蛋白 CRP</div><div class="trend-mini-desc">炎症程度（升高提示炎症仍活跃）</div><div id="miniValCRP" class="trend-mini-value">—</div></div><span id="miniStateCRP" class="trend-mini-status">—</span></div>
     <div id="miniMetaCRP" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniCRP"></canvas></div>
   </div>
   <div class="trend-mini-card" data-mini="NTPROBNP">
-    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 7</span><div class="trend-mini-name">NT-proBNP</div><div id="miniValNTPROBNP" class="trend-mini-value">—</div></div><span id="miniStateNTPROBNP" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 7</span><div class="trend-mini-name">NT-proBNP</div><div class="trend-mini-desc">心脏负荷（升高提示心脏压力或容量负荷）</div><div id="miniValNTPROBNP" class="trend-mini-value">—</div></div><span id="miniStateNTPROBNP" class="trend-mini-status">—</span></div>
     <div id="miniMetaNTPROBNP" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniNTPROBNP"></canvas></div>
   </div>
   <div class="trend-mini-card" data-mini="TBIL">
-    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 8</span><div class="trend-mini-name">总胆红素 TBIL</div><div id="miniValTBIL" class="trend-mini-value">—</div></div><span id="miniStateTBIL" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 8</span><div class="trend-mini-name">总胆红素 TBIL</div><div class="trend-mini-desc">肝胆 / 胆道（升高提示胆汁淤积或肝胆受影响）</div><div id="miniValTBIL" class="trend-mini-value">—</div></div><span id="miniStateTBIL" class="trend-mini-status">—</span></div>
     <div id="miniMetaTBIL" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniTBIL"></canvas></div>
   </div>
 
   <div class="trend-mini-card" data-mini="HGB">
-    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 9</span><div class="trend-mini-name">血红蛋白 HGB</div><div id="miniValHGB" class="trend-mini-value">—</div></div><span id="miniStateHGB" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 9</span><div class="trend-mini-name">血红蛋白 HGB</div><div class="trend-mini-desc">贫血 / 携氧能力（太低会影响组织供氧）</div><div id="miniValHGB" class="trend-mini-value">—</div></div><span id="miniStateHGB" class="trend-mini-status">—</span></div>
     <div id="miniMetaHGB" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniHGB"></canvas></div>
   </div>
   <div class="trend-mini-card" data-mini="INR">
-    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 10</span><div class="trend-mini-name">国际标准化比值 INR</div><div id="miniValINR" class="trend-mini-value">—</div></div><span id="miniStateINR" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 10</span><div class="trend-mini-name">国际标准化比值 INR</div><div class="trend-mini-desc">凝血功能（升高提示凝血时间延长）</div><div id="miniValINR" class="trend-mini-value">—</div></div><span id="miniStateINR" class="trend-mini-status">—</span></div>
     <div id="miniMetaINR" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniINR"></canvas></div>
   </div>
   <div class="trend-mini-card" data-mini="HCO3">
-    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 11</span><div class="trend-mini-name">碳酸氢根 HCO3</div><div id="miniValHCO3" class="trend-mini-value">—</div></div><span id="miniStateHCO3" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 11</span><div class="trend-mini-name">碳酸氢根 HCO3</div><div class="trend-mini-desc">酸碱平衡（偏低提示代谢性酸负荷）</div><div id="miniValHCO3" class="trend-mini-value">—</div></div><span id="miniStateHCO3" class="trend-mini-status">—</span></div>
     <div id="miniMetaHCO3" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniHCO3"></canvas></div>
   </div>
   <div class="trend-mini-card" data-mini="ICA">
-    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 12</span><div class="trend-mini-name">离子钙 iCa</div><div id="miniValICA" class="trend-mini-value">—</div></div><span id="miniStateICA" class="trend-mini-status">—</span></div>
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 12</span><div class="trend-mini-name">离子钙 iCa</div><div class="trend-mini-desc">电解质 / 心肌稳定（太低会影响心肌和神经肌肉）</div><div id="miniValICA" class="trend-mini-value">—</div></div><span id="miniStateICA" class="trend-mini-status">—</span></div>
     <div id="miniMetaICA" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniICA"></canvas></div>
   </div>
 </div>
