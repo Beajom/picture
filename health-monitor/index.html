@@ -128,7 +128,7 @@ canvas{max-height:500px;min-height:360px}
 .trend-detail{padding:20px 22px 18px}
 .trend-detail-toolbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
 .trend-detail-toolbar .left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.trend-detail-toolbar select{margin:0;min-width:250px}
+.trend-detail-toolbar select{margin:0;min-width:360px;max-width:min(720px,78vw)}.trend-metric-explain{font-size:12px;color:#8a97a8;line-height:1.55;margin:4px 0 8px}
 .trend-detail-title{font-size:18px;font-weight:800;color:#26374a}
 #trend #chart{min-height:400px;max-height:480px}
 .trend-hint{font-size:12px;color:#667085;margin-top:4px}
@@ -285,6 +285,7 @@ canvas{max-height:500px;min-height:360px}
     <div class="left"><span class="trend-detail-title">详细趋势</span><select id="trendMetric"></select><span id="dir" class="pill"></span></div>
     <span class="trend-hint">虚线为医院报告参考范围边界</span>
   </div>
+  <div id="trendMetricExplain" class="trend-metric-explain"></div>
   <canvas id="chart"></canvas>
   <div id="trendInfo" class="msg"></div>
 </div>
@@ -325,6 +326,54 @@ const chinaIso=s=>s?new Date((String(s).length===16?String(s)+':00':String(s))+'
 const inputTime=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date()).replace(' ','T');
 const refLabel=(m,z)=>{let lo=z&&z.ref_low!=null?Number(z.ref_low):(m.ref_low!=null?Number(m.ref_low):null),hi=z&&z.ref_high!=null?Number(z.ref_high):(m.ref_high!=null?Number(m.ref_high):null);if(lo!=null&&hi!=null)return lo+' ～ '+hi;if(hi!=null)return '≤ '+hi;if(lo!=null)return '≥ '+lo;return '以报告为准'};
 const stateR=(m,z)=>{let v=Number(z.value),lo=z.ref_low!=null?Number(z.ref_low):(m.ref_low!=null?Number(m.ref_low):null),hi=z.ref_high!=null?Number(z.ref_high):(m.ref_high!=null?Number(m.ref_high):null);if(lo!=null&&v<lo)return'低于参考';if(hi!=null&&v>hi)return'高于参考';return'参考范围内'};
+const METRIC_EXPLAIN={
+  PLT:'凝血 / 出血风险（太低容易出血）',
+  CREA:'肾功能（升高提示肾脏滤过变差）',
+  LAC:'循环灌注（升高提示组织供血不足）',
+  PCT:'细菌感染 / 脓毒症（越高通常感染越重）',
+  WBC:'感染 / 炎症（过高常见于感染或应激）',
+  CRP:'炎症程度（升高提示炎症仍活跃）',
+  NTPROBNP:'心脏负荷（升高提示心脏压力或容量负荷）',
+  TBIL:'肝胆 / 胆道（升高提示胆汁淤积或肝胆受影响）',
+  HGB:'贫血 / 携氧能力（太低会影响组织供氧）',
+  INR:'凝血功能（升高提示凝血时间延长）',
+  HCO3:'酸碱平衡（偏低提示代谢性酸负荷）',
+  ICA:'电解质 / 心肌稳定（太低会影响心肌和神经肌肉）',
+  DD:'凝血激活 / 血栓风险（升高提示凝血系统被激活）',
+  PT:'凝血功能（延长提示凝血变慢）',
+  PTR:'凝血功能（偏高提示凝血时间延长）',
+  PTA:'凝血功能（偏低提示凝血因子活性下降）',
+  APTT:'凝血功能（延长提示内源性凝血途径异常）',
+  FIB:'凝血 / 炎症（过低可增加出血风险，过高常见于炎症）',
+  TT:'凝血功能（延长提示纤维蛋白形成异常）',
+  MYO:'心肌 / 肌肉损伤（升高提示组织损伤）',
+  TNT:'心肌损伤（升高提示心肌受损）',
+  IL6:'炎症 / 免疫反应（升高提示炎症活跃）',
+  PF:'氧合能力（越低通常提示肺氧合越差）',
+  PO2:'血液氧合（偏低提示缺氧）',
+  SO2:'血氧饱和度（偏低提示氧合不足）',
+  UREA:'肾功能 / 分解代谢（升高常见于肾功能下降）',
+  UA:'肾功能 / 尿酸代谢（升高提示排泄受影响）',
+  CYSC:'肾功能（升高提示肾小球滤过下降）',
+  DBIL:'胆道 / 胆汁淤积（升高常见于胆道梗阻）',
+  IBIL:'胆红素代谢（升高提示胆红素处理异常）',
+  ALT:'肝细胞损伤（升高提示肝细胞受损）',
+  AST:'肝细胞 / 肌肉损伤（升高提示组织损伤）',
+  TP:'营养 / 蛋白状态（偏低常见于营养或消耗增加）',
+  ALB:'营养 / 胶体渗透压（偏低提示消耗、炎症或营养不足）',
+  NH3:'肝脏代谢（升高可影响意识）',
+  PH:'酸碱状态（偏离正常提示酸碱失衡）',
+  PCO2:'通气状态（升高或降低反映呼吸性酸碱变化）',
+  NA:'电解质 / 体液平衡（过高或过低都需关注）',
+  K:'电解质 / 心律（过高或过低都可能影响心律）',
+  CL:'电解质 / 酸碱平衡（异常可伴随酸碱紊乱）',
+  MG:'电解质 / 心律（过低可增加心律失常风险）',
+  GLU:'血糖（过高或过低都需关注）',
+  AG:'酸碱平衡（升高可提示代谢性酸中毒）'
+};
+function metricExplain(m){return METRIC_EXPLAIN[m.code]||((m.system_group||'相关系统')+'（结合参考范围和趋势判断）')}
+function metricOptionLabel(m){return m.name+' ('+m.code+') — '+metricExplain(m)}
+
 e('reportTime').value=inputTime();e('entryTime').value=inputTime();
 
 async function start(){let x=await db.auth.getSession();sess=x.data.session;show();db.auth.onAuthStateChange(function(_x,s){sess=s;show()})}
@@ -348,7 +397,7 @@ async function load(){
  let a=await Promise.all(tasks);
  if(a[0].error||a[1].error)return;
  defs=a[0].data||[];vals=a[1].data||[];reps=sess&&a[2]&&!a[2].error?(a[2].data||[]):[];
- let op=defs.map(m=>'<option value="'+safe(m.code)+'">'+safe(m.name)+' ('+safe(m.code)+')</option>').join('');
+ let op=defs.map(m=>'<option value="'+safe(m.code)+'">'+safe(metricOptionLabel(m))+'</option>').join('');
  e('metric').innerHTML=op;e('trendMetric').innerHTML=op;e('metric').onchange=sync;e('trendMetric').onchange=drawDetailTrend;sync();home();if(sess)reportList();draw()
 }
 function sync(){let m=defs.find(x=>x.code===e('metric').value);if(!m)return;e('unit').value=m.unit||'';e('low').value=m.ref_low==null?'':m.ref_low;e('high').value=m.ref_high==null?'':m.ref_high}
@@ -529,6 +578,7 @@ function drawDetailTrend(){
   if(!m)return;
   let s=series(k);
   e('dir').textContent=m.direction==='down'?'通常下降为好':m.direction==='up'?'通常上升为好':'回到参考范围最好';
+  if(e('trendMetricExplain'))e('trendMetricExplain').textContent=metricExplain(m);
   let z=s.length?s[s.length-1]:null,lo=z&&z.ref_low!=null?Number(z.ref_low):(m.ref_low!=null?Number(m.ref_low):null),hi=z&&z.ref_high!=null?Number(z.ref_high):(m.ref_high!=null?Number(m.ref_high):null);
   let ds=[{label:m.name+(m.unit?' ('+m.unit+')':''),data:s.map(x=>Number(x.value)),borderColor:'#248fe6',backgroundColor:'rgba(36,143,230,.09)',fill:true,tension:.26,borderWidth:3,pointRadius:3,pointHoverRadius:5}];
   if(lo!=null)ds.push({label:'参考下限 '+lo,data:s.map(()=>lo),borderColor:'rgba(239,92,92,.82)',borderDash:[7,6],pointRadius:0,borderWidth:1.3});
