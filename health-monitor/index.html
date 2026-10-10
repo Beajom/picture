@@ -106,6 +106,21 @@ canvas{max-height:500px;min-height:360px}
 
 /* 趋势中心：重点指标四宫格 + 详情图 */
 .trend-page-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin:4px 0 16px}
+.trend-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.trend-state-filter{width:auto;min-width:165px;margin:0;padding:8px 34px 8px 11px;font-size:13px;font-weight:700}
+.trend-filter-summary{font-size:12px;color:#667085;white-space:nowrap}
+.trend-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.trend-filter-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 14px;box-shadow:0 4px 14px rgba(31,51,73,.05);cursor:pointer;min-width:0;transition:.16s ease}
+.trend-filter-card:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(31,51,73,.09);border-color:#c8daf2}
+.trend-filter-card .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.trend-filter-card .name{font-weight:800;color:#344054;line-height:1.35}
+.trend-filter-card .code{font-size:11px;color:#98a2b3;margin-left:4px}
+.trend-filter-card .value{font-size:22px;font-weight:850;margin:8px 0 4px}
+.trend-filter-card .meta{font-size:11px;color:#667085;line-height:1.55}
+.trend-filter-card .oktag{background:#ecfdf3;color:#067647;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap}
+.trend-filter-card .badtag{background:#fff0ef;color:#b42318;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap}
+.trend-filter-empty{grid-column:1/-1;padding:28px;text-align:center;background:#fff;border:1px dashed #d5dde8;border-radius:14px;color:#667085}
+
 .trend-page-head h2{margin:0 0 5px;font-size:24px}
 .trend-page-head p{margin:0;color:var(--m);line-height:1.6}
 .trend-mini-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
@@ -152,6 +167,7 @@ canvas{max-height:500px;min-height:360px}
 .trend-hint{font-size:12px;color:#667085;margin-top:4px}
 
 @media(max-width:1200px){
+  .trend-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   :root{--page-pad:16px}
   main{width:auto;max-width:none;margin-left:var(--page-pad);margin-right:var(--page-pad)}
   header,nav{padding-left:var(--page-pad);padding-right:var(--page-pad)}
@@ -161,6 +177,9 @@ canvas{max-height:500px;min-height:360px}
   #upload.active>h2{grid-column:auto}
 }
 @media(max-width:760px){
+  .trend-filter-grid{grid-template-columns:1fr}
+  .trend-head-actions{width:100%;justify-content:flex-start}
+  .trend-state-filter{width:100%}
   body{font-size:14px}
   header{align-items:flex-start;flex-direction:column;padding:16px}
   header h1{font-size:21px}
@@ -246,9 +265,18 @@ canvas{max-height:500px;min-height:360px}
     <h2>重点趋势</h2>
     <p>按这位老人的当前病情和最新异常动态排序：循环/休克、出血、严重感染、胆道、电解质、肾功能等优先；已恢复正常且当前风险较低的指标会往后放。</p>
   </div>
-  <span class="pill">按医院采样时间排序</span>
+  <div class="trend-head-actions">
+    <select id="trendStateFilter" class="trend-state-filter">
+      <option value="priority">重点12项</option>
+      <option value="normal">目前正常</option>
+      <option value="abnormal">仍异常</option>
+      <option value="all">全部有数据</option>
+    </select>
+    <span id="trendFilterSummary" class="trend-filter-summary"></span>
+    <span class="pill">按医院采样时间排序</span>
+  </div>
 </div>
-<div class="trend-mini-grid">
+<div id="trendPriorityGrid" class="trend-mini-grid">
   <div class="trend-mini-card" data-mini="LAC">
     <div class="trend-mini-top"><div><span class="mini-priority">优先 1</span><div class="trend-mini-name">乳酸 LAC</div><div class="trend-mini-desc">循环灌注 / 休克预警（升高提示组织供血不足，短时间变化很重要）</div><div id="miniValLAC" class="trend-mini-value">—</div></div><span id="miniStateLAC" class="trend-mini-status">—</span></div>
     <div id="miniMetaLAC" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniLAC"></canvas></div>
@@ -298,6 +326,7 @@ canvas{max-height:500px;min-height:360px}
     <div id="miniMetaHGB" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniHGB"></canvas></div>
   </div>
 </div>
+<div id="trendFilteredGrid" class="trend-filter-grid hidden"></div>
 <div class="panel trend-detail">
   <div class="trend-detail-toolbar">
     <div class="left"><span class="trend-detail-title">详细趋势</span><div class="trend-picker-stack"><div id="trendSearchWrap" class="trend-search-wrap"><input id="trendMetricSearch" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" placeholder="搜索指标，如：红细胞压积 / HCT / 血小板"><button id="trendSearchClear" class="trend-search-clear" type="button" aria-label="清空">×</button><div id="trendSearchMenu" class="trend-search-menu hidden" role="listbox"></div></div><select id="trendMetric"></select></div><span id="trendSearchCount" class="trend-search-count"></span><span id="dir" class="pill"></span></div>
@@ -531,7 +560,7 @@ async function load(){
  if(a[0].error||a[1].error)return;
  defs=a[0].data||[];vals=a[1].data||[];reps=sess&&a[2]&&!a[2].error?(a[2].data||[]):[];
  let op=defs.map(m=>'<option value="'+safe(m.code)+'">'+safe(metricOptionLabel(m))+'</option>').join('');
- e('metric').innerHTML=op;e('trendMetric').innerHTML=op;e('metric').onchange=sync;e('trendMetric').onchange=drawDetailTrend;setupTrendMetricSearch();sync();home();if(sess)reportList();draw()
+ e('metric').innerHTML=op;e('trendMetric').innerHTML=op;e('metric').onchange=sync;e('trendMetric').onchange=drawDetailTrend;setupTrendMetricSearch();setupTrendStateFilter();sync();home();if(sess)reportList();draw()
 }
 function sync(){let m=defs.find(x=>x.code===e('metric').value);if(!m)return;e('unit').value=m.unit||'';e('low').value=m.ref_low==null?'':m.ref_low;e('high').value=m.ref_high==null?'':m.ref_high}
 function series(code){return vals.filter(x=>x.metric_code===code).sort((a,b)=>new Date(a.collected_at)-new Date(b.collected_at))}
@@ -689,10 +718,80 @@ async function reportList(){
   })
 }
 
+
+function latestMetricPoint(code){
+  const s=series(code);
+  return s.length?s[s.length-1]:null;
+}
+function metricHasReference(m,z){
+  const lo=z&&z.ref_low!=null?Number(z.ref_low):(m&&m.ref_low!=null?Number(m.ref_low):null);
+  const hi=z&&z.ref_high!=null?Number(z.ref_high):(m&&m.ref_high!=null?Number(m.ref_high):null);
+  return Number.isFinite(lo)||Number.isFinite(hi);
+}
+function trendFilterItems(mode){
+  const items=defs.map(m=>{
+    const z=latestMetricPoint(m.code);
+    if(!z)return null;
+    const hasRef=metricHasReference(m,z);
+    const st=hasRef?stateR(m,z):'无参考范围';
+    return {m,z,state:st,hasRef,time:new Date(z.collected_at).getTime()};
+  }).filter(Boolean);
+  if(mode==='normal')return items.filter(x=>x.hasRef&&x.state==='参考范围内').sort((a,b)=>b.time-a.time);
+  if(mode==='abnormal')return items.filter(x=>x.hasRef&&x.state!=='参考范围内').sort((a,b)=>b.time-a.time);
+  return items.sort((a,b)=>b.time-a.time);
+}
+function renderTrendStateFilter(){
+  const sel=e('trendStateFilter'),priority=e('trendPriorityGrid'),grid=e('trendFilteredGrid'),summary=e('trendFilterSummary');
+  if(!sel||!priority||!grid)return;
+  const mode=sel.value||'priority';
+  const normalCount=trendFilterItems('normal').length;
+  const abnormalCount=trendFilterItems('abnormal').length;
+  if(summary)summary.textContent='正常 '+normalCount+' 项 · 异常 '+abnormalCount+' 项';
+
+  if(mode==='priority'){
+    priority.classList.remove('hidden');
+    grid.classList.add('hidden');
+    grid.innerHTML='';
+    return;
+  }
+
+  priority.classList.add('hidden');
+  grid.classList.remove('hidden');
+  const items=trendFilterItems(mode);
+  if(!items.length){
+    grid.innerHTML='<div class="trend-filter-empty">'+(mode==='normal'?'目前没有可确认已回到参考范围的指标。':mode==='abnormal'?'目前没有超出参考范围的指标。':'暂无指标数据。')+'</div>';
+    return;
+  }
+
+  grid.innerHTML=items.map(x=>{
+    const unit=x.z.unit||x.m.unit||'';
+    const tag=x.state==='参考范围内'?'<span class="oktag">参考范围内</span>':x.state==='无参考范围'?'<span class="oktag">无固定范围</span>':'<span class="badtag">'+safe(x.state)+'</span>';
+    return '<div class="trend-filter-card" data-code="'+safe(x.m.code)+'">'+
+      '<div class="top"><div class="name">'+safe(x.m.name)+' <span class="code">'+safe(x.m.code)+'</span></div>'+tag+'</div>'+
+      '<div class="value">'+safe(x.z.value)+' <small>'+safe(unit)+'</small></div>'+
+      '<div class="meta">参考：'+safe(refLabel(x.m,x.z))+(unit?' '+safe(unit):'')+'<br>最新：'+safe(fmtChina(x.z.collected_at))+'<br>'+safe(metricExplain(x.m))+'</div>'+
+    '</div>'
+  }).join('');
+
+  grid.querySelectorAll('.trend-filter-card[data-code]').forEach(card=>{
+    card.onclick=function(){
+      const code=card.dataset.code;
+      selectTrendMetric(code,true);
+      document.querySelector('.trend-detail').scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  });
+}
+function setupTrendStateFilter(){
+  const sel=e('trendStateFilter');
+  if(!sel)return;
+  sel.onchange=renderTrendStateFilter;
+  renderTrendStateFilter();
+}
 function draw(){
   if(!defs.length)return;
   drawMiniTrends();
   drawDetailTrend();
+  renderTrendStateFilter();
 }
 function drawMiniTrends(){
   ['LAC','PLT','PCT','TBIL','K','CREA','WBC','INR','CRP','NTPROBNP','SO2','HGB'].forEach(drawMiniTrend);
