@@ -67,7 +67,19 @@
   };
   const DEC={
     ALT:0,AST:0,ASAL:2,TBIL:1,DBIL:1,IBIL:1,TP:2,ALB:2,GLO:2,AGRATIO:2,UREA:2,CREA:1,UNCR:2,CK:0,
-    PT:1,PTR:2,INR:2,APTT:1,FIB:2,PTA:2,PCT:2,NTPROBNP:3
+    PT:1,PTR:2,INR:2,APTT:1,FIB:2,PTA:2,PCT:2,NTPROBNP:3,
+    WBC:2,NEP:2,LYP:2,MONOP:2,EOSP:2,BASOP:2,NEABS:2,LYABS:2,MONOABS:2,EOSABS:2,BASOABS:2,
+    RBC:2,HGB:0,HCT:3,MCV:1,MCH:1,MCHC:0,PDW:1,PLT:0,MPV:1,PCTPLT:3,RDWCV:1,CRP:2,
+    PH:2,PCO2:1,PO2:1,HCO3:1,HCO3STD:1,BEE:1,HCTPCT:1,THB:1,SO2:1,FO2HB:1,FCOHB:1,FMETHB:1,FHHB:1,
+    P50:1,CTO2:1,NA:1,K:2,ICA:2,CL:1,AG:1,GLU:2,LAC:2,PF:0
+  };
+  const EXPECTED={
+    chem:['ALT','AST','ASAL','TBIL','DBIL','IBIL','TP','ALB','GLO','AGRATIO','UREA','CREA','UNCR','CK'],
+    coag:['PT','PTR','INR','APTT','FIB','PTA'],
+    pct:['PCT'],
+    ntprobnp:['NTPROBNP'],
+    cbc:['WBC','NEP','LYP','MONOP','EOSP','BASOP','NEABS','LYABS','MONOABS','EOSABS','BASOABS','RBC','HGB','HCT','MCV','MCH','MCHC','PDW','PLT','MPV','PCTPLT','RDWCV','CRP'],
+    bloodgas:['PH','PCO2','PO2','HCO3','HCO3STD','BEE','HCTPCT','THB','SO2','FO2HB','FCOHB','FMETHB','FHHB','P50','CTO2','NA','K','ICA','CL','AG','GLU','LAC','PF']
   };
 
   let current={items:[],reports:[],fallback:'',mode:'upload'};
@@ -268,6 +280,25 @@
     });
     return items
   }
+  function completeness(items){
+    const groups=new Map();
+    items.forEach(x=>{
+      const key=(x.fileName||'未命名')+'|'+x.kind;
+      if(!groups.has(key))groups.set(key,{file:x.fileName||'未命名',kind:x.kind,codes:new Set()});
+      groups.get(key).codes.add(x.code)
+    });
+    const issues=[];
+    for(const g of groups.values()){
+      const exp=EXPECTED[g.kind];
+      if(!exp||!exp.length)continue;
+      const missing=exp.filter(code=>!g.codes.has(code));
+      const coverage=(exp.length-missing.length)/exp.length;
+      if(missing.length){
+        issues.push({file:g.file,kind:g.kind,missing,coverage,severe:coverage<0.6})
+      }
+    }
+    return issues
+  }
   function statusHtml(x){
     const v=x.validation||{errors:[],warnings:[]};
     if(v.errors.length)return '<span class="ocrv8-badge err">禁止保存</span><div class="ocrv8-hint">'+esc(v.errors.join('；'))+'</div>';
@@ -292,7 +323,7 @@
     return panel
   }
   function renderReview(items,reports,fallback,mode){
-    const panel=ensureUI();current={items:validate(merge(items)),reports:reports||[],fallback:fallback||'',mode:mode||'upload'};
+    const panel=ensureUI();current={items:validate(merge(items)),reports:reports||[],fallback:fallback||'',mode:mode||'upload',completeness:completeness(merge(items))};
     panel.classList.remove('hidden');
     const body=$('ocrV8Rows');
     body.innerHTML=current.items.map((x,i)=>
@@ -309,7 +340,8 @@
     ).join('');
     body.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',refreshValidation));
     refreshStats();
-    $('ocrV8Msg').textContent='识别到 '+current.items.length+' 个指标。请先看“可靠性”一列，再确认保存。';
+    const miss=current.completeness||[];
+    $('ocrV8Msg').textContent='识别到 '+current.items.length+' 个指标。'+(miss.length?'有 '+miss.length+' 份报告存在漏项，请先核对完整性。':'报告项目完整性检查通过。')+' 请先看“可靠性”一列，再确认保存。';
     panel.scrollIntoView({behavior:'smooth',block:'start'})
   }
   function readRows(){
@@ -332,7 +364,11 @@
   }
   function refreshStats(){
     const used=current.items.filter(x=>x._use!==false),err=used.filter(x=>x.validation&&x.validation.errors.length).length,warn=used.filter(x=>x.validation&&!x.validation.errors.length&&x.validation.warnings.length).length,ok=used.length-err-warn;
-    $('ocrV8Stats').innerHTML='<span class="ocrv8-badge ok">通过 '+ok+'</span><span class="ocrv8-badge warn">需核对 '+warn+'</span><span class="ocrv8-badge err">错误 '+err+'</span>'
+    const miss=current.completeness||[];
+    const severe=miss.filter(x=>x.severe).length;
+    const missingCount=miss.reduce((s,x)=>s+x.missing.length,0);
+    $('ocrV8Stats').innerHTML='<span class="ocrv8-badge ok">通过 '+ok+'</span><span class="ocrv8-badge warn">需核对 '+warn+'</span><span class="ocrv8-badge err">错误 '+err+'</span>'+(miss.length?'<span class="ocrv8-badge '+(severe?'err':'warn')+'">漏识别 '+missingCount+' 项</span>':'<span class="ocrv8-badge ok">完整性通过</span>')+
+      (miss.length?'<div class="ocrv8-completeness">'+miss.map(x=>'<div><b>'+esc(x.file)+'</b>：缺 '+esc(x.missing.join('、'))+'</div>').join('')+'</div>':'')
   }
   async function saveReview(){
     if(!sess)return alert('请先管理员登录');
@@ -344,7 +380,12 @@
       return
     }
     const warns=selected.filter(x=>x.validation.warnings.length);
-    if(warns.length&&!confirm('还有 '+warns.length+' 个“需核对”项目。确认你已经对照原报告检查无误，并继续保存吗？'))return;
+    const miss=current.completeness||[];
+    if(miss.some(x=>x.severe)){
+      $('ocrV8Msg').textContent='当前至少一份报告识别完整度低于60%。请先对照原图补录或取消本次保存，避免大量漏项进入趋势。';
+      return
+    }
+    if((warns.length||miss.length)&&!confirm('还有 '+warns.length+' 个“需核对”项目，'+miss.length+' 份报告存在漏项。确认你已经对照原报告检查无误，并继续保存吗？'))return;
     const rows=selected.map(x=>({
       user_id:sess.user.id,report_id:x.reportId||null,collected_at:chinaIso(x.sampleTime),
       metric_code:x.code,metric_name:x.m.name,system_group:x.m.system_group,value:Number(x.value),
@@ -462,7 +503,7 @@
       '.ocrv8-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}.ocrv8-head h3{margin:0 0 5px}.ocrv8-head p{margin:0;color:#667085;font-size:13px;line-height:1.6}'+
       '.ocrv8-msg{padding:12px 14px;border-radius:10px;background:#eef6ff;color:#24527d;margin:12px 0;font-size:13px}.ocrv8-stats{display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap}'+
       '.ocrv8-table input{margin:0;padding:7px 8px;min-width:92px}.ocrv8-table input[type=checkbox]{min-width:0;width:auto}.ocrv8-table td{vertical-align:top}'+
-      '.ocrv8-badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}.ocrv8-badge.ok{background:#ecfdf3;color:#067647}.ocrv8-badge.warn{background:#fff7e6;color:#b54708}.ocrv8-badge.err{background:#fee4e2;color:#b42318}.ocrv8-hint{font-size:11px;color:#667085;line-height:1.45;margin-top:5px;max-width:230px}';
+      '.ocrv8-badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}.ocrv8-badge.ok{background:#ecfdf3;color:#067647}.ocrv8-badge.warn{background:#fff7e6;color:#b54708}.ocrv8-badge.err{background:#fee4e2;color:#b42318}.ocrv8-hint{font-size:11px;color:#667085;line-height:1.45;margin-top:5px;max-width:230px}.ocrv8-completeness{width:100%;margin-top:8px;padding:10px 12px;border:1px solid #f1dfbd;border-radius:10px;background:#fffaf2;color:#7a4d0b;font-size:12px;line-height:1.6}';
     document.head.appendChild(st)
   }
   function install(){
