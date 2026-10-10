@@ -455,6 +455,177 @@
     };
   }
 
+
+  // V4: report-type-aware OCR. Prefer Latin item codes at the start of each report row,
+  // split two-column reports before OCR, distinguish PCT (procalcitonin) from plateletcrit,
+  // and use the specimen collection time printed on each report.
+  function detectReportKindV4(text){
+    const t=String(text||'').toUpperCase();
+    if(t.indexOf('NT-PROBNP')>=0 || String(text||'').indexOf('N末端B型')>=0)return 'ntprobnp';
+    if(t.indexOf('APTT')>=0 && (t.indexOf('PTA')>=0 || t.indexOf('FBG')>=0 || t.indexOf('FIB')>=0))return 'coag';
+    if(t.indexOf('PCO2')>=0 && t.indexOf('HCO3')>=0 && (t.indexOf('ANGAP')>=0 || t.indexOf('PF INDEX')>=0 || String(text||'').indexOf('血气')>=0))return 'bloodgas';
+    if(t.indexOf('WBC')>=0 && t.indexOf('PLT')>=0 && (t.indexOf('RDW-CV')>=0 || t.indexOf('PDW')>=0))return 'cbc';
+    if(String(text||'').indexOf('降钙素原测定')>=0 || (t.indexOf('PCT')>=0 && t.indexOf('PDW')<0 && t.indexOf('MPV')<0))return 'pct';
+    return 'generic';
+  }
+
+  function extractSampleTimeV4(text,fallback){
+    const tx=String(text||'').replace(/[年月]/g,'-').replace(/日/g,' ');
+    const m=tx.match(/采样时间\s*[:：]?\s*(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if(!m)return fallback||'';
+    const pad=x=>String(x).padStart(2,'0');
+    return m[1]+'-'+pad(m[2])+'-'+pad(m[3])+'T'+pad(m[4])+':'+pad(m[5])+':'+pad(m[6]||'00');
+  }
+
+  const ROW_CODE_MAP_V4={
+    cbc:{
+      'WBC':'WBC','NE%':'NEP','LY%':'LYP','MONO%':'MONOP','EOS%':'EOSP','BASO%':'BASOP',
+      'NE#':'NEABS','LY#':'LYABS','MONO#':'MONOABS','EOS#':'EOSABS','BASO#':'BASOABS',
+      'RBC':'RBC','HGB':'HGB','HCT':'HCT','MCV':'MCV','MCH':'MCH','MCHC':'MCHC',
+      'PDW':'PDW','PLT':'PLT','MPV':'MPV','PCT':'PCTPLT','RDW-CV':'RDWCV','RDWCV':'RDWCV','CRP':'CRP'
+    },
+    coag:{'PT':'PT','PTR':'PTR','INR':'INR','APTT':'APTT','FBG':'FIB','FIB':'FIB','PTA':'PTA'},
+    pct:{'PCT':'PCT'},
+    ntprobnp:{'NT-PROBNP':'NTPROBNP','NTPROBNP':'NTPROBNP'},
+    bloodgas:{
+      'PH':'PH','PCO2':'PCO2','PO2':'PO2','HCO3':'HCO3','BE':'BEE','HCT':'HCTPCT','THB':'THB',
+      'SO2':'SO2','FO2HB':'FO2HB','FCOHB':'FCOHB','FMETHB':'FMETHB','FHHB':'FHHB','P50':'P50',
+      'CTO2(A)':'CTO2','CTO2A':'CTO2','NA':'NA','K':'K','CA':'ICA','CL':'CL','ANGAP':'AG',
+      'GLU':'GLU','LAC':'LAC','PF':'PF'
+    }
+  };
+
+  function normalizeRowV4(line){
+    return String(line||'').replace(/[★☆↑↓]/g,' ').replace(/[，,]/g,'.').replace(/\s+/g,' ').trim().replace(/^\d+\s+/,'');
+  }
+
+  function mapRowCodeV4(kind,first,line){
+    let token=String(first||'').toUpperCase().replace(/[.:：;；]+$/,'');
+    if(kind==='bloodgas' && token==='HCO3' && (/-\s*S\b/i.test(line) || /标准碳酸氢根/.test(line)))return 'HCO3STD';
+    if(kind==='bloodgas' && token==='BE' && /ECF/i.test(line))return 'BEE';
+    if(kind==='bloodgas' && token==='CTO2' && /\(A\)/i.test(line))return 'CTO2';
+    const map=ROW_CODE_MAP_V4[kind]||{};
+    return map[token]||null;
+  }
+
+  function parseRowsV4(text,kind,reportId,fileName,fallbackTime){
+    const sampleTime=extractSampleTimeV4(text,fallbackTime);
+    const out=[],seen=new Set();
+    const lines=String(text||'').split(/\r?\n/).map(normalizeRowV4).filter(Boolean);
+    for(const line of lines){
+      const parts=line.split(/\s+/);
+      if(!parts.length)continue;
+      const code=mapRowCodeV4(kind,parts[0],line);
+      if(!code || seen.has(code))continue;
+      const m=defs.find(x=>x.code===code);
+      if(!m)continue;
+      const rest=line.slice(parts[0].length);
+      const nums=(rest.match(/-?\d+(?:\.\d+)?/g)||[]).map(Number).filter(Number.isFinite);
+      if(!nums.length)continue;
+      let value=nums[0],low=m.ref_low,high=m.ref_high;
+      if(nums.length>=3){low=nums[1];high=nums[2]}
+      out.push({m,value,reportId,fileName,ref_low:low,ref_high:high,unit:m.unit||'',sampleTime,kind});
+      seen.add(code);
+    }
+
+    if(kind==='pct' && !seen.has('PCT')){
+      const z=String(text||'').match(/(?:降钙素原测定|PCT)[^\d-]{0,45}(-?\d+(?:\.\d+)?)/i);
+      const m=defs.find(x=>x.code==='PCT');
+      if(z&&m)out.push({m,value:Number(z[1]),reportId,fileName,ref_low:0,ref_high:.5,unit:'ng/mL',sampleTime,kind});
+    }
+    if(kind==='ntprobnp' && !seen.has('NTPROBNP')){
+      const z=String(text||'').match(/(?:NT[- ]?proBNP|N末端B型)[^\d-]{0,50}(-?\d+(?:\.\d+)?)/i);
+      const m=defs.find(x=>x.code==='NTPROBNP');
+      if(z&&m)out.push({m,value:Number(z[1]),reportId,fileName,ref_low:0,ref_high:125,unit:'pg/mL',sampleTime,kind});
+    }
+    return out;
+  }
+
+  async function cropForOcrV4(file,startFrac,widthFrac,suffix){
+    const bmp=await createImageBitmap(file);
+    const sx=Math.floor(bmp.width*startFrac),sw=Math.floor(bmp.width*widthFrac);
+    const canvas=document.createElement('canvas');canvas.width=sw;canvas.height=bmp.height;
+    canvas.getContext('2d').drawImage(bmp,sx,0,sw,bmp.height,0,0,sw,bmp.height);
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+    if(bmp.close)bmp.close();
+    return new File([blob],file.name.replace(/\.[^.]+$/,'')+'-'+suffix+'.png',{type:'image/png'});
+  }
+
+  async function ocrPlainV4(file,label){
+    const r=await Tesseract.recognize(file,'chi_sim+eng',{logger:m=>{
+      if(m.progress!=null)e('autoRecognizeMsg').textContent=label+' · '+Math.round(m.progress*100)+'%';
+    }});
+    return r.data.text||'';
+  }
+
+  async function ocrOneFileV4(file,index,total){
+    const base='正在识别 '+(index+1)+' / '+total+'：'+file.name;
+    const full=await ocrPlainV4(file,base);
+    const kind=detectReportKindV4(full);
+    if(kind!=='cbc' && kind!=='bloodgas')return {text:full,kind};
+    try{
+      const left=await cropForOcrV4(file,0,.56,'left');
+      const right=await cropForOcrV4(file,.44,.56,'right');
+      const leftText=await ocrPlainV4(left,base+' · 左栏');
+      const rightText=await ocrPlainV4(right,base+' · 右栏');
+      return {text:leftText+'\n'+rightText+'\n'+full,kind};
+    }catch(err){
+      console.warn('column crop OCR failed',err);
+      return {text:full,kind};
+    }
+  }
+
+  ensureAutoReviewUIV3=function(){
+    if(e('autoReviewPanel'))return;
+    const panel=document.createElement('div');
+    panel.id='autoReviewPanel';panel.className='panel auto-review-panel hidden';
+    panel.innerHTML='<div class="auto-review-head"><div><h3>自动识别结果</h3><p>按报告项目代码识别，并区分“降钙素原PCT”和“血小板压积PCT”。请核对后再保存。</p></div><span class="pill">保存后自动刷新总览与趋势</span></div><div id="autoRecognizeMsg" class="auto-progress">等待识别</div><div class="scroll"><table class="auto-review-table"><thead><tr><th>保存</th><th>指标</th><th>识别结果</th><th>单位</th><th>参考下限</th><th>参考上限</th><th>采样时间</th><th>来源</th></tr></thead><tbody id="autoReviewRows"></tbody></table></div><div class="row" style="margin-top:14px"><button id="saveAutoReview">确认并更新趋势</button><button id="cancelAutoReview" class="alt">暂不保存</button></div>';
+    e('upload').querySelector('.panel').insertAdjacentElement('afterend',panel);
+    e('saveAutoReview').onclick=saveAutoReviewV3;
+    e('cancelAutoReview').onclick=()=>{panel.classList.add('hidden');autoReviewStateV3={items:[],time:''}};
+  };
+
+  recognizeAndReviewV3=async function(files,reportRows,time){
+    ensureAutoReviewUIV3();
+    const panel=e('autoReviewPanel');panel.classList.remove('hidden');e('autoReviewRows').innerHTML='';
+    const pairs=[];files.forEach((file,i)=>{if(file.type.startsWith('image/'))pairs.push({file,report:reportRows[i]||null})});
+    if(!pairs.length){e('autoRecognizeMsg').textContent='原报告已上传，但当前自动识别仅支持 JPG / PNG / WEBP 图片。';return}
+    let all=[];
+    for(let i=0;i<pairs.length;i++){
+      const pair=pairs[i];
+      try{
+        const o=await ocrOneFileV4(pair.file,i,pairs.length);
+        all.push(...parseRowsV4(o.text,o.kind,pair.report&&pair.report.id,pair.file.name,time));
+      }catch(err){console.error(err)}
+    }
+    const merged=mergeRecognizedV3(all);
+    if(!merged.length){e('autoRecognizeMsg').textContent='原图已保存，但没有可靠识别到指标。请使用手动录入。';return}
+    autoReviewStateV3={items:merged,time};
+    e('autoRecognizeMsg').textContent='识别到 '+merged.length+' 个指标。请重点核对数值、参考范围和采样时间。';
+    e('autoReviewRows').innerHTML=merged.map((x,i)=>'<tr data-i="'+i+'"><td><input class="auto-use" type="checkbox" checked></td><td><b>'+safe(x.m.name)+'</b><br><span class="muted">'+safe(x.m.code)+'</span></td><td><input class="auto-value" type="number" step="any" value="'+safe(x.value)+'"></td><td><input class="auto-unit" value="'+safe(x.unit)+'"></td><td><input class="auto-low" type="number" step="any" value="'+(x.ref_low==null?'':safe(x.ref_low))+'"></td><td><input class="auto-high" type="number" step="any" value="'+(x.ref_high==null?'':safe(x.ref_high))+'"></td><td><input class="auto-time" type="datetime-local" step="1" value="'+safe((x.sampleTime||time||'').slice(0,19))+'"></td><td>'+safe(x.fileName||'')+'</td></tr>').join('');
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  saveAutoReviewV3=async function(){
+    if(!sess)return alert('请先管理员登录');
+    const fallback=autoReviewStateV3.time||e('reportTime').value||inputTime();
+    const rows=[...e('autoReviewRows').querySelectorAll('tr[data-i]')].filter(tr=>tr.querySelector('.auto-use').checked).map(tr=>{
+      const x=autoReviewStateV3.items[Number(tr.dataset.i)],value=Number(tr.querySelector('.auto-value').value);
+      if(!Number.isFinite(value))return null;
+      const low=tr.querySelector('.auto-low').value,high=tr.querySelector('.auto-high').value,sample=tr.querySelector('.auto-time').value||fallback;
+      return {user_id:sess.user.id,report_id:x.reportId||null,collected_at:chinaIso(sample),metric_code:x.m.code,metric_name:x.m.name,system_group:x.m.system_group,value,unit:tr.querySelector('.auto-unit').value||x.m.unit,ref_low:low===''?null:Number(low),ref_high:high===''?null:Number(high),direction:x.m.direction};
+    }).filter(Boolean);
+    if(!rows.length)return alert('请至少保留一个有效指标');
+    e('saveAutoReview').disabled=true;e('autoRecognizeMsg').textContent='正在保存并刷新趋势…';
+    try{
+      const byReport=new Map();rows.forEach(row=>{if(row.report_id&&!byReport.has(row.report_id))byReport.set(row.report_id,row.collected_at)});
+      for(const item of byReport){await db.from('reports').update({collected_at:item[1],report_date:item[1].slice(0,10)}).eq('id',item[0])}
+      const r=await writeResultsV3(rows,'报告指标');if(!r.ok)throw r.error;
+      e('autoRecognizeMsg').textContent=r.message+'，总览和趋势已更新。';await load();document.querySelector('[data-tab="home"]').click();
+    }catch(err){e('autoRecognizeMsg').textContent='保存失败：'+(err.message||err)}
+    finally{e('saveAutoReview').disabled=false}
+  };
+
   ensureFamilyGate();ensureHeader();ensureAccessSettings();patchWriteHandlers();
   reportList=reportListV3;
 
