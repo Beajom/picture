@@ -80,6 +80,7 @@
   async function renderDataV3(){
     let op=defs.map(m=>'<option value="'+safe(m.code)+'">'+safe(typeof metricOptionLabel==='function'?metricOptionLabel(m):(m.name+' ('+m.code+')'))+'</option>').join('');
     e('metric').innerHTML=op;e('trendMetric').innerHTML=op;e('metric').onchange=sync;e('trendMetric').onchange=drawDetailTrend;
+    if(typeof setupTrendMetricSearch==='function')setupTrendMetricSearch();
     sync();home();if(sess)reportList();draw();
   }
   async function loadAdminV3(){
