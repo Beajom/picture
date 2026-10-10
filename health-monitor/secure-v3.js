@@ -6,8 +6,8 @@
   .family-gate h1{margin:0 0 8px;font-size:30px}.family-gate p{margin:0 0 16px;color:#667085;line-height:1.65}
   .access-code-input{font-size:18px;letter-spacing:1px;text-transform:uppercase}
   .overall-judgment{margin:0 0 14px;padding:16px 18px;border-radius:14px;background:linear-gradient(135deg,#eef6ff,#f8fbff);border:1px solid #cfe1f6}
-  .overall-judgment strong{display:block;font-size:18px;color:#183b5f;margin-bottom:7px}
-  .overall-judgment .detail{font-size:13px;color:#475467;line-height:1.7}
+  .overall-judgment strong{display:block;font-size:19px;color:#183b5f;margin-bottom:9px;line-height:1.5}
+  .overall-judgment .detail{font-size:14px;color:#475467;line-height:1.85}
   .access-panel{max-width:760px}.access-panel .access-status{margin:8px 0 16px;padding:12px 14px;border-radius:10px;background:#f7f9fc;color:#475467;font-size:13px}
 .auto-review-panel{margin-top:18px;border-color:#cfe1f6;background:linear-gradient(180deg,#fff,#f8fbff)}
 .auto-review-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
@@ -223,25 +223,25 @@
 
     const improvedText=improved.map(x=>({
       code:x.code,
-      text:shortChangeV5(x)+'，'+x.cfg.good+'，属于好转',
+      text:x.cfg.label+'：'+shortChangeV5(x).replace(x.cfg.label+' ','')+'，比上一次好',
       state:x.state
     }));
 
     const worseText=worse.map(x=>({
       code:x.code,
-      text:shortChangeV5(x)+'，'+x.cfg.bad+'；'+x.cfg.why,
+      text:x.cfg.label+'：'+shortChangeV5(x).replace(x.cfg.label+' ','')+'，比上一次差一些，需要继续看',
       state:x.state
     }));
 
     const recoveringText=abnormal.filter(x=>x.trend==='good').map(x=>({
       code:x.code,
-      text:x.cfg.label+'目前 '+fmtNumV5(x.z.value)+(x.z.unit||x.m.unit?' '+(x.z.unit||x.m.unit):'')+'，虽然方向在改善，但仍'+(x.state==='低于参考'?'偏低':'偏高'),
+      text:x.cfg.label+'现在是 '+fmtNumV5(x.z.value)+(x.z.unit||x.m.unit?' '+(x.z.unit||x.m.unit):'')+'，虽然比之前好，但还没有恢复到正常范围',
       state:x.state
     }));
 
     const persistentText=abnormal.filter(x=>x.trend!=='good'&&x.trend!=='bad').map(x=>({
       code:x.code,
-      text:x.cfg.label+'目前 '+fmtNumV5(x.z.value)+(x.z.unit||x.m.unit?' '+(x.z.unit||x.m.unit):'')+'，'+x.cfg.why,
+      text:x.cfg.label+'现在是 '+fmtNumV5(x.z.value)+(x.z.unit||x.m.unit?' '+(x.z.unit||x.m.unit):'')+'，目前仍不正常，需要继续观察',
       state:x.state
     }));
 
@@ -252,31 +252,50 @@
     const r=readableListsV5();
     const goodNames=r.improved.slice(0,3).map(x=>x.cfg.label);
     const badNames=r.worse.slice(0,3).map(x=>x.cfg.label);
-    let title='本轮总体：';
+
+    let title='总体看：';
     if(goodNames.length&&badNames.length){
-      title+=goodNames.join('、')+'在改善；但'+badNames.join('、')+'出现不利变化。';
+      title+='有好转，但还没有稳定。'+goodNames.join('、')+'在往好的方向走；'+badNames.join('、')+'这次有些变差。';
     }else if(goodNames.length){
-      title+=goodNames.join('、')+'在改善，但仍有部分指标没有恢复正常。';
+      title+='比上一次好一些，但还没有完全恢复。'+goodNames.join('、')+'正在改善。';
     }else if(badNames.length){
-      title+=badNames.join('、')+'出现不利变化，需要重点关注。';
+      title+='这次有几项变差，需要继续重点观察。主要是'+badNames.join('、')+'。';
     }else{
-      title+='主要指标暂时没有明显新的变化。';
+      title+='和上一次相比变化不大，目前还需要继续观察。';
     }
 
-    // Add a plain-language clinical-level summary based on the current key data.
-    const plt=keyTrendV5('PLT'),wbc=keyTrendV5('WBC'),pct=keyTrendV5('PCT'),crp=keyTrendV5('CRP'),lac=keyTrendV5('LAC'),ica=keyTrendV5('ICA'),inr=keyTrendV5('INR');
+    const plt=keyTrendV5('PLT'),wbc=keyTrendV5('WBC'),pct=keyTrendV5('PCT'),crp=keyTrendV5('CRP');
+    const lac=keyTrendV5('LAC'),crea=keyTrendV5('CREA'),tbil=keyTrendV5('TBIL'),hgb=keyTrendV5('HGB'),inr=keyTrendV5('INR'),ica=keyTrendV5('ICA');
+
     const infectionBetter=[wbc,pct,crp].filter(x=>x&&x.trend==='good').length>=2;
-    const pltBetter=plt&&plt.trend==='good';
-    const keyWorse=[lac,ica,inr].filter(x=>x&&x.trend==='bad').map(x=>x.cfg.label);
+    const sentences=[];
 
-    let detail='';
-    if(infectionBetter)detail+='感染相关指标整体下降，提示炎症/感染负荷在减轻。';
-    if(pltBetter)detail+=(detail?' ':'')+'血小板回升是积极变化，但当前仍明显偏低。';
-    if(keyWorse.length)detail+=(detail?' ':'')+keyWorse.join('、')+'需要继续观察。';
-    if(!detail)detail='请结合血压、尿量、意识状态、氧疗强度和医生查房判断整体病情。';
-    return {title,detail};
+    if(infectionBetter)sentences.push('感染指标在下降，说明感染控制比前几天好一些。');
+    if(plt&&plt.trend==='good')sentences.push('血小板在回升，这是好现象，但数值还低，出血风险还没有完全解除。');
+    if(lac&&lac.trend==='good'){
+      sentences.push(lac.state==='参考范围内'?'乳酸已经回到或接近正常，循环情况比之前更好。':'乳酸在下降，说明循环灌注比之前有所改善。');
+    }else if(lac&&lac.trend==='bad'){
+      sentences.push('乳酸这次升高，要继续注意血压、循环和感染有没有反复。');
+    }
+    if(crea&&crea.trend==='good')sentences.push('肾功能指标在改善，说明肾脏比最严重的时候恢复了一些。');
+    if(tbil&&tbil.trend==='bad')sentences.push('胆红素又升高，说明胆道和肝脏这部分还没有稳定。');
+    if(hgb&&hgb.trend==='bad')sentences.push('血红蛋白下降了一些，要继续看有没有贫血或出血。');
+    if(inr&&inr.trend==='bad')sentences.push('凝血指标比之前差一点，需要继续防范出血风险。');
+    if(ica&&ica.trend==='bad')sentences.push('离子钙下降，需要继续监测电解质。');
+
+    if(!sentences.length)sentences.push('目前还不能只看化验单判断是否安全，仍要结合血压、尿量、意识、呼吸和医生床旁判断。');
+
+    let plain='';
+    if(infectionBetter || (plt&&plt.trend==='good') || (crea&&crea.trend==='good')){
+      plain='家属可以简单理解为：老人有一些指标确实在好转，但身体还没有完全稳定，现在仍需要继续观察和治疗。';
+    }else if(badNames.length){
+      plain='家属可以简单理解为：目前还没有稳定下来，这次有几项需要特别注意。';
+    }else{
+      plain='家属可以简单理解为：目前整体变化不大，还需要继续观察。';
+    }
+
+    return {title,detail:plain+' '+sentences.slice(0,4).join(' ')};
   }
-
   function readableListHtmlV5(items,empty){
     if(!items.length)return '<div class="summary-empty">'+empty+'</div>';
     return '<ul>'+items.slice(0,6).map(x=>'<li>'+safe(x.text)+'</li>').join('')+'</ul>';
@@ -293,13 +312,13 @@
 
     return '<div class="'+(hero?'report-summary-hero':'')+'">'+
       (hero?'<div class="overall-judgment"><strong>'+safe(overall.title)+'</strong><div class="detail">'+safe(overall.detail)+'</div></div>':'')+
-      (hero?'<div class="report-summary-head"><div><div class="report-summary-title">这次检查和上一次相比</div><div class="report-summary-sub">采样时间：'+safe(timeText)+' · 重点看 12 项关键指标</div></div><div class="report-summary-score"><span class="sum-chip good">好转 '+good.length+'</span><span class="sum-chip bad">需注意 '+bad.length+'</span><span class="sum-chip warn">仍异常 '+recovering.length+'</span></div></div>':'')+
+      (hero?'<div class="report-summary-head"><div><div class="report-summary-title">这次检查跟上一次比，有哪些变化</div><div class="report-summary-sub">采样时间：'+safe(timeText)+' · 重点看 12 项关键指标</div></div><div class="report-summary-score"><span class="sum-chip good">好转 '+good.length+'</span><span class="sum-chip bad">需注意 '+bad.length+'</span><span class="sum-chip warn">仍异常 '+recovering.length+'</span></div></div>':'')+
       '<div class="report-summary-grid">'+
-        '<div class="report-summary-col"><h4 class="good">✓ 明显好转</h4>'+readableListHtmlV5(good,'这次没有看到明确好转的重点指标')+'</div>'+
-        '<div class="report-summary-col"><h4 class="bad">! 需要重点注意</h4>'+readableListHtmlV5(bad,'这次没有看到重点指标明显变差')+'</div>'+
-        '<div class="report-summary-col"><h4 class="warn">○ 虽好转但还没正常</h4>'+readableListHtmlV5(recovering,'重点指标目前没有额外持续异常')+'</div>'+
+        '<div class="report-summary-col"><h4 class="good">✓ 往好的方向走</h4>'+readableListHtmlV5(good,'这次没有看到明确好转的重点指标')+'</div>'+
+        '<div class="report-summary-col"><h4 class="bad">! 这次需要特别注意</h4>'+readableListHtmlV5(bad,'这次没有看到重点指标明显变差')+'</div>'+
+        '<div class="report-summary-col"><h4 class="warn">○ 比之前好，但还没恢复正常</h4>'+readableListHtmlV5(recovering,'重点指标目前没有额外持续异常')+'</div>'+
       '</div>'+
-      (hero?'<div class="report-summary-note">这里优先展示血小板、感染指标、乳酸、肾功能、心脏负荷、肝胆、凝血、酸碱和电解质等重点变化；普通小幅波动不会放在最前面。仅用于家属看趋势，不能替代主管医生判断。</div>':'')+
+      (hero?'<div class="report-summary-note">这里用尽量简单的话说明主要变化。绿色不代表已经康复，红色也不代表一定恶化；最终还要结合血压、尿量、意识、呼吸和主管医生的判断。</div>':'')+
     '</div>';
   };
 
