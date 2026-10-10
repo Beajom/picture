@@ -224,7 +224,7 @@ canvas{max-height:500px;min-height:360px}
 <div class="trend-page-head">
   <div>
     <h2>重点趋势</h2>
-    <p>优先展示 8 项关键指标，每排 4 个。点击任意小图，可在下方查看完整趋势和医院参考范围。</p>
+    <p>优先展示 12 项关键指标，每排 4 个。点击任意小图，可在下方查看完整趋势和医院参考范围。</p>
   </div>
   <span class="pill">按医院采样时间排序</span>
 </div>
@@ -261,6 +261,23 @@ canvas{max-height:500px;min-height:360px}
   <div class="trend-mini-card" data-mini="TBIL">
     <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 8</span><div class="trend-mini-name">总胆红素 TBIL</div><div id="miniValTBIL" class="trend-mini-value">—</div></div><span id="miniStateTBIL" class="trend-mini-status">—</span></div>
     <div id="miniMetaTBIL" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniTBIL"></canvas></div>
+  </div>
+
+  <div class="trend-mini-card" data-mini="HGB">
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 9</span><div class="trend-mini-name">血红蛋白 HGB</div><div id="miniValHGB" class="trend-mini-value">—</div></div><span id="miniStateHGB" class="trend-mini-status">—</span></div>
+    <div id="miniMetaHGB" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniHGB"></canvas></div>
+  </div>
+  <div class="trend-mini-card" data-mini="INR">
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 10</span><div class="trend-mini-name">国际标准化比值 INR</div><div id="miniValINR" class="trend-mini-value">—</div></div><span id="miniStateINR" class="trend-mini-status">—</span></div>
+    <div id="miniMetaINR" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniINR"></canvas></div>
+  </div>
+  <div class="trend-mini-card" data-mini="HCO3">
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 11</span><div class="trend-mini-name">碳酸氢根 HCO3</div><div id="miniValHCO3" class="trend-mini-value">—</div></div><span id="miniStateHCO3" class="trend-mini-status">—</span></div>
+    <div id="miniMetaHCO3" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniHCO3"></canvas></div>
+  </div>
+  <div class="trend-mini-card" data-mini="ICA">
+    <div class="trend-mini-top"><div><span class="mini-priority secondary">优先 12</span><div class="trend-mini-name">离子钙 iCa</div><div id="miniValICA" class="trend-mini-value">—</div></div><span id="miniStateICA" class="trend-mini-status">—</span></div>
+    <div id="miniMetaICA" class="trend-mini-meta"></div><div class="trend-mini-canvas"><canvas id="miniICA"></canvas></div>
   </div>
 </div>
 <div class="panel trend-detail">
@@ -477,7 +494,7 @@ function draw(){
   drawDetailTrend();
 }
 function drawMiniTrends(){
-  ['PLT','CREA','LAC','PCT','WBC','CRP','NTPROBNP','TBIL'].forEach(drawMiniTrend);
+  ['PLT','CREA','LAC','PCT','WBC','CRP','NTPROBNP','TBIL','HGB','INR','HCO3','ICA'].forEach(drawMiniTrend);
   document.querySelectorAll('.trend-mini-card[data-mini]').forEach(function(card){
     card.onclick=function(){
       e('trendMetric').value=card.dataset.mini;
