@@ -492,8 +492,7 @@ ${input('平台 / 佣金 RMB','soPlatformFee',o.platformFee,'number',"window.set
 ${input('其他费用 RMB','soOtherCost',o.otherCost,'number',"window.setOrderNum('otherCost',this.value)")}
 </div></div></div>
 
-<div class="card" style="margin-top:12px"><div class="section-head"><div><h3>国际物流 / 客户出货</h3><p>仅记录货代发往客户的国际运输信息。</p></div></div><div class="card-pad">
-<div class="section-head" style="padding:0 0 8px"><div><h3 style="font-size:12px">国际物流 · 货代 → 客户</h3><p>记录正式出口/跨境运输，可添加多条国际运单。</p></div><button class="btn small primary" onclick="window.addInternationalLogistics()">＋ 添加国际物流</button></div>
+<div class="card" style="margin-top:12px"><div class="section-head"><div><h3>国际物流 / 客户出货</h3><p>货代 → 客户；支持添加多条国际运单。</p></div><button class="btn small primary" onclick="window.addInternationalLogistics()">＋ 添加国际物流</button></div><div class="card-pad">
 ${internationalLogisticsRows(o)}
 <div class="form-grid" style="margin-top:12px">
 ${input('Port of Loading','soPol',o.portLoading,'text',"window.setOrderField('portLoading',this.value)")}
