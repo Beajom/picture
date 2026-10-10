@@ -128,10 +128,21 @@ canvas{max-height:500px;min-height:360px}
 .trend-detail{padding:20px 22px 18px}
 .trend-detail-toolbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
 .trend-detail-toolbar .left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.trend-detail-toolbar select{margin:0;min-width:360px;max-width:min(720px,78vw)}
-.trend-search-wrap{position:relative;min-width:230px;max-width:320px;flex:0 1 300px}
-.trend-search-wrap input{margin:0;padding-left:36px;background:#fff}
-.trend-search-wrap:before{content:"⌕";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#667085;font-size:20px;line-height:1;pointer-events:none}
+.trend-detail-toolbar select{margin:0}
+.trend-search-wrap{position:relative;min-width:420px;max-width:min(760px,78vw);flex:1 1 620px}
+.trend-search-wrap input{margin:0;padding:11px 42px 11px 38px;background:#fff;font-weight:650;cursor:text}
+.trend-search-wrap:before{content:"⌕";position:absolute;left:12px;top:20px;transform:translateY(-50%);color:#667085;font-size:20px;line-height:1;pointer-events:none;z-index:2}
+.trend-search-clear{position:absolute;right:8px;top:8px;width:30px;height:30px;padding:0;border-radius:8px;background:transparent;color:#98a2b3;box-shadow:none;font-size:18px;display:none;z-index:3}
+.trend-search-clear:hover{background:#f2f4f7;color:#475467;transform:none}
+.trend-search-wrap.has-text .trend-search-clear{display:block}
+.trend-metric-native{display:none!important}
+.trend-search-menu{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;background:#fff;border:1px solid #d9e2ec;border-radius:12px;box-shadow:0 14px 34px rgba(31,51,73,.16);max-height:360px;overflow:auto;padding:6px}
+.trend-search-menu.hidden{display:none!important}
+.trend-search-item{width:100%;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;text-align:left;background:#fff;color:#344054;box-shadow:none;padding:10px 12px;border-radius:9px;font-weight:600}
+.trend-search-item:hover,.trend-search-item.active{background:#eef6ff;color:#1769e8;transform:none}
+.trend-search-item .main{display:block}.trend-search-item .code{font-size:12px;color:#667085;margin-left:5px}.trend-search-item .desc{display:block;font-size:11px;color:#98a2b3;font-weight:500;margin-top:3px;line-height:1.35}
+.trend-search-empty{padding:14px 12px;color:#667085;font-size:13px}
+.trend-search-footer{padding:7px 10px 5px;color:#98a2b3;font-size:11px;border-top:1px solid #eef2f6;margin-top:4px}
 .trend-search-count{font-size:12px;color:#667085;white-space:nowrap}
 .trend-metric-explain{font-size:12px;color:#8a97a8;line-height:1.55;margin:4px 0 8px}
 .trend-detail-title{font-size:18px;font-weight:800;color:#26374a}
@@ -162,7 +173,7 @@ canvas{max-height:500px;min-height:360px}
   .trend-mini-canvas{height:190px}
   .trend-detail-toolbar{align-items:stretch}
   .trend-detail-toolbar .left{width:100%}
-  .trend-search-wrap{width:100%;max-width:none;flex:1 1 100%}
+  .trend-search-wrap{width:100%;min-width:0;max-width:none;flex:1 1 100%}
   .trend-detail-toolbar select{width:100%;max-width:none!important}
   .panel{padding:16px}
   .item{align-items:flex-start;flex-direction:column}
@@ -288,7 +299,7 @@ canvas{max-height:500px;min-height:360px}
 </div>
 <div class="panel trend-detail">
   <div class="trend-detail-toolbar">
-    <div class="left"><span class="trend-detail-title">详细趋势</span><div class="trend-search-wrap"><input id="trendMetricSearch" type="search" autocomplete="off" placeholder="搜索指标，如：血小板 / PLT / 乳酸"></div><select id="trendMetric"></select><span id="trendSearchCount" class="trend-search-count"></span><span id="dir" class="pill"></span></div>
+    <div class="left"><span class="trend-detail-title">详细趋势</span><div id="trendSearchWrap" class="trend-search-wrap"><input id="trendMetricSearch" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" placeholder="输入指标名称或代码，如：红细胞压积 / HCT"><button id="trendSearchClear" class="trend-search-clear" type="button" aria-label="清空">×</button><div id="trendSearchMenu" class="trend-search-menu hidden" role="listbox"></div></div><select id="trendMetric" class="trend-metric-native" aria-hidden="true" tabindex="-1"></select><span id="trendSearchCount" class="trend-search-count"></span><span id="dir" class="pill"></span></div>
     <span class="trend-hint">虚线为医院报告参考范围边界</span>
   </div>
   <div id="trendMetricExplain" class="trend-metric-explain"></div>
@@ -401,41 +412,104 @@ document.querySelectorAll('nav button').forEach(function(b){b.onclick=function()
 function trendMetricSearchText(m){
   return [m.code,m.name,m.system_group,metricExplain(m)].filter(Boolean).join(' ').toLowerCase();
 }
-function renderTrendMetricOptions(query,keepValue){
+function trendMetricDisplay(m){
+  return m?m.name+' ('+m.code+')':'';
+}
+function ensureTrendMetricOptions(){
   const sel=e('trendMetric');
   if(!sel)return;
+  const current=sel.value||'PLT';
+  sel.innerHTML=defs.map(m=>'<option value="'+safe(m.code)+'">'+safe(metricOptionLabel(m))+'</option>').join('');
+  if(defs.some(m=>m.code===current))sel.value=current;
+  else if(defs.length)sel.value=defs[0].code;
+}
+function trendSearchMatches(query){
   const q=String(query||'').trim().toLowerCase();
-  const current=keepValue||sel.value||'';
-  const matches=defs.filter(m=>!q||trendMetricSearchText(m).includes(q));
-  sel.innerHTML=matches.map(m=>'<option value="'+safe(m.code)+'">'+safe(metricOptionLabel(m))+'</option>').join('');
-  if(matches.some(m=>m.code===current))sel.value=current;
-  else if(matches.length)sel.value=matches[0].code;
-  const count=e('trendSearchCount');
-  if(count)count.textContent=q?(matches.length?'找到 '+matches.length+' 项':'未找到'):'共 '+matches.length+' 项';
+  if(!q)return defs.slice(0,40);
+  return defs.filter(m=>trendMetricSearchText(m).includes(q));
+}
+let trendSearchActive=-1;
+function renderTrendSearchMenu(query){
+  const menu=e('trendSearchMenu'),input=e('trendMetricSearch'),wrap=e('trendSearchWrap'),count=e('trendSearchCount');
+  if(!menu||!input)return [];
+  const matches=trendSearchMatches(query);
+  const visible=matches.slice(0,20);
+  trendSearchActive=-1;
+  menu.innerHTML=visible.length?visible.map((m,i)=>
+    '<button type="button" class="trend-search-item" role="option" data-code="'+safe(m.code)+'" data-index="'+i+'">'+
+      '<span><span class="main">'+safe(m.name)+' <span class="code">'+safe(m.code)+'</span></span>'+
+      '<span class="desc">'+safe(m.system_group||'')+(m.system_group?' · ':'')+safe(metricExplain(m))+'</span></span>'+
+    '</button>'
+  ).join('')+
+  '<div class="trend-search-footer">'+(matches.length>20?'显示前20项，共'+matches.length+'项':'共'+matches.length+'项')+' · 输入名称、英文代码或系统分类均可搜索</div>'
+  :'<div class="trend-search-empty">没有找到“'+safe(query)+'”对应的指标</div>';
+  menu.classList.remove('hidden');
+  input.setAttribute('aria-expanded','true');
+  if(wrap)wrap.classList.toggle('has-text',!!input.value);
+  if(count)count.textContent=query?(matches.length?'找到 '+matches.length+' 项':'未找到'):'';
+  menu.querySelectorAll('.trend-search-item').forEach(btn=>{
+    btn.onmousedown=function(ev){ev.preventDefault();selectTrendMetric(btn.dataset.code,true)}
+  });
   return matches;
 }
+function hideTrendSearchMenu(){
+  const menu=e('trendSearchMenu'),input=e('trendMetricSearch');
+  if(menu)menu.classList.add('hidden');
+  if(input)input.setAttribute('aria-expanded','false');
+  trendSearchActive=-1;
+}
+function setTrendSearchActive(index){
+  const menu=e('trendSearchMenu');
+  if(!menu)return;
+  const items=[...menu.querySelectorAll('.trend-search-item')];
+  if(!items.length)return;
+  trendSearchActive=(index+items.length)%items.length;
+  items.forEach((b,i)=>b.classList.toggle('active',i===trendSearchActive));
+  items[trendSearchActive].scrollIntoView({block:'nearest'});
+}
+function selectTrendMetric(code,drawNow){
+  const m=defs.find(x=>x.code===code),sel=e('trendMetric'),input=e('trendMetricSearch'),wrap=e('trendSearchWrap'),count=e('trendSearchCount');
+  if(!m||!sel)return;
+  ensureTrendMetricOptions();
+  sel.value=code;
+  if(input)input.value=trendMetricDisplay(m);
+  if(wrap)wrap.classList.add('has-text');
+  if(count)count.textContent='';
+  hideTrendSearchMenu();
+  if(drawNow!==false)drawDetailTrend();
+}
 function setupTrendMetricSearch(){
-  const input=e('trendMetricSearch'),sel=e('trendMetric');
+  const input=e('trendMetricSearch'),sel=e('trendMetric'),clear=e('trendSearchClear'),wrap=e('trendSearchWrap');
   if(!input||!sel)return;
-  renderTrendMetricOptions(input.value,sel.value||'PLT');
+  ensureTrendMetricOptions();
+  const initial=defs.find(m=>m.code===(sel.value||'PLT'))||defs.find(m=>m.code==='PLT')||defs[0];
+  if(initial){sel.value=initial.code;input.value=trendMetricDisplay(initial);if(wrap)wrap.classList.add('has-text')}
+  input.onfocus=function(){
+    const selected=defs.find(m=>m.code===sel.value);
+    if(selected&&input.value===trendMetricDisplay(selected)){input.select();renderTrendSearchMenu('')}
+    else renderTrendSearchMenu(input.value);
+  };
   input.oninput=function(){
-    const matches=renderTrendMetricOptions(input.value,sel.value);
-    if(matches&&matches.length===1){
-      sel.value=matches[0].code;
-      drawDetailTrend();
-    }
+    if(wrap)wrap.classList.toggle('has-text',!!input.value);
+    renderTrendSearchMenu(input.value);
   };
   input.onkeydown=function(ev){
-    if(ev.key==='Enter'){
+    const menu=e('trendSearchMenu');
+    if(ev.key==='ArrowDown'){ev.preventDefault();if(menu&&menu.classList.contains('hidden'))renderTrendSearchMenu(input.value);setTrendSearchActive(trendSearchActive+1)}
+    else if(ev.key==='ArrowUp'){ev.preventDefault();setTrendSearchActive(trendSearchActive-1)}
+    else if(ev.key==='Enter'){
       ev.preventDefault();
-      const matches=renderTrendMetricOptions(input.value,sel.value);
-      if(matches&&matches.length){sel.value=matches[0].code;drawDetailTrend();sel.focus()}
-    }
+      const items=menu?[...menu.querySelectorAll('.trend-search-item')]:[];
+      const target=items[trendSearchActive>=0?trendSearchActive:0];
+      if(target)selectTrendMetric(target.dataset.code,true);
+    }else if(ev.key==='Escape'){hideTrendSearchMenu();input.blur()}
   };
-  input.onsearch=function(){
-    const matches=renderTrendMetricOptions(input.value,sel.value);
-    if(!input.value&&matches&&matches.length)drawDetailTrend();
+  if(clear)clear.onclick=function(){
+    input.value='';if(wrap)wrap.classList.remove('has-text');input.focus();renderTrendSearchMenu('');
   };
+  document.addEventListener('mousedown',function(ev){
+    if(wrap&&!wrap.contains(ev.target))hideTrendSearchMenu();
+  });
 }
 
 async function load(){
@@ -593,10 +667,7 @@ function drawMiniTrends(){
   ['PLT','CREA','LAC','PCT','WBC','CRP','NTPROBNP','TBIL','HGB','INR','HCO3','ICA'].forEach(drawMiniTrend);
   document.querySelectorAll('.trend-mini-card[data-mini]').forEach(function(card){
     card.onclick=function(){
-      if(e('trendMetricSearch'))e('trendMetricSearch').value='';
-      renderTrendMetricOptions('',card.dataset.mini);
-      e('trendMetric').value=card.dataset.mini;
-      drawDetailTrend();
+      selectTrendMetric(card.dataset.mini,true);
       document.querySelector('.trend-detail').scrollIntoView({behavior:'smooth',block:'start'});
     }
   });
