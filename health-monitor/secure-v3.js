@@ -168,31 +168,138 @@
     ];
     return groups.filter(g=>g.codes.some(latestAbnormal)).map(g=>g.name);
   }
+  function latestPointV5(code){
+    const s=series(code);
+    return s.length?s[s.length-1]:null;
+  }
+  function previousPointV5(code){
+    const s=series(code);
+    return s.length>1?s[s.length-2]:null;
+  }
+  function fmtNumV5(v){
+    const n=Number(v);
+    if(!Number.isFinite(n))return String(v??'');
+    if(Math.abs(n)>=1000)return n.toFixed(n%1?2:0);
+    if(Math.abs(n)>=100)return n.toFixed(n%1?1:0);
+    if(Math.abs(n)>=10)return n.toFixed(n%1?2:0).replace(/0+$/,'').replace(/\.$/,'');
+    return n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');
+  }
+  const KEY_SUMMARY_V5={
+    PLT:{label:'血小板',good:'回升',bad:'下降',why:'仍低时出血风险较高'},
+    WBC:{label:'白细胞',good:'下降',bad:'升高',why:'仍高说明感染/炎症仍重'},
+    PCT:{label:'降钙素原',good:'下降',bad:'升高',why:'仍高说明严重细菌感染尚未完全控制'},
+    CRP:{label:'C反应蛋白',good:'下降',bad:'升高',why:'仍高说明炎症仍活跃'},
+    LAC:{label:'乳酸',good:'下降',bad:'升高',why:'升高要关注循环灌注是否不足'},
+    CREA:{label:'肌酐',good:'下降',bad:'升高',why:'仍高说明肾功能尚未恢复'},
+    NTPROBNP:{label:'NT-proBNP',good:'下降',bad:'升高',why:'仍高提示心脏负荷较重'},
+    TBIL:{label:'总胆红素',good:'下降',bad:'升高',why:'仍高说明肝胆/胆道问题尚未完全恢复'},
+    HGB:{label:'血红蛋白',good:'回升',bad:'下降',why:'偏低提示贫血/携氧能力下降'},
+    INR:{label:'INR',good:'下降',bad:'升高',why:'升高提示凝血时间延长'},
+    HCO3:{label:'碳酸氢根',good:'回升',bad:'下降',why:'偏低提示代谢性酸负荷仍存在'},
+    ICA:{label:'离子钙',good:'回升',bad:'下降',why:'偏低会影响心肌和神经肌肉功能'}
+  };
+  const KEY_ORDER_V5=['PLT','WBC','PCT','CRP','LAC','CREA','NTPROBNP','TBIL','HGB','INR','HCO3','ICA'];
+
+  function keyTrendV5(code){
+    const cfg=KEY_SUMMARY_V5[code],m=defs.find(x=>x.code===code),z=latestPointV5(code),p=previousPointV5(code);
+    if(!cfg||!m||!z)return null;
+    const st=stateR(m,z),a=assess(m,p&&p.value,z.value);
+    return {code,cfg,m,z,p,state:st,trend:a[1],trendText:a[0]};
+  }
+
+  function shortChangeV5(x){
+    const unit=x.z.unit||x.m.unit||'';
+    if(!x.p)return x.cfg.label+' '+fmtNumV5(x.z.value)+(unit?' '+unit:'');
+    const arrow=Number(x.z.value)>Number(x.p.value)?'↑':Number(x.z.value)<Number(x.p.value)?'↓':'→';
+    return x.cfg.label+' '+fmtNumV5(x.p.value)+' '+arrow+' '+fmtNumV5(x.z.value)+(unit?' '+unit:'');
+  }
+
+  function readableListsV5(){
+    const items=KEY_ORDER_V5.map(keyTrendV5).filter(Boolean);
+    const improved=items.filter(x=>x.trend==='good');
+    const worse=items.filter(x=>x.trend==='bad');
+    const abnormal=items.filter(x=>x.state!=='参考范围内');
+
+    const improvedText=improved.map(x=>({
+      code:x.code,
+      text:shortChangeV5(x)+'，'+x.cfg.good+'，属于好转',
+      state:x.state
+    }));
+
+    const worseText=worse.map(x=>({
+      code:x.code,
+      text:shortChangeV5(x)+'，'+x.cfg.bad+'；'+x.cfg.why,
+      state:x.state
+    }));
+
+    const recoveringText=abnormal.filter(x=>x.trend==='good').map(x=>({
+      code:x.code,
+      text:x.cfg.label+'目前 '+fmtNumV5(x.z.value)+(x.z.unit||x.m.unit?' '+(x.z.unit||x.m.unit):'')+'，虽然方向在改善，但仍'+(x.state==='低于参考'?'偏低':'偏高'),
+      state:x.state
+    }));
+
+    const persistentText=abnormal.filter(x=>x.trend!=='good'&&x.trend!=='bad').map(x=>({
+      code:x.code,
+      text:x.cfg.label+'目前 '+fmtNumV5(x.z.value)+(x.z.unit||x.m.unit?' '+(x.z.unit||x.m.unit):'')+'，'+x.cfg.why,
+      state:x.state
+    }));
+
+    return {items,improved,worse,abnormal,improvedText,worseText,recoveringText:[...recoveringText,...persistentText]};
+  }
+
   function overallJudgmentV3(a){
-    if(!a)return {title:'本轮总体：暂无足够数据形成趋势判断。',detail:''};
-    const risks=currentRiskDomainsV3().slice(0,3),riskText=risks.length?risks.join('、'):'主要指标';
-    let title='';
-    if(a.improved.length>0&&a.worse.length===0) title='本轮总体：整体呈改善趋势，但'+riskText+'仍需继续关注。';
-    else if(a.improved.length>a.worse.length) title='本轮总体：部分指标改善，但'+riskText+'仍有异常。';
-    else if(a.worse.length>a.improved.length) title='本轮总体：仍有多项指标走向不利，'+riskText+'需要重点关注。';
-    else if(a.improved.length>0) title='本轮总体：有改善也有波动，'+riskText+'仍需持续观察。';
-    else title='本轮总体：主要异常仍持续，'+riskText+'仍需关注。';
-    const good=a.improved.slice(0,4).map(x=>x.code).join('、');
-    const watch=[...a.worse,...a.attention].slice(0,5).map(x=>x.code).join('、');
-    let detail=''; if(good)detail+='改善：'+good+'。'; if(watch)detail+=(detail?' ':'')+'重点观察：'+watch+'。';
+    const r=readableListsV5();
+    const goodNames=r.improved.slice(0,3).map(x=>x.cfg.label);
+    const badNames=r.worse.slice(0,3).map(x=>x.cfg.label);
+    let title='本轮总体：';
+    if(goodNames.length&&badNames.length){
+      title+=goodNames.join('、')+'在改善；但'+badNames.join('、')+'出现不利变化。';
+    }else if(goodNames.length){
+      title+=goodNames.join('、')+'在改善，但仍有部分指标没有恢复正常。';
+    }else if(badNames.length){
+      title+=badNames.join('、')+'出现不利变化，需要重点关注。';
+    }else{
+      title+='主要指标暂时没有明显新的变化。';
+    }
+
+    // Add a plain-language clinical-level summary based on the current key data.
+    const plt=keyTrendV5('PLT'),wbc=keyTrendV5('WBC'),pct=keyTrendV5('PCT'),crp=keyTrendV5('CRP'),lac=keyTrendV5('LAC'),ica=keyTrendV5('ICA'),inr=keyTrendV5('INR');
+    const infectionBetter=[wbc,pct,crp].filter(x=>x&&x.trend==='good').length>=2;
+    const pltBetter=plt&&plt.trend==='good';
+    const keyWorse=[lac,ica,inr].filter(x=>x&&x.trend==='bad').map(x=>x.cfg.label);
+
+    let detail='';
+    if(infectionBetter)detail+='感染相关指标整体下降，提示炎症/感染负荷在减轻。';
+    if(pltBetter)detail+=(detail?' ':'')+'血小板回升是积极变化，但当前仍明显偏低。';
+    if(keyWorse.length)detail+=(detail?' ':'')+keyWorse.join('、')+'需要继续观察。';
+    if(!detail)detail='请结合血压、尿量、意识状态、氧疗强度和医生查房判断整体病情。';
     return {title,detail};
+  }
+
+  function readableListHtmlV5(items,empty){
+    if(!items.length)return '<div class="summary-empty">'+empty+'</div>';
+    return '<ul>'+items.slice(0,6).map(x=>'<li>'+safe(x.text)+'</li>').join('')+'</ul>';
   }
 
   batchSummaryHtml=function(a,hero){
     if(!a)return'<div class="panel summary-empty">暂无可用于比较的检验数据。</div>';
-    let timeText=fmtChina(a.start.toISOString());if(a.end-a.start>5*60*1000)timeText+=' ～ '+fmtChina(a.end.toISOString());
-    let overall=overallJudgmentV3(a);
+    let timeText=fmtChina(a.start.toISOString());
+    if(a.end-a.start>5*60*1000)timeText+=' ～ '+fmtChina(a.end.toISOString());
+    const overall=overallJudgmentV3(a),r=readableListsV5();
+    const good=r.improvedText;
+    const bad=r.worseText;
+    const recovering=r.recoveringText.filter(x=>!bad.some(y=>y.code===x.code));
+
     return '<div class="'+(hero?'report-summary-hero':'')+'">'+
       (hero?'<div class="overall-judgment"><strong>'+safe(overall.title)+'</strong><div class="detail">'+safe(overall.detail)+'</div></div>':'')+
-      (hero?'<div class="report-summary-head"><div><div class="report-summary-title">本轮检验趋势总结</div><div class="report-summary-sub">采样时间：'+safe(timeText)+' · 本轮更新 '+a.count+' 个指标</div></div><div class="report-summary-score"><span class="sum-chip good">改善 '+a.improved.length+'</span><span class="sum-chip bad">不利 '+a.worse.length+'</span><span class="sum-chip warn">仍异常 '+a.attention.length+'</span></div></div>':'')+
-      '<div class="report-summary-grid"><div class="report-summary-col"><h4 class="good">✓ 好转/改善</h4>'+summaryList(a.improved,'本轮暂无明确改善趋势')+'</div><div class="report-summary-col"><h4 class="bad">! 需要注意</h4>'+summaryList(a.worse,'本轮暂无明确恶化趋势')+'</div><div class="report-summary-col"><h4 class="warn">○ 仍未恢复正常</h4>'+summaryList(a.attention,'本轮未发现额外持续异常')+'</div></div>'+
-      (hero?'<div class="report-summary-note">“本轮总判断”只基于检验结果变化和医院参考范围，用于帮助家属快速看趋势；不等同于临床诊断，也不能替代主管医生结合生命体征、尿量、影像和治疗反应作出的判断。</div>':'')+
-      '</div>';
+      (hero?'<div class="report-summary-head"><div><div class="report-summary-title">这次检查和上一次相比</div><div class="report-summary-sub">采样时间：'+safe(timeText)+' · 重点看 12 项关键指标</div></div><div class="report-summary-score"><span class="sum-chip good">好转 '+good.length+'</span><span class="sum-chip bad">需注意 '+bad.length+'</span><span class="sum-chip warn">仍异常 '+recovering.length+'</span></div></div>':'')+
+      '<div class="report-summary-grid">'+
+        '<div class="report-summary-col"><h4 class="good">✓ 明显好转</h4>'+readableListHtmlV5(good,'这次没有看到明确好转的重点指标')+'</div>'+
+        '<div class="report-summary-col"><h4 class="bad">! 需要重点注意</h4>'+readableListHtmlV5(bad,'这次没有看到重点指标明显变差')+'</div>'+
+        '<div class="report-summary-col"><h4 class="warn">○ 虽好转但还没正常</h4>'+readableListHtmlV5(recovering,'重点指标目前没有额外持续异常')+'</div>'+
+      '</div>'+
+      (hero?'<div class="report-summary-note">这里优先展示血小板、感染指标、乳酸、肾功能、心脏负荷、肝胆、凝血、酸碱和电解质等重点变化；普通小幅波动不会放在最前面。仅用于家属看趋势，不能替代主管医生判断。</div>':'')+
+    '</div>';
   };
 
   function dedupeRowsV3(rows){
