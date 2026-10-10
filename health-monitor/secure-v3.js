@@ -733,6 +733,137 @@
     finally{e('saveAutoReview').disabled=false}
   };
 
+
+  // V5：增强恩施州中心医院生化报告识别，修复异常箭头被粘成数字的问题。
+  const detectReportKindBaseV5=detectReportKindV4;
+  detectReportKindV4=function(text){
+    const t=String(text||'').toUpperCase();
+    if(t.indexOf('ALT')>=0 && t.indexOf('AST')>=0 && t.indexOf('TBIL')>=0 && t.indexOf('CREA')>=0)return 'chem';
+    return detectReportKindBaseV5(text);
+  };
+
+  ROW_CODE_MAP_V4.chem={
+    'ALT':'ALT','AST':'AST','AS/AL':'ASAL','ASAL':'ASAL',
+    'TBIL':'TBIL','DBIL':'DBIL','IBIL':'IBIL',
+    'TP':'TP','ALB':'ALB','GLO':'GLO','A/G':'AGRATIO','AGR':'AGRATIO',
+    'UREA':'UREA','CREA':'CREA','UN/CR':'UNCR','UNCR':'UNCR','CK':'CK'
+  };
+
+  const CHEM_DECIMALS_V5={ALT:0,AST:0,ASAL:2,TBIL:1,DBIL:1,IBIL:1,TP:2,ALB:2,GLO:2,AGRATIO:2,UREA:2,CREA:1,UNCR:2,CK:0};
+
+  function previousMetricValueV5(code){
+    const s=series(code);
+    return s.length?Number(s[s.length-1].value):null;
+  }
+
+  function normalizeChemValueV5(code,raw,low,high){
+    let s=String(raw||'').replace(/[^\d.-]/g,'');
+    if(!s)return null;
+    const decimals=CHEM_DECIMALS_V5[code];
+    if(decimals!=null){
+      const p=s.indexOf('.');
+      if(p>=0){
+        const frac=s.slice(p+1);
+        if(frac.length>decimals){
+          s=decimals===0?s.slice(0,p):s.slice(0,p+1+decimals);
+        }
+      }
+    }
+    let n=Number(s);
+    if(!Number.isFinite(n))return null;
+    if(decimals===0 && !s.includes('.') && s.length>=3){
+      const cut=Number(s.slice(0,-1));
+      const prev=previousMetricValueV5(code);
+      if(Number.isFinite(cut)){
+        if(Number.isFinite(prev)){
+          const dRaw=Math.abs(n-prev),dCut=Math.abs(cut-prev);
+          if(dCut<dRaw*.35)n=cut;
+        }else if(Number.isFinite(high) && n>high*3 && cut<high*6){
+          n=cut;
+        }else if(code==='CK' && n>=100 && n<=999 && cut<100){
+          n=cut;
+        }
+      }
+    }
+    return n;
+  }
+
+  function escapeRxV5(s){return String(s).replace(/[.*+?^$()|[\]\\{}]/g,'\\  ensureFamilyGate();ensureHeader();ensureAccessSettings();patchWriteHandlers();')}
+
+  function parseRowsV5(text,kind,reportId,fileName,fallbackTime){
+    const sampleTime=extractSampleTimeV4(text,fallbackTime);
+    const out=[],seen=new Set();
+    const lines=String(text||'').split(/\r?\n/).map(line=>String(line||'').replace(/[★☆]/g,' ').replace(/[，,]/g,'.').replace(/\s+/g,' ').trim()).filter(Boolean);
+    const map=ROW_CODE_MAP_V4[kind]||{};
+
+    for(const original of lines){
+      let line=original.replace(/^\s*\d+\s+/,'').trim();
+      const keys=Object.keys(map).sort((a,b)=>b.length-a.length);
+      let matched=null,code=null;
+      for(const k of keys){
+        const re=new RegExp('^'+escapeRxV5(k)+'(?:\\s|$)','i');
+        if(re.test(line)){matched=k;code=map[k];break}
+      }
+      if(!matched||!code||seen.has(code))continue;
+      const m=defs.find(x=>x.code===code);
+      if(!m)continue;
+
+      let rest=line.replace(new RegExp('^'+escapeRxV5(matched),'i'),'').trim();
+      const rawNums=rest.match(/-?\d+(?:\.\d+)?/g)||[];
+      if(!rawNums.length)continue;
+
+      let low=m.ref_low,high=m.ref_high;
+      if(rawNums.length>=3){
+        const l=Number(rawNums[1]),h=Number(rawNums[2]);
+        if(Number.isFinite(l))low=l;
+        if(Number.isFinite(h))high=h;
+      }
+
+      let value=kind==='chem'?normalizeChemValueV5(code,rawNums[0],Number(low),Number(high)):Number(rawNums[0]);
+      if(!Number.isFinite(value))continue;
+
+      out.push({m,value,reportId,fileName,ref_low:low,ref_high:high,unit:m.unit||'',sampleTime,kind});
+      seen.add(code);
+    }
+    return out;
+  }
+
+  const parseRowsBaseV5=parseRowsV4;
+  parseRowsV4=function(text,kind,reportId,fileName,fallbackTime){
+    if(kind==='chem'){
+      const z=parseRowsV5(text,kind,reportId,fileName,fallbackTime);
+      if(z.length)return z;
+    }
+    const base=parseRowsBaseV5(text,kind,reportId,fileName,fallbackTime);
+    if(base&&base.length)return base;
+    return parseRowsV5(text,'chem',reportId,fileName,fallbackTime);
+  };
+
+  const ocrOneFileBaseV5=ocrOneFileV4;
+  ocrOneFileV4=async function(file,index,total){
+    const first=await ocrOneFileBaseV5(file,index,total);
+    const kind=detectReportKindV4(first.text);
+    if(kind!=='chem')return {text:first.text,kind};
+    try{
+      const eng=await Tesseract.recognize(file,'eng',{logger:m=>{
+        if(m.progress!=null)e('autoRecognizeMsg').textContent='正在增强识别 '+(index+1)+' / '+total+'：'+file.name+' · '+Math.round(m.progress*100)+'%';
+      }});
+      return {text:(eng.data.text||'')+'\n'+first.text,kind:'chem'};
+    }catch(err){
+      console.warn('eng OCR fallback failed',err);
+      return {text:first.text,kind:'chem'};
+    }
+  };
+
+  e('parseOcr').onclick=function(){
+    const tx=e('ocrText').value||'';
+    const kind=detectReportKindV4(tx);
+    const parsed=parseRowsV4(tx,kind,null,e('ocrFile').files[0]?.name||'OCR图片',e('reportTime').value||inputTime());
+    ocr=(parsed||[]).map(x=>({m:x.m,value:x.value,ref_low:x.ref_low,ref_high:x.ref_high}));
+    e('ocrMsg').textContent=ocr.length?'已提取 '+ocr.length+' 个指标，请人工核对后保存。':'没有可靠识别到已知指标，请使用上方“上传报告”重新识别或手动录入。';
+    renderOcr();
+  };
+
   ensureFamilyGate();ensureHeader();ensureAccessSettings();patchWriteHandlers();
   reportList=reportListV3;
 
