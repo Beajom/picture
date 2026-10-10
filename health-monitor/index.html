@@ -128,7 +128,12 @@ canvas{max-height:500px;min-height:360px}
 .trend-detail{padding:20px 22px 18px}
 .trend-detail-toolbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
 .trend-detail-toolbar .left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.trend-detail-toolbar select{margin:0;min-width:360px;max-width:min(720px,78vw)}.trend-metric-explain{font-size:12px;color:#8a97a8;line-height:1.55;margin:4px 0 8px}
+.trend-detail-toolbar select{margin:0;min-width:360px;max-width:min(720px,78vw)}
+.trend-search-wrap{position:relative;min-width:230px;max-width:320px;flex:0 1 300px}
+.trend-search-wrap input{margin:0;padding-left:36px;background:#fff}
+.trend-search-wrap:before{content:"⌕";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#667085;font-size:20px;line-height:1;pointer-events:none}
+.trend-search-count{font-size:12px;color:#667085;white-space:nowrap}
+.trend-metric-explain{font-size:12px;color:#8a97a8;line-height:1.55;margin:4px 0 8px}
 .trend-detail-title{font-size:18px;font-weight:800;color:#26374a}
 #trend #chart{min-height:400px;max-height:480px}
 .trend-hint{font-size:12px;color:#667085;margin-top:4px}
@@ -157,6 +162,7 @@ canvas{max-height:500px;min-height:360px}
   .trend-mini-canvas{height:190px}
   .trend-detail-toolbar{align-items:stretch}
   .trend-detail-toolbar .left{width:100%}
+  .trend-search-wrap{width:100%;max-width:none;flex:1 1 100%}
   .trend-detail-toolbar select{width:100%;max-width:none!important}
   .panel{padding:16px}
   .item{align-items:flex-start;flex-direction:column}
@@ -282,7 +288,7 @@ canvas{max-height:500px;min-height:360px}
 </div>
 <div class="panel trend-detail">
   <div class="trend-detail-toolbar">
-    <div class="left"><span class="trend-detail-title">详细趋势</span><select id="trendMetric"></select><span id="dir" class="pill"></span></div>
+    <div class="left"><span class="trend-detail-title">详细趋势</span><div class="trend-search-wrap"><input id="trendMetricSearch" type="search" autocomplete="off" placeholder="搜索指标，如：血小板 / PLT / 乳酸"></div><select id="trendMetric"></select><span id="trendSearchCount" class="trend-search-count"></span><span id="dir" class="pill"></span></div>
     <span class="trend-hint">虚线为医院报告参考范围边界</span>
   </div>
   <div id="trendMetricExplain" class="trend-metric-explain"></div>
@@ -391,6 +397,47 @@ e('logout').onclick=async()=>{await db.auth.signOut();document.querySelector('[d
 
 document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));e(b.dataset.tab).classList.add('active');if(b.dataset.tab==='trend')draw();if(b.dataset.tab==='history')reportList()}});
 
+
+function trendMetricSearchText(m){
+  return [m.code,m.name,m.system_group,metricExplain(m)].filter(Boolean).join(' ').toLowerCase();
+}
+function renderTrendMetricOptions(query,keepValue){
+  const sel=e('trendMetric');
+  if(!sel)return;
+  const q=String(query||'').trim().toLowerCase();
+  const current=keepValue||sel.value||'';
+  const matches=defs.filter(m=>!q||trendMetricSearchText(m).includes(q));
+  sel.innerHTML=matches.map(m=>'<option value="'+safe(m.code)+'">'+safe(metricOptionLabel(m))+'</option>').join('');
+  if(matches.some(m=>m.code===current))sel.value=current;
+  else if(matches.length)sel.value=matches[0].code;
+  const count=e('trendSearchCount');
+  if(count)count.textContent=q?(matches.length?'找到 '+matches.length+' 项':'未找到'):'共 '+matches.length+' 项';
+  return matches;
+}
+function setupTrendMetricSearch(){
+  const input=e('trendMetricSearch'),sel=e('trendMetric');
+  if(!input||!sel)return;
+  renderTrendMetricOptions(input.value,sel.value||'PLT');
+  input.oninput=function(){
+    const matches=renderTrendMetricOptions(input.value,sel.value);
+    if(matches&&matches.length===1){
+      sel.value=matches[0].code;
+      drawDetailTrend();
+    }
+  };
+  input.onkeydown=function(ev){
+    if(ev.key==='Enter'){
+      ev.preventDefault();
+      const matches=renderTrendMetricOptions(input.value,sel.value);
+      if(matches&&matches.length){sel.value=matches[0].code;drawDetailTrend();sel.focus()}
+    }
+  };
+  input.onsearch=function(){
+    const matches=renderTrendMetricOptions(input.value,sel.value);
+    if(!input.value&&matches&&matches.length)drawDetailTrend();
+  };
+}
+
 async function load(){
  let tasks=[db.from('metric_definitions').select('*').order('system_group').order('name'),db.from('results').select('*').order('collected_at')];
  if(sess)tasks.push(db.from('reports').select('*').order('collected_at',{ascending:false}));
@@ -398,7 +445,7 @@ async function load(){
  if(a[0].error||a[1].error)return;
  defs=a[0].data||[];vals=a[1].data||[];reps=sess&&a[2]&&!a[2].error?(a[2].data||[]):[];
  let op=defs.map(m=>'<option value="'+safe(m.code)+'">'+safe(metricOptionLabel(m))+'</option>').join('');
- e('metric').innerHTML=op;e('trendMetric').innerHTML=op;e('metric').onchange=sync;e('trendMetric').onchange=drawDetailTrend;sync();home();if(sess)reportList();draw()
+ e('metric').innerHTML=op;e('trendMetric').innerHTML=op;e('metric').onchange=sync;e('trendMetric').onchange=drawDetailTrend;setupTrendMetricSearch();sync();home();if(sess)reportList();draw()
 }
 function sync(){let m=defs.find(x=>x.code===e('metric').value);if(!m)return;e('unit').value=m.unit||'';e('low').value=m.ref_low==null?'':m.ref_low;e('high').value=m.ref_high==null?'':m.ref_high}
 function series(code){return vals.filter(x=>x.metric_code===code).sort((a,b)=>new Date(a.collected_at)-new Date(b.collected_at))}
@@ -546,6 +593,8 @@ function drawMiniTrends(){
   ['PLT','CREA','LAC','PCT','WBC','CRP','NTPROBNP','TBIL','HGB','INR','HCO3','ICA'].forEach(drawMiniTrend);
   document.querySelectorAll('.trend-mini-card[data-mini]').forEach(function(card){
     card.onclick=function(){
+      if(e('trendMetricSearch'))e('trendMetricSearch').value='';
+      renderTrendMetricOptions('',card.dataset.mini);
       e('trendMetric').value=card.dataset.mini;
       drawDetailTrend();
       document.querySelector('.trend-detail').scrollIntoView({behavior:'smooth',block:'start'});
