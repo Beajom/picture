@@ -100,7 +100,9 @@ jobs:
             curl -fsS -H "Cache-Control: no-cache" "$BASE/?ts=$(date +%s)-$i" > /tmp/index.html
             if grep -q "load().then(render)" /tmp/index.html &&
                grep -q "商品 / ASIN" /tmp/index.html &&
-               grep -q "库存中心" /tmp/index.html; then
+               grep -q "库存中心" /tmp/index.html &&
+               grep -q "隐藏变体" /tmp/index.html &&
+               grep -q "setColorVariantHiddenFromButton" /tmp/index.html; then
               ok=1
               break
             fi
