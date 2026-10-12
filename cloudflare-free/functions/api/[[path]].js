@@ -71,6 +71,13 @@ async function ensureOutboundMetaTables(env){
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
 }
+async function ensureProductVisibilityTable(env){
+  await exec(env.DB,`CREATE TABLE IF NOT EXISTS product_visibility(
+    product_id TEXT PRIMARY KEY,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+
 async function ensureInventoryReportTables(env){
   await env.DB.batch([
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS inventory_report_settings(
@@ -196,8 +203,10 @@ export async function onRequest(ctx){
   try{
     if(p==='/bootstrap'&&method==='GET'){
       await ensureOutboundMetaTables(env);
+      await ensureProductVisibilityTable(env);
       const [products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger]=await Promise.all([
         all(env.DB,`SELECT p.*,
+          COALESCE((SELECT pv.hidden FROM product_visibility pv WHERE pv.product_id=p.id),0) AS hidden,
           COALESCE(NULLIF(p.image_url,''),(SELECT ir.public_url FROM image_refs ir WHERE ((ir.product_id=p.id) OR (ir.parent_asin=p.parent_asin AND ir.color=p.color)) AND ir.public_url IS NOT NULL ORDER BY ir.created_at DESC LIMIT 1)) AS resolved_image_url,
           COALESCE(NULLIF(p.parent_image_url,''),(SELECT ir.public_url FROM image_refs ir WHERE ir.parent_asin=p.parent_asin AND ir.kind='parent' AND ir.public_url IS NOT NULL ORDER BY ir.created_at DESC LIMIT 1)) AS resolved_parent_image_url
           FROM products p ORDER BY parent_asin,color,
@@ -393,6 +402,20 @@ export async function onRequest(ctx){
       const remaining=Math.max(0,urls.length-moved);
       return json({ok:true,moved,failed,remaining,total_external:urls.length});
     }
+    if(p==='/inventory/visibility'&&method==='POST'){
+      await ensureProductVisibilityTable(env);
+      const d=await request.json();
+      const ids=[...new Set((Array.isArray(d.product_ids)?d.product_ids:[d.product_id]).map(x=>String(x||'').trim()).filter(Boolean))];
+      if(!ids.length)throw new Error('缺少商品');
+      const hidden=d.hidden?1:0;
+      const valid=await all(env.DB,'SELECT id FROM products WHERE id IN ('+ids.map(()=>'?').join(',')+')',...ids);
+      if(valid.length!==ids.length)throw new Error('部分商品不存在，请刷新后重试');
+      await env.DB.batch(ids.map(pid=>env.DB.prepare(`INSERT INTO product_visibility(product_id,hidden,updated_at)
+        VALUES(?,?,CURRENT_TIMESTAMP)
+        ON CONFLICT(product_id) DO UPDATE SET hidden=excluded.hidden,updated_at=CURRENT_TIMESTAMP`).bind(pid,hidden)));
+      return json({ok:true,product_ids:ids,hidden});
+    }
+
     if(p==='/inventory/safety-stock'&&method==='POST'){
       const d=await request.json(), productId=String(d.product_id||''), safety=Math.max(0,Math.trunc(num(d.safety_stock)));
       if(!productId)throw new Error('缺少产品');
