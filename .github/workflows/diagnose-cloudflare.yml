@@ -33,8 +33,12 @@ jobs:
             return {ok:r.ok,status:r.status,j};
           }
           if(!account){
-            const v=await get("https://api.cloudflare.com/client/v4/user/tokens/verify");
-            account=v.j?.result?.account?.id||v.j?.result?.account_id||"";
+            const accts=await get("https://api.cloudflare.com/client/v4/accounts?per_page=50");
+            const arr=Array.isArray(accts.j?.result)?accts.j.result:[];
+            for(const a of arr){
+              const probe=await get(`https://api.cloudflare.com/client/v4/accounts/${a.id}/workers/scripts/${worker}/settings`);
+              if(probe.ok&&probe.j?.success){account=a.id;break}
+            }
           }
           if(!account) throw new Error("Could not resolve account id");
           console.log("ACCOUNT",account);
