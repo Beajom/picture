@@ -110,4 +110,20 @@ jobs:
             sleep 5
           done
           test "$ok" = "1"
+          curl -fsS -H "Cache-Control: no-cache" "$BASE/api/bootstrap?ts=$(date +%s)" > /tmp/bootstrap.json
+          python - <<'PY'
+          import json
+          d=json.load(open("/tmp/bootstrap.json",encoding="utf-8"))
+          products=d.get("products",[])
+          inv={x.get("product_id"):int(x.get("available_qty") or 0) for x in d.get("inventory",[])}
+          rows=[p for p in products if str(p.get("parent_asin") or "")=="B08BWZRMYJ"]
+          total=sum(inv.get(p.get("id"),0) for p in rows)
+          print("LIVE_3037_TOTAL", total)
+          print("LIVE_3037_ROWS", json.dumps([
+              {"color":p.get("color"),"size":p.get("size"),"sku":p.get("sku"),"qty":inv.get(p.get("id"),0)}
+              for p in rows
+          ],ensure_ascii=False))
+          if total != 2480:
+              raise SystemExit(f"3037 live total is {total}, expected 2480")
+          PY
           echo "Deployment verified."
