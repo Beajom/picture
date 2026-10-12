@@ -51,6 +51,33 @@ jobs:
             name:b.name,type:b.type,id:b.id||b.database_id||b.namespace_id||null
           }))));
 
+          const kvBinding=bindings.find(b=>b.name==="IMAGES"&&b.type==="kv_namespace");
+          const kvId=kvBinding?.namespace_id||kvBinding?.id;
+          if(kvId){
+            const backupUrl=`https://api.cloudflare.com/client/v4/accounts/${account}/storage/kv/namespaces/${kvId}/values/system-backups%2Flatest.json`;
+            const br=await fetch(backupUrl,{headers:H});
+            console.log("BACKUP_STATUS",br.status);
+            if(br.ok){
+              const backup=await br.json();
+              console.log("BACKUP_CREATED_AT",backup.created_at||null);
+              const products=backup.tables?.products||[];
+              const inventory=backup.tables?.inventory||[];
+              const inv=new Map(inventory.map(x=>[x.product_id,Number(x.available_qty||0)]));
+              const models=new Map();
+              for(const p of products){
+                const m=String(p.internal_code||"").split("-")[0]||"";
+                if(!models.has(m))models.set(m,{total:0,rows:[]});
+                const qty=inv.get(p.id)||0;
+                models.get(m).total+=qty;
+                models.get(m).rows.push({color:p.color,size:p.size,sku:p.sku,qty});
+              }
+              for(const m of ["3037","3036","1697"]){
+                const x=models.get(m);
+                console.log("BACKUP_MODEL",JSON.stringify({model:m,total:x?.total||0,rows:x?.rows||[]}));
+              }
+            }
+          }
+
           const deployments=await get(base+"/deployments");
           console.log("DEPLOYMENTS_STATUS",deployments.status);
           const deps=deployments.j?.result?.deployments||deployments.j?.result||[];
