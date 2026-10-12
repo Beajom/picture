@@ -79,9 +79,7 @@ jobs:
 
       - name: Ensure 3036 2XL variants
         working-directory: cloudflare-free
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: node scripts/ensure-3036-2xl.mjs
+        run: node scripts/ensure-3036-2xl-via-api.mjs
 
       - name: Deploy Worker and static assets
         working-directory: cloudflare-free
