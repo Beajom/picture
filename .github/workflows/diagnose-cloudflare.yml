@@ -78,6 +78,31 @@ jobs:
             }
           }
 
+          const live=await fetch("https://amazon-supply-workbench-free.chongyu0502.workers.dev/api/bootstrap?ts="+Date.now(),{headers:{"Cache-Control":"no-cache"}});
+          console.log("LIVE_BOOTSTRAP_STATUS",live.status);
+          if(live.ok){
+            const d=await live.json();
+            const products=d.products||[], inventory=d.inventory||[], ledger=d.ledger||[];
+            const inv=new Map(inventory.map(x=>[x.product_id,Number(x.available_qty||0)]));
+            const latest=new Map();
+            for(const l of ledger){
+              if(!latest.has(l.product_id))latest.set(l.product_id,l);
+            }
+            for(const m of ["3037","3036"]){
+              const rows=products.filter(p=>String(p.internal_code||"").split("-")[0]===m).map(p=>{
+                const l=latest.get(p.id);
+                return {
+                  color:p.color,size:p.size,sku:p.sku,current:inv.get(p.id)||0,
+                  ledger_balance:l?Number(l.balance_after||0):null,
+                  ledger_type:l?.business_type||null,
+                  ledger_time:l?.created_at||null,
+                  ledger_change:l?Number(l.qty_change||0):null
+                };
+              });
+              console.log("LIVE_LEDGER_RECOVERY",JSON.stringify({model:m,rows}));
+            }
+          }
+
           const deployments=await get(base+"/deployments");
           console.log("DEPLOYMENTS_STATUS",deployments.status);
           const deps=deployments.j?.result?.deployments||deployments.j?.result||[];
