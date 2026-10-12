@@ -1,6 +1,10 @@
 name: Sync Confirmed Inventory 2026-10-12
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/sync-inventory-20261012.yml"
   workflow_dispatch: {}
 
 permissions:
