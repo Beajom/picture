@@ -81,10 +81,6 @@ jobs:
           WORKER_NAME: amazon-supply-workbench-free
         run: node scripts/make-deploy-config.mjs
 
-      - name: Restore confirmed 3037 inventory once
-        working-directory: cloudflare-free
-        run: node scripts/restore-3037-inventory-once.mjs
-
       - name: Deploy Worker and static assets
         working-directory: cloudflare-free
         shell: bash
