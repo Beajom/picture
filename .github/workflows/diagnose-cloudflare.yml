@@ -103,6 +103,23 @@ jobs:
             }
           }
 
+          const d1Binding=bindings.find(b=>b.name==="DB"&&["d1","d1_database"].includes(b.type));
+          const d1Id=d1Binding?.id||d1Binding?.database_id;
+          if(d1Id){
+            const qurl=`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${d1Id}/query`;
+            async function d1(sql,params=[]){
+              const r=await fetch(qurl,{method:"POST",headers:H,body:JSON.stringify({sql,params})});
+              const j=await r.json().catch(()=>({}));
+              console.log("D1_STATUS",r.status,JSON.stringify(j.errors||[]));
+              return j?.result?.[0]?.results||[];
+            }
+            const hist=await d1(`SELECT p.internal_code,p.color,p.size,p.sku,l.business_type,l.qty_change,l.balance_after,l.created_at
+              FROM inventory_ledger l JOIN products p ON p.id=l.product_id
+              WHERE p.parent_asin='B0927KVX9K'
+              ORDER BY l.created_at DESC LIMIT 1000`);
+            console.log("D1_3036_LEDGER",JSON.stringify(hist));
+          }
+
           const deployments=await get(base+"/deployments");
           console.log("DEPLOYMENTS_STATUS",deployments.status);
           const deps=deployments.j?.result?.deployments||deployments.j?.result||[];
