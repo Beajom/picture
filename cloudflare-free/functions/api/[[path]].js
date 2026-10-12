@@ -274,6 +274,18 @@ export async function onRequest(ctx){
       }});
     }
 
+    if(p==='/debug-recovery-3036'&&method==='GET'){
+      const rows=await all(env.DB,`SELECT p.id product_id,p.internal_code,p.color,p.size,p.sku,
+        COALESCE(i.available_qty,0) current_qty,
+        l.business_type,l.reference_no,l.qty_change,l.balance_after,l.notes,l.created_at
+        FROM products p
+        LEFT JOIN inventory i ON i.product_id=p.id
+        LEFT JOIN inventory_ledger l ON l.product_id=p.id
+        WHERE p.parent_asin='B0927KVX9K'
+        ORDER BY p.color,p.size,l.created_at ASC`);
+      return json({rows});
+    }
+
     if(p==='/backup-status'&&method==='GET'){
       const latest=await env.IMAGES.getWithMetadata('system-backups/latest.json','text');
       return json({ok:!!latest.value,metadata:latest.metadata||null,size:latest.value?latest.value.length:0});
