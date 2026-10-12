@@ -77,6 +77,7 @@ async function ensureProductVisibilityTable(env){
     hidden INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
+}
 
 async function ensureInventoryReportTables(env){
   await env.DB.batch([
