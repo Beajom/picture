@@ -90,10 +90,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID="$(cat .cloudflare-account-id)" \
             npx wrangler deploy --config wrangler.deploy.toml --no-x-provision
 
-      - name: Restore confirmed 3037 inventory on live worker
-        working-directory: cloudflare-free
-        run: node scripts/restore-3037-inventory-once.mjs
-
       - name: Verify deployed production page
         shell: bash
         run: |
