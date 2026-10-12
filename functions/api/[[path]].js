@@ -2,10 +2,186 @@ function json(data,status=200){return new Response(JSON.stringify(data),{status,
 function err(e,status=400){return json({error:e instanceof Error?e.message:String(e)},status)}
 const id=()=>crypto.randomUUID();
 const modelOf=(code='')=>String(code).split('-')[0]||'';
+async function enrichProductionOrders(env,orders){
+  return await Promise.all((orders||[]).map(async o=>{
+    const items=await all(env.DB,`SELECT i.quantity,p.internal_code
+      FROM production_order_items i
+      JOIN products p ON p.id=i.product_id
+      WHERE i.production_order_id=?`,o.id);
+    const grouped={};
+    for(const it of items){
+      const mdl=modelOf(it.internal_code||'');
+      if(!mdl)continue;
+      grouped[mdl]=(grouped[mdl]||0)+num(it.quantity);
+    }
+    const material_requirements=[];
+    for(const [mdl,qty] of Object.entries(grouped)){
+      const mats=await all(env.DB,'SELECT id,material_code,name,unit,finished_units_per_material FROM materials WHERE applicable_model=? ORDER BY material_code',mdl);
+      for(const mat of mats){
+        const pairsPerMaterial=Math.max(num(mat.finished_units_per_material)||2,0.0001);
+        const need=Math.ceil(qty/pairsPerMaterial);
+        material_requirements.push({
+          material_id:mat.id,
+          material_code:mat.material_code||'',
+          name:mat.name||mat.material_code||'耗材',
+          unit:mat.unit||'个',
+          model:mdl,
+          finished_pairs:qty,
+          consumed:need,
+          pairs_per_material:pairsPerMaterial
+        });
+      }
+    }
+    return {...o,material_requirements};
+  }));
+}
 async function all(db,sql,...args){return (await db.prepare(sql).bind(...args).all()).results||[]}
 async function one(db,sql,...args){return await db.prepare(sql).bind(...args).first()}
 async function exec(db,sql,...args){return await db.prepare(sql).bind(...args).run()}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
+
+function csvCell(v){
+  const s=String(v??'');
+  return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s
+}
+function inventoryStatus(qty,safety){
+  qty=num(qty);safety=Math.max(0,num(safety));
+  if(qty<=0)return '缺货';
+  if(safety<=0)return '未设置预警';
+  if(qty<=Math.max(1,Math.floor(safety*.5)))return '严重预警';
+  if(qty<=safety)return '库存预警';
+  if(qty<=Math.ceil(safety*1.25))return '接近预警';
+  return '正常'
+}
+function suggestPurchase(qty,safety){
+  qty=num(qty);safety=Math.max(0,num(safety));
+  return safety>0?Math.max(0,Math.ceil(safety*2-qty)):0
+}
+async function ensureOutboundMetaTables(env){
+  await exec(env.DB,`CREATE TABLE IF NOT EXISTS outbound_shipping_meta(
+    outbound_order_id TEXT PRIMARY KEY,
+    transport_method TEXT NOT NULL DEFAULT '',
+    fba_shipment_id TEXT NOT NULL DEFAULT '',
+    tracking_no TEXT NOT NULL DEFAULT '',
+    warehouse_code TEXT NOT NULL DEFAULT '',
+    ship_from_address TEXT NOT NULL DEFAULT '',
+    ship_to_address TEXT NOT NULL DEFAULT '',
+    raw_fba_text TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+}
+async function ensureProductVisibilityTable(env){
+  await exec(env.DB,`CREATE TABLE IF NOT EXISTS product_visibility(
+    product_id TEXT PRIMARY KEY,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+}
+
+async function ensureInventoryReportTables(env){
+  await env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS inventory_report_settings(
+      id TEXT PRIMARY KEY,
+      enabled INTEGER NOT NULL DEFAULT 0,
+      frequency TEXT NOT NULL DEFAULT 'daily',
+      time_local TEXT NOT NULL DEFAULT '09:00',
+      weekday INTEGER NOT NULL DEFAULT 1,
+      day_of_month INTEGER NOT NULL DEFAULT 1,
+      timezone TEXT NOT NULL DEFAULT 'Asia/Shanghai',
+      last_run_period TEXT,
+      last_run_at TEXT,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS inventory_reports(
+      id TEXT PRIMARY KEY,
+      generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      reason TEXT NOT NULL DEFAULT 'manual',
+      period_key TEXT,
+      total_qty INTEGER NOT NULL DEFAULT 0,
+      total_value REAL NOT NULL DEFAULT 0,
+      sku_count INTEGER NOT NULL DEFAULT 0,
+      low_stock_count INTEGER NOT NULL DEFAULT 0,
+      file_key TEXT NOT NULL,
+      file_name TEXT NOT NULL
+    )`)
+  ]);
+  await exec(env.DB,`INSERT OR IGNORE INTO inventory_report_settings(id,enabled,frequency,time_local,weekday,day_of_month,timezone)
+    VALUES('default',0,'daily','09:00',1,1,'Asia/Shanghai')`);
+}
+function zonedParts(ts,timezone){
+  const d=new Date(ts);
+  const parts=new Intl.DateTimeFormat('en-CA',{
+    timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',hour12:false,weekday:'short'
+  }).formatToParts(d).reduce((o,p)=>(o[p.type]=p.value,o),{});
+  const wd={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[parts.weekday]??0;
+  return {year:parts.year,month:parts.month,day:parts.day,hour:Number(parts.hour)%24,minute:Number(parts.minute),weekday:wd,
+    dateKey:parts.year+'-'+parts.month+'-'+parts.day}
+}
+function schedulePeriodKey(settings,z){
+  if(settings.frequency==='monthly')return 'monthly:'+z.year+'-'+z.month;
+  if(settings.frequency==='weekly')return 'weekly:'+z.dateKey;
+  return 'daily:'+z.dateKey
+}
+function reportDue(settings,ts){
+  if(!num(settings.enabled))return {due:false};
+  let z;
+  try{z=zonedParts(ts,settings.timezone||'Asia/Shanghai')}catch(e){z=zonedParts(ts,'Asia/Shanghai')}
+  const hm=String(settings.time_local||'09:00').split(':').map(Number);
+  const targetMinutes=Math.max(0,Math.min(1439,(hm[0]||0)*60+(hm[1]||0)));
+  const nowMinutes=z.hour*60+z.minute;
+  if(nowMinutes<targetMinutes)return {due:false,z};
+  if(settings.frequency==='weekly'&&z.weekday!==Number(settings.weekday))return {due:false,z};
+  if(settings.frequency==='monthly'&&Number(z.day)!==Number(settings.day_of_month))return {due:false,z};
+  const period=schedulePeriodKey(settings,z);
+  return {due:String(settings.last_run_period||'')!==period,period,z}
+}
+async function inventoryReportRows(env){
+  return await all(env.DB,`SELECT
+    p.parent_asin,p.child_asin,p.sku,p.internal_code,p.product_name,p.color,p.size,
+    COALESCE(i.available_qty,0) available_qty,
+    COALESCE(i.safety_stock,p.safety_stock,0) safety_stock,
+    COALESCE(p.untaxed_price,0) unit_cost
+    FROM products p
+    LEFT JOIN inventory i ON i.product_id=p.id
+    ORDER BY p.internal_code,p.color,
+    CASE p.size WHEN 'S' THEN 1 WHEN 'M' THEN 2 WHEN 'L' THEN 3 WHEN 'XL' THEN 4 WHEN '2XL' THEN 5 WHEN '3XL' THEN 6 WHEN '4XL' THEN 7 ELSE 99 END`)
+}
+async function generateInventoryReport(env,reason='manual',periodKey=''){
+  await ensureInventoryReportTables(env);
+  const rows=await inventoryReportRows(env);
+  let totalQty=0,totalValue=0,low=0;
+  const lines=[['型号','父ASIN','子ASIN','SKU','商品名称','颜色','尺码','当前库存(双)','安全库存(双)','单价/库存成本(CNY)','库存货值(CNY)','库存状态','建议采购数量(双)']];
+  for(const r of rows){
+    const qty=num(r.available_qty),safety=num(r.safety_stock),unit=num(r.unit_cost),value=qty*unit,status=inventoryStatus(qty,safety),suggest=suggestPurchase(qty,safety);
+    totalQty+=qty;totalValue+=value;
+    if(qty<=safety)low++;
+    lines.push([
+      modelOf(r.internal_code||''),r.parent_asin||'',r.child_asin||'',r.sku||'',r.product_name||'',r.color||'',r.size||'',
+      Math.trunc(qty),Math.trunc(safety),unit.toFixed(2),value.toFixed(2),status,suggest
+    ])
+  }
+  const csv='\ufeff'+lines.map(row=>row.map(csvCell).join(',')).join('\r\n');
+  const now=new Date();
+  const stamp=now.toISOString().replace(/[:.]/g,'-');
+  const rid=id(),fileName='inventory-report-'+stamp.slice(0,19)+'.csv',fileKey='inventory-reports/'+now.toISOString().slice(0,7)+'/'+rid+'.csv';
+  await env.IMAGES.put(fileKey,csv,{metadata:{contentType:'text/csv;charset=utf-8',fileName}});
+  await exec(env.DB,`INSERT INTO inventory_reports(id,generated_at,reason,period_key,total_qty,total_value,sku_count,low_stock_count,file_key,file_name)
+    VALUES(?,?,?,?,?,?,?,?,?,?)`,rid,now.toISOString(),reason,periodKey,Math.trunc(totalQty),totalValue,rows.length,low,fileKey,fileName);
+  return {id:rid,generated_at:now.toISOString(),reason,period_key:periodKey,total_qty:Math.trunc(totalQty),total_value:totalValue,sku_count:rows.length,low_stock_count:low,file_name:fileName}
+}
+export async function runScheduledInventoryReports(env,scheduledTime=Date.now()){
+  await ensureInventoryReportTables(env);
+  const settings=await one(env.DB,"SELECT * FROM inventory_report_settings WHERE id='default'");
+  const due=reportDue(settings||{},scheduledTime);
+  if(!due.due)return {ok:true,generated:false};
+  const report=await generateInventoryReport(env,'scheduled',due.period);
+  await exec(env.DB,`UPDATE inventory_report_settings SET last_run_period=?,last_run_at=?,updated_at=CURRENT_TIMESTAMP WHERE id='default'`,
+    due.period,report.generated_at);
+  return {ok:true,generated:true,report}
+}
+
 async function createDailyBackup(env){
   try{
     const day=new Date().toISOString().slice(0,10);
@@ -27,8 +203,11 @@ export async function onRequest(ctx){
   const {request,env}=ctx, url=new URL(request.url), p=url.pathname.replace(/^\/api/,'')||'/', method=request.method;
   try{
     if(p==='/bootstrap'&&method==='GET'){
+      await ensureOutboundMetaTables(env);
+      await ensureProductVisibilityTable(env);
       const [products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger]=await Promise.all([
         all(env.DB,`SELECT p.*,
+          COALESCE((SELECT pv.hidden FROM product_visibility pv WHERE pv.product_id=p.id),0) AS hidden,
           COALESCE(NULLIF(p.image_url,''),(SELECT ir.public_url FROM image_refs ir WHERE ((ir.product_id=p.id) OR (ir.parent_asin=p.parent_asin AND ir.color=p.color)) AND ir.public_url IS NOT NULL ORDER BY ir.created_at DESC LIMIT 1)) AS resolved_image_url,
           COALESCE(NULLIF(p.parent_image_url,''),(SELECT ir.public_url FROM image_refs ir WHERE ir.parent_asin=p.parent_asin AND ir.kind='parent' AND ir.public_url IS NOT NULL ORDER BY ir.created_at DESC LIMIT 1)) AS resolved_parent_image_url
           FROM products p ORDER BY parent_asin,color,
@@ -45,13 +224,55 @@ export async function onRequest(ctx){
           COALESCE((SELECT SUM(quantity) FROM production_order_items x WHERE x.production_order_id=pr.id),0) total_qty
           FROM production_orders pr LEFT JOIN purchase_orders po ON po.id=pr.purchase_order_id
           LEFT JOIN suppliers s ON s.id=pr.supplier_id ORDER BY pr.created_at DESC`),
-        all(env.DB,'SELECT o.*,200 AS units_per_carton,CAST((o.total_qty+199)/200 AS INTEGER) AS box_count FROM outbound_orders o ORDER BY created_at DESC'),
+        all(env.DB,`SELECT o.*,200 AS units_per_carton,CAST((o.total_qty+199)/200 AS INTEGER) AS box_count,\n          COALESCE(m.transport_method,'') transport_method,COALESCE(m.fba_shipment_id,'') fba_shipment_id,\n          COALESCE(m.tracking_no,'') tracking_no,COALESCE(m.warehouse_code,'') warehouse_code,\n          COALESCE(m.ship_from_address,'') ship_from_address,COALESCE(m.ship_to_address,'') ship_to_address\n          FROM outbound_orders o LEFT JOIN outbound_shipping_meta m ON m.outbound_order_id=o.id ORDER BY o.created_at DESC`),
         all(env.DB,`SELECT l.*,p.sku FROM inventory_ledger l LEFT JOIN products p ON p.id=l.product_id ORDER BY l.created_at DESC LIMIT 500`)
       ]);
       ctx.waitUntil?.(createDailyBackup(env));
-      return json({products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger});
+      const production_orders_enriched=await enrichProductionOrders(env,production_orders);
+      return json({products,inventory,suppliers,materials,purchase_orders,production_orders:production_orders_enriched,outbound_orders,ledger});
     }
 
+    if(p==='/inventory-report/settings'&&method==='GET'){
+      await ensureInventoryReportTables(env);
+      const settings=await one(env.DB,"SELECT * FROM inventory_report_settings WHERE id='default'");
+      return json(settings||{});
+    }
+    if(p==='/inventory-report/settings'&&method==='POST'){
+      await ensureInventoryReportTables(env);
+      const d=await request.json();
+      const frequency=['daily','weekly','monthly'].includes(String(d.frequency))?String(d.frequency):'daily';
+      const timeLocal=/^([01]\d|2[0-3]):[0-5]\d$/.test(String(d.time_local||''))?String(d.time_local):'09:00';
+      let timezone=String(d.timezone||'Asia/Shanghai');
+      try{new Intl.DateTimeFormat('en-US',{timeZone:timezone}).format(new Date())}catch(e){timezone='Asia/Shanghai'}
+      const weekday=Math.max(0,Math.min(6,Math.trunc(num(d.weekday))));
+      const dayOfMonth=Math.max(1,Math.min(28,Math.trunc(num(d.day_of_month)||1)));
+      await exec(env.DB,`UPDATE inventory_report_settings
+        SET enabled=?,frequency=?,time_local=?,weekday=?,day_of_month=?,timezone=?,updated_at=CURRENT_TIMESTAMP
+        WHERE id='default'`,d.enabled?1:0,frequency,timeLocal,weekday,dayOfMonth,timezone);
+      return json(await one(env.DB,"SELECT * FROM inventory_report_settings WHERE id='default'"));
+    }
+    if(p==='/inventory-report/generate'&&method==='POST'){
+      const report=await generateInventoryReport(env,'manual','manual:'+new Date().toISOString());
+      return json(report);
+    }
+    if(p==='/inventory-report/list'&&method==='GET'){
+      await ensureInventoryReportTables(env);
+      const rows=await all(env.DB,'SELECT * FROM inventory_reports ORDER BY generated_at DESC LIMIT 100');
+      return json({reports:rows});
+    }
+    let reportMatch=p.match(/^\/inventory-report\/download\/([^/]+)$/);
+    if(reportMatch&&method==='GET'){
+      await ensureInventoryReportTables(env);
+      const row=await one(env.DB,'SELECT * FROM inventory_reports WHERE id=?',reportMatch[1]);
+      if(!row)return new Response('Not found',{status:404});
+      const obj=await env.IMAGES.getWithMetadata(row.file_key,'arrayBuffer');
+      if(!obj.value)return new Response('Report file not found',{status:404});
+      return new Response(obj.value,{headers:{
+        'content-type':'text/csv;charset=utf-8',
+        'content-disposition':'attachment; filename="'+String(row.file_name||'inventory-report.csv').replace(/[^a-zA-Z0-9._-]/g,'_')+'"',
+        'cache-control':'no-store'
+      }});
+    }
     if(p==='/backup-status'&&method==='GET'){
       const latest=await env.IMAGES.getWithMetadata('system-backups/latest.json','text');
       return json({ok:!!latest.value,metadata:latest.metadata||null,size:latest.value?latest.value.length:0});
@@ -69,8 +290,11 @@ export async function onRequest(ctx){
     let m=p.match(/^\/products\/([^/]+)$/);
     if(m&&method==='PUT'){
       const d=await request.json();
-      await exec(env.DB,`UPDATE products SET parent_asin=?,child_asin=?,sku=?,internal_code=?,product_name=?,color=?,size=?,untaxed_price=?,tax_rate=?,taxed_price=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-        d.parent_asin,d.child_asin||'',d.sku,d.internal_code,d.product_name,d.color,d.size,num(d.untaxed_price),num(d.tax_rate),num(d.taxed_price),m[1]);
+      await env.DB.batch([
+        env.DB.prepare(`UPDATE products SET parent_asin=?,child_asin=?,sku=?,internal_code=?,product_name=?,color=?,size=?,untaxed_price=?,tax_rate=?,taxed_price=?,safety_stock=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+          .bind(d.parent_asin,d.child_asin||'',d.sku,d.internal_code,d.product_name,d.color,d.size,num(d.untaxed_price),num(d.tax_rate),num(d.taxed_price),num(d.safety_stock),m[1]),
+        env.DB.prepare('UPDATE inventory SET safety_stock=?,updated_at=CURRENT_TIMESTAMP WHERE product_id=?').bind(num(d.safety_stock),m[1])
+      ]);
       return json({id:m[1]});
     }
     if(m&&method==='DELETE'){
@@ -178,6 +402,32 @@ export async function onRequest(ctx){
       const remaining=Math.max(0,urls.length-moved);
       return json({ok:true,moved,failed,remaining,total_external:urls.length});
     }
+    if(p==='/inventory/visibility'&&method==='POST'){
+      await ensureProductVisibilityTable(env);
+      const d=await request.json();
+      const ids=[...new Set((Array.isArray(d.product_ids)?d.product_ids:[d.product_id]).map(x=>String(x||'').trim()).filter(Boolean))];
+      if(!ids.length)throw new Error('缺少商品');
+      const hidden=d.hidden?1:0;
+      const valid=await all(env.DB,'SELECT id FROM products WHERE id IN ('+ids.map(()=>'?').join(',')+')',...ids);
+      if(valid.length!==ids.length)throw new Error('部分商品不存在，请刷新后重试');
+      await env.DB.batch(ids.map(pid=>env.DB.prepare(`INSERT INTO product_visibility(product_id,hidden,updated_at)
+        VALUES(?,?,CURRENT_TIMESTAMP)
+        ON CONFLICT(product_id) DO UPDATE SET hidden=excluded.hidden,updated_at=CURRENT_TIMESTAMP`).bind(pid,hidden)));
+      return json({ok:true,product_ids:ids,hidden});
+    }
+
+    if(p==='/inventory/safety-stock'&&method==='POST'){
+      const d=await request.json(), productId=String(d.product_id||''), safety=Math.max(0,Math.trunc(num(d.safety_stock)));
+      if(!productId)throw new Error('缺少产品');
+      const prod=await one(env.DB,'SELECT id FROM products WHERE id=?',productId);
+      if(!prod)throw new Error('商品不存在');
+      await env.DB.batch([
+        env.DB.prepare('UPDATE inventory SET safety_stock=?,updated_at=CURRENT_TIMESTAMP WHERE product_id=?').bind(safety,productId),
+        env.DB.prepare('UPDATE products SET safety_stock=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(safety,productId)
+      ]);
+      return json({ok:true,product_id:productId,safety_stock:safety});
+    }
+
     if(p==='/inventory/adjust'&&method==='POST'){
       const d=await request.json(), q=Math.trunc(num(d.qty_change));
       if(!q)throw new Error('调整数量不能为0');
@@ -245,7 +495,7 @@ export async function onRequest(ctx){
     m=p.match(/^\/production-orders\/([^/]+)\/advance$/);
     if(m&&method==='POST'){
       const o=await one(env.DB,'SELECT * FROM production_orders WHERE id=?',m[1]);if(!o)return err('生产单不存在',404);
-      const seq=['待生产','生产中','待质检','生产完成','已入库'], i=seq.indexOf(o.status);
+      const seq=['待生产','生产中','待质检','待包装','生产完成','已入库'], i=seq.indexOf(o.status);
       if(i<0||i===seq.length-1)return json({status:o.status});
       const next=seq[i+1];
       const material_consumptions=[];
@@ -296,12 +546,15 @@ export async function onRequest(ctx){
     }
 
     if(p==='/outbound-orders'&&method==='POST'){
+      await ensureOutboundMetaTables(env);
       const d=await request.json(), q=Math.trunc(num(d.quantity)), inv=await one(env.DB,'SELECT available_qty FROM inventory WHERE product_id=?',d.product_id);
       if(!inv)throw new Error('库存不存在');if(q<=0)throw new Error('出库数量必须大于0');if(num(inv.available_qty)<q)throw new Error('库存不足');
       const after=num(inv.available_qty)-q, oid=id(), unitsPerCarton=200, box=Math.ceil(q/unitsPerCarton);
       await env.DB.batch([
         env.DB.prepare('INSERT INTO outbound_orders(id,outbound_no,outbound_date,destination,carrier,total_qty,units_per_carton,box_count,status) VALUES(?,?,?,?,?,?,?,?,?)')
           .bind(oid,d.outbound_no,d.outbound_date,d.destination||'',d.carrier||'',q,unitsPerCarton,box,'已出库'),
+        env.DB.prepare('INSERT INTO outbound_shipping_meta(outbound_order_id,transport_method,fba_shipment_id,tracking_no,warehouse_code,ship_from_address,ship_to_address,raw_fba_text) VALUES(?,?,?,?,?,?,?,?)')
+          .bind(oid,d.transport_method||'',d.fba_shipment_id||'',d.tracking_no||'',d.warehouse_code||'',d.ship_from_address||'',d.ship_to_address||'',d.raw_fba_text||''),
         env.DB.prepare('INSERT INTO outbound_order_items(id,outbound_order_id,product_id,quantity) VALUES(?,?,?,?)').bind(id(),oid,d.product_id,q),
         env.DB.prepare('UPDATE inventory SET available_qty=?,updated_at=CURRENT_TIMESTAMP WHERE product_id=?').bind(after,d.product_id),
         env.DB.prepare('INSERT INTO inventory_ledger(id,business_type,reference_no,product_id,qty_change,balance_after,notes) VALUES(?,?,?,?,?,?,?)')
@@ -311,7 +564,13 @@ export async function onRequest(ctx){
     }
     m=p.match(/^\/outbound-orders\/([^/]+)$/);
     if(m&&method==='GET'){
-      const o=await one(env.DB,'SELECT * FROM outbound_orders WHERE id=?',m[1]);if(!o)return err('出库单不存在',404);o.units_per_carton=200;o.box_count=Math.ceil(num(o.total_qty)/200);
+      await ensureOutboundMetaTables(env);
+      const o=await one(env.DB,`SELECT o.*,COALESCE(x.transport_method,'') transport_method,COALESCE(x.fba_shipment_id,'') fba_shipment_id,
+        COALESCE(x.tracking_no,'') tracking_no,COALESCE(x.warehouse_code,'') warehouse_code,
+        COALESCE(x.ship_from_address,'') ship_from_address,COALESCE(x.ship_to_address,'') ship_to_address,
+        COALESCE(x.raw_fba_text,'') raw_fba_text
+        FROM outbound_orders o LEFT JOIN outbound_shipping_meta x ON x.outbound_order_id=o.id WHERE o.id=?`,m[1]);
+      if(!o)return err('出库单不存在',404);o.units_per_carton=200;o.box_count=Math.ceil(num(o.total_qty)/200);
       o.items=await all(env.DB,`SELECT i.*,p.sku,p.internal_code,p.product_name,p.color,p.size,p.image_url,p.parent_asin,p.child_asin
         FROM outbound_order_items i JOIN products p ON p.id=i.product_id WHERE i.outbound_order_id=? ORDER BY p.internal_code`,m[1]);
       return json(o);
@@ -325,6 +584,7 @@ export async function onRequest(ctx){
         batch.push(env.DB.prepare('INSERT INTO inventory_ledger(id,business_type,reference_no,product_id,qty_change,balance_after,notes) VALUES(?,?,?,?,?,?,?)')
           .bind(id(),'撤销出库',o.outbound_no,it.product_id,num(it.quantity),after,'删除错误出库单，自动恢复库存'));
       }
+      batch.push(env.DB.prepare('DELETE FROM outbound_shipping_meta WHERE outbound_order_id=?').bind(o.id));
       batch.push(env.DB.prepare('DELETE FROM outbound_orders WHERE id=?').bind(o.id));
       await env.DB.batch(batch);
       return json({ok:true});

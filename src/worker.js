@@ -1,4 +1,4 @@
-import { onRequest as apiHandler } from "../functions/api/[[path]].js";
+import { onRequest as apiHandler, runScheduledInventoryReports } from "../functions/api/[[path]].js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -11,6 +11,24 @@ export default {
     if (url.pathname.startsWith("/api")) {
       return apiHandler({ request, env, ctx, waitUntil: ctx.waitUntil.bind(ctx), passThroughOnException() {} });
     }
-    return env.ASSETS.fetch(request);
+
+    const response = await env.ASSETS.fetch(request);
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("text/html")) {
+      const headers = new Headers(response.headers);
+      headers.set("cache-control", "no-store, no-cache, must-revalidate, max-age=0");
+      headers.set("pragma", "no-cache");
+      headers.set("expires", "0");
+      headers.set("x-asw-ui-build", "20261012-hide-variants-v1");
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers
+      });
+    }
+    return response;
+  },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runScheduledInventoryReports(env, event.scheduledTime));
   }
 };
