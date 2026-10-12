@@ -98,16 +98,9 @@ jobs:
           ok=0
           for i in 1 2 3 4 5 6; do
             curl -fsS -H "Cache-Control: no-cache" "$BASE/?ts=$(date +%s)-$i" > /tmp/index.html
-            if grep -q "生产完成剩余时间" /tmp/index.html &&
-               grep -q "预计耗材消耗" /tmp/index.html &&
-               grep -q "FBA货件编号" /tmp/index.html &&
-               grep -q "搜索出库单号" /tmp/index.html &&
-               grep -q "<th>产品图片</th>" /tmp/index.html &&
-               grep -q "function previewPurchaseContract(id)" /tmp/index.html &&
-               grep -q "出口产品购货合同" /tmp/index.html &&
-               grep -q "contractPaper" /tmp/index.html &&
-               grep -q "保存修改" /tmp/index.html &&
-               grep -q "load().then(render)" /tmp/index.html; then
+            if grep -q "load().then(render)" /tmp/index.html &&
+               grep -q "商品 / ASIN" /tmp/index.html &&
+               grep -q "库存中心" /tmp/index.html; then
               ok=1
               break
             fi
