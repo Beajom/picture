@@ -135,6 +135,21 @@ jobs:
             }
           }
 
+          const scripts=await get(`https://api.cloudflare.com/client/v4/accounts/${account}/workers/scripts`);
+          console.log("SCRIPTS_STATUS",scripts.status);
+          const scriptList=Array.isArray(scripts.j?.result)?scripts.j.result:[];
+          const targetScript=scriptList.find(x=>x.id===worker);
+          console.log("TARGET_SCRIPT",JSON.stringify(targetScript||null));
+          const workerTag=targetScript?.tag;
+          if(workerTag){
+            const tr=await get(`https://api.cloudflare.com/client/v4/accounts/${account}/builds/workers/${workerTag}/triggers`);
+            console.log("BUILDS_TRIGGERS_STATUS",tr.status);
+            console.log("BUILDS_TRIGGERS",JSON.stringify(tr.j?.result||tr.j));
+            const latest=await get(`https://api.cloudflare.com/client/v4/accounts/${account}/builds/builds/latest?external_script_id=${encodeURIComponent(workerTag)}`);
+            console.log("LATEST_BUILDS_STATUS",latest.status);
+            console.log("LATEST_BUILDS",JSON.stringify(latest.j?.result||latest.j));
+          }
+
           const deployments=await get(base+"/deployments");
           console.log("DEPLOYMENTS_STATUS",deployments.status);
           const deps=deployments.j?.result?.deployments||deployments.j?.result||[];
