@@ -120,6 +120,21 @@ jobs:
             console.log("D1_3036_LEDGER",JSON.stringify(hist));
           }
 
+          const reportsResp=await fetch("https://amazon-supply-workbench-free.chongyu0502.workers.dev/api/inventory-report/list?ts="+Date.now(),{headers:{"Cache-Control":"no-cache"}});
+          console.log("REPORT_LIST_STATUS",reportsResp.status);
+          if(reportsResp.ok){
+            const rr=await reportsResp.json();
+            const reports=rr.reports||[];
+            console.log("REPORT_LIST",JSON.stringify(reports.slice(0,20).map(x=>({id:x.id,generated_at:x.generated_at,reason:x.reason,total_qty:x.total_qty,file_name:x.file_name}))));
+            for(const rep of reports.slice(0,10)){
+              const dr=await fetch("https://amazon-supply-workbench-free.chongyu0502.workers.dev/api/inventory-report/download/"+encodeURIComponent(rep.id));
+              if(!dr.ok) continue;
+              const txt=await dr.text();
+              const lines=txt.split(/\r?\n/).filter(line=>line.includes("3036")||line.includes("3037"));
+              console.log("REPORT_ROWS",JSON.stringify({id:rep.id,generated_at:rep.generated_at,rows:lines}));
+            }
+          }
+
           const deployments=await get(base+"/deployments");
           console.log("DEPLOYMENTS_STATUS",deployments.status);
           const deps=deployments.j?.result?.deployments||deployments.j?.result||[];
