@@ -1,0 +1,50 @@
+name: Verify Current Inventory Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/verify-inventory-current.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify exact current inventory
+        shell: bash
+        run: |
+          node <<'NODE'
+          const r=await fetch("https://amazon-supply-workbench-free.chongyu0502.workers.dev/api/bootstrap?ts="+Date.now(),{headers:{"cache-control":"no-cache"}});
+          if(!r.ok) throw new Error("bootstrap "+r.status);
+          const d=await r.json();
+          const inv=new Map((d.inventory||[]).map(x=>[x.product_id,Number(x.available_qty||0)]));
+          const expected={
+            "B0927KVX9K":{model:"3036",rows:{"肤色":{S:2400,M:0,L:5200,XL:3000,"2XL":400},"黑色":{S:400,M:400,L:400,XL:500,"2XL":400}},total:13100},
+            "B08BWZRMYJ":{model:"3037",rows:{"肤色":{S:0,M:200,L:0,XL:0},"黑色":{S:640,M:200,L:840,XL:600}},total:2480},
+            "B0D45D9TWK":{model:"1697",rows:{"肤色":{S:1300,M:4600,L:4200,XL:3100,"2XL":1000},"黑色":{S:1800,M:2000,L:1400,XL:800,"2XL":1000}},total:21200}
+          };
+          let grand=0;
+          for(const [parent,cfg] of Object.entries(expected)){
+            const ps=(d.products||[]).filter(p=>String(p.parent_asin||"")===parent);
+            const out=[];
+            for(const [color,sizes] of Object.entries(cfg.rows)){
+              for(const [size,want] of Object.entries(sizes)){
+                const p=ps.find(x=>String(x.color||"")===color&&String(x.size||"").toUpperCase()===size);
+                if(!p) throw new Error("missing "+cfg.model+" "+color+" "+size);
+                const qty=inv.get(p.id)||0;
+                out.push({color,size,qty});
+                if(qty!==want) throw new Error(cfg.model+" "+color+" "+size+"="+qty+", expected "+want);
+              }
+            }
+            const total=out.reduce((s,x)=>s+x.qty,0);
+            if(total!==cfg.total) throw new Error(cfg.model+" total "+total+", expected "+cfg.total);
+            grand+=total;
+            console.log(cfg.model,JSON.stringify({total,rows:out}));
+          }
+          if(grand!==36780) throw new Error("grand "+grand+", expected 36780");
+          console.log("GRAND_TOTAL",grand);
+          NODE
