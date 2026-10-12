@@ -19,7 +19,7 @@ export default {
       headers.set("cache-control", "no-store, no-cache, must-revalidate, max-age=0");
       headers.set("pragma", "no-cache");
       headers.set("expires", "0");
-      headers.set("x-asw-ui-build", "20260922-low-stock-images-v2");
+      headers.set("x-asw-ui-build", "20261012-hide-variants-v1");
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
