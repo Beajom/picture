@@ -85,6 +85,77 @@
 @media(max-width:620px){.expense-grid{grid-template-columns:1fr}.order-expense-card .section-head,.order-shipping-card .section-head{align-items:flex-start;flex-direction:column}.expense-total{width:100%;text-align:left}.shipping-head-actions{width:100%;justify-content:space-between}}
 @media(max-width:1200px){.order-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.order-layout{grid-template-columns:1fr}}@media(max-width:760px){.order-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.receivable-box,.cost-grid{grid-template-columns:1fr}}
 
+
+/* Sales order editor visual refinement */
+.order-layout .card{border-color:#e3e8ef;border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.025)}
+.order-layout>div>.card+ .card{margin-top:10px!important}
+.order-layout .section-head{padding:11px 13px;min-height:42px}
+.order-layout .section-head h3{font-size:14px;font-weight:800;letter-spacing:-.01em;color:#101828}
+.order-layout .section-head p{font-size:10px;line-height:1.4;color:#7a8698;margin-top:2px}
+.order-layout .card-pad{padding:11px 13px}
+.order-layout .field{gap:4px;margin-bottom:9px}
+.order-layout .field label{font-size:10px;font-weight:700;color:#475467}
+.order-layout .field input,.order-layout .field select,.order-layout .field textarea{border-color:#d9e1eb;border-radius:8px;font-size:10.5px;color:#172033}
+.order-layout .field input,.order-layout .field select{height:35px;padding:0 9px}
+.order-layout .field textarea{padding:8px 9px}
+.order-layout .btn{border-radius:8px;font-size:10px;font-weight:700}
+.order-layout .btn.primary{box-shadow:0 1px 2px rgba(21,94,239,.18)}
+.order-side{gap:10px}
+.order-side .card{margin-bottom:10px}
+.order-result-card .cost-grid{gap:7px}
+.order-result-card .cost-chip{border-radius:9px;padding:9px 10px}
+.order-result-card .cost-chip span{font-size:8.5px}
+.order-result-card .cost-chip b{font-size:13px}
+.payment-summary-grid{gap:7px}
+.payment-summary-grid>div{border-radius:9px;padding:7px 9px;background:#fbfcfe}
+.payment-summary-grid span{font-size:8.5px}
+.payment-summary-grid b{font-size:12px}
+.payment-breakdown{margin-top:6px;font-size:8.5px}
+.expense-grid{gap:7px 9px}
+.expense-total{min-width:142px;padding:6px 10px}
+.expense-total span{font-size:8px}.expense-total b{font-size:15px}
+
+/* International shipping */
+.order-shipping-card .card-pad{padding-top:10px}
+.shipping-head-actions{gap:7px}
+.shipment-count{height:26px;padding:0 8px;font-size:9px}
+.shipping-mode-line{display:grid;grid-template-columns:minmax(300px,.8fr) minmax(0,1.2fr);gap:9px;align-items:end;margin-bottom:9px}
+.shipping-mode-line .field{margin-bottom:0}
+.shipping-mode-line .field label{font-size:10px}
+.shipping-mode-line select{height:35px!important;font-size:10.5px!important;border-color:#d6dee9!important;border-radius:8px!important}
+.shipping-mode-hint{min-height:35px;padding:0 10px;border:1px solid #eef1f5;border-radius:8px;background:#f8fafc;color:#667085;font-size:9px;line-height:1.35}
+.shipping-grid{gap:7px 9px;margin-bottom:8px}
+.shipment-list-title{margin:9px 1px 6px}
+.shipment-list-title b{font-size:10.5px}.shipment-list-title span{font-size:8.5px}
+.international-logistics-wrap{overflow:auto;border:1px solid #e1e7ef;border-radius:10px;background:#fff}
+.international-logistics-table{width:100%;min-width:1040px;table-layout:fixed;border-collapse:separate;border-spacing:0}
+.international-logistics-table th{height:31px;padding:0 8px;background:#f7f9fc;color:#5f6b7a;font-size:9.5px;font-weight:700;text-align:left;border-bottom:1px solid #e3e8ef;white-space:nowrap}
+.international-logistics-table td{padding:7px 8px;background:#fff;border-bottom:1px solid #edf0f4;vertical-align:middle}
+.international-logistics-table tbody tr:last-child td{border-bottom:0}
+.international-logistics-table tbody tr:hover td{background:#fbfdff}
+.international-logistics-table th:nth-child(1){width:17%}
+.international-logistics-table th:nth-child(2){width:15%}
+.international-logistics-table th:nth-child(3){width:17%}
+.international-logistics-table th:nth-child(4){width:13%}
+.international-logistics-table th:nth-child(5){width:13%}
+.international-logistics-table th:nth-child(6){width:10%}
+.international-logistics-table th:nth-child(7){width:12%}
+.international-logistics-table th:nth-child(8){width:3%}
+.international-logistics-table input,.international-logistics-table select{width:100%;min-width:0;height:32px;box-sizing:border-box;border:1px solid #d6dee9;border-radius:7px;padding:0 7px;background:#fff;color:#172033;font-size:10px;outline:none;transition:border-color .12s,box-shadow .12s}
+.international-logistics-table input:focus,.international-logistics-table select:focus{border-color:#84adff;box-shadow:0 0 0 2px rgba(46,144,250,.07)}
+.intl-method-cell{display:flex;flex-direction:column;gap:4px}
+.intl-method-custom{height:30px!important;background:#fffdf8!important;border-color:#eadfc8!important}
+.intl-status.status-pending{background:#fff;color:#475467}
+.intl-status.status-in_transit{background:#eef4ff;color:#175cd3;border-color:#c7d7fe}
+.intl-status.status-received{background:#f0fdf4;color:#067647;border-color:#b7e4c7}
+.intl-status.status-exception{background:#fff6f5;color:#b42318;border-color:#fecaca}
+.intl-action{text-align:center;padding-left:3px!important;padding-right:3px!important}
+.intl-delete-btn{width:26px;height:26px;border:1px solid #f3c7c3;border-radius:7px;background:#fff;color:#d92d20;cursor:pointer;font-size:13px;line-height:1}
+.intl-delete-btn:hover{background:#fef3f2;border-color:#fda29b}
+.shipping-note{margin-top:9px!important;margin-bottom:0!important}
+.shipping-note textarea{min-height:46px!important;font-size:10px!important}
+@media(max-width:1100px){.shipping-mode-line{grid-template-columns:1fr}.international-logistics-table{min-width:980px}}
+
 .pay-risk{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}.pay-risk.overdue{background:#fef3f2;color:#b42318}.pay-risk.due{background:#fff6ed;color:#c4320a}.pay-risk.unpaid{background:#fff4e5;color:#b54708}.pay-risk.paid{background:#ecfdf3;color:#067647}.pay-risk.normal{background:#eef4ff;color:#3538cd}
 .payment-terms-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 10px}
 .payment-terms-grid .field{margin-bottom:0}
