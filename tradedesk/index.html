@@ -86,6 +86,9 @@
 @media(max-width:1200px){.order-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.order-layout{grid-template-columns:1fr}}@media(max-width:760px){.order-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.receivable-box,.cost-grid{grid-template-columns:1fr}}
 
 .pay-risk{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}.pay-risk.overdue{background:#fef3f2;color:#b42318}.pay-risk.due{background:#fff6ed;color:#c4320a}.pay-risk.unpaid{background:#fff4e5;color:#b54708}.pay-risk.paid{background:#ecfdf3;color:#067647}.pay-risk.normal{background:#eef4ff;color:#3538cd}
+.payment-terms-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 12px}
+.payment-terms-grid .field{margin-bottom:0}
+@media(max-width:900px){.payment-terms-grid{grid-template-columns:1fr}}
 .payment-history{display:flex;flex-direction:column;gap:7px}.payment-row{display:grid;grid-template-columns:82px 80px 1fr 120px 32px;gap:8px;align-items:center;border-bottom:1px solid #eaecf0;padding:7px 0;font-size:10px}.payment-row:last-child{border-bottom:0}.payment-amount{font-weight:800;color:#067647}.payment-ref{color:#667085;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .payment-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:12px}.payment-kpi{background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:12px}.payment-kpi span{display:block;font-size:10px;color:#667085;margin-bottom:5px}.payment-kpi b{font-size:17px}.payment-kpi small{display:block;font-size:9px;color:#98a2b3;margin-top:4px}
 @media(max-width:1100px){.payment-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:720px){.payment-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.payment-row{grid-template-columns:72px 70px 1fr}.payment-row>:nth-child(4),.payment-row>:nth-child(5){display:none}}
@@ -553,7 +556,7 @@ ${input('采购到仓日期','soWarehouseReceiptDate',o.warehouseReceiptDate||''
 <div class="field procurement-note"><label>采购备注</label><textarea placeholder="例如：工厂已发货、分两箱、预计明天到仓……" onchange="window.setOrderField('procurementNote',this.value)">${esc(o.procurementNote||'')}</textarea></div>
 </div></div></div>
 
-<div class="card" style="margin-top:12px"><div class="section-head"><div><h3>收款 / 应收</h3><p>客户运费属于销售收入，与实际支付给货代/物流公司的运费成本分开记录。</p></div><button class="btn primary" ${o.id?'':'disabled'} onclick="window.paymentModal('${o.id||''}')">＋ 记录收款</button></div><div class="card-pad"><div class="form-grid">
+<div class="card" style="margin-top:12px"><div class="section-head"><div><h3>收款 / 应收</h3><p>客户运费属于销售收入，与实际支付给货代/物流公司的运费成本分开记录。</p></div><button class="btn primary" ${o.id?'':'disabled'} onclick="window.paymentModal('${o.id||''}')">＋ 记录收款</button></div><div class="card-pad"><div class="payment-terms-grid">
 ${input('客户运费 '+esc(o.currency||''),'soCustomerFreight',m.customerFreight,'number',"window.setOrderNum('customerFreight',this.value)")}
 ${input('定金比例 %','soDepositRate',o.depositRate,'number',"window.setOrderNum('depositRate',this.value)")}
 ${input('尾款到期日','soBalanceDueDate',o.balanceDueDate,'date',"window.setOrderField('balanceDueDate',this.value)")}
