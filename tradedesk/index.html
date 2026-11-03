@@ -101,13 +101,15 @@
 @media(max-width:900px){.split-supplier-row{grid-template-columns:48px 1fr}.split-supplier-row>.qty,.split-supplier-row>.cost,.split-supplier-row>.supplier{grid-column:2}}
 
 /* Order item table: adaptive defaults + manual column resizing */
-.order-layout{grid-template-columns:minmax(0,1.38fr) minmax(330px,.62fr)}
+.order-layout{grid-template-columns:minmax(0,1.55fr) minmax(340px,.45fr);gap:12px}
 .order-items-wrap{overflow:auto;scrollbar-gutter:stable}
-.order-items-table{width:100%;min-width:980px;table-layout:fixed;border-collapse:collapse}
+.order-items-table{width:100%;min-width:1080px;table-layout:fixed;border-collapse:collapse}
 .order-items-table th,.order-items-table td{padding:8px 7px}
 .order-items-table th{position:sticky;top:0;z-index:2;white-space:nowrap}
 .order-items-table td{overflow:hidden}
-.order-items-table input,.order-items-table select{width:100%;min-width:0;box-sizing:border-box}
+.order-items-table input,.order-items-table select{width:100%;min-width:0;box-sizing:border-box;height:32px;padding:5px 6px;font-size:11px}
+.order-items-table td{font-size:11px}.order-items-table th{font-size:10px}
+.order-items-table tbody tr:hover td{background:#fbfdff}
 .order-items-table .order-product-button{min-width:0;padding:6px 7px;gap:7px}
 .order-items-table .order-product-button .pic{width:42px;height:42px;flex-basis:42px}
 .order-items-table .order-product-button .sku{font-size:10px}
@@ -120,8 +122,31 @@
 .order-items-table th:hover .col-resizer:after,.col-resizer.dragging:after{opacity:1;background:#2e90fa;width:2px}
 .order-col-tip{font-size:9px;color:#98a2b3;margin-left:8px;font-weight:400}
 .order-col-reset{font-size:10px;padding:6px 9px}
-@media(max-width:1200px){.order-layout{grid-template-columns:1fr}.order-items-table{min-width:980px}}
-@media(max-width:760px){.order-items-table{min-width:960px}.order-items-table th,.order-items-table td{padding:7px 6px}}
+.order-main-card .section-head,.order-procurement-card .section-head{padding:12px 14px}
+.order-main-card .card-pad,.order-procurement-card .card-pad{padding:12px 14px}
+.order-basic-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px 10px}
+.order-basic-grid .field,.procurement-grid .field{margin-bottom:0}
+.order-basic-grid .field input,.order-basic-grid .field select,.procurement-grid .field input,.procurement-grid .field select{height:38px;padding:8px 10px}
+.order-basic-grid .rate-lock{margin-top:2px;padding:4px 6px;font-size:9px;line-height:1.35}
+.order-basic-grid>.full{margin-top:1px}
+.order-basic-grid .stage-flow{gap:5px}.order-basic-grid .stage-flow .stage{padding:5px 8px}
+.procurement-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.procurement-contract{grid-column:1/3}.procurement-stage{grid-column:3/-1}.procurement-note{grid-column:1/-1}
+.procurement-note textarea{min-height:58px}
+.order-result-card .section-head{padding:12px 14px}
+.order-result-card .card-pad{padding:12px 14px}
+.order-result-card .cost-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.order-result-card .cost-chip{padding:10px 11px;background:#fff}
+.order-result-card .cost-chip b{display:block;font-size:14px;margin-top:2px}
+.order-result-card .cost-chip.key{background:#f8fafc}
+.order-result-card .cost-chip.profit{background:#ecfdf3;border-color:#abefc6}
+.order-result-card .cost-chip.profit b{font-size:16px}
+.order-side{align-self:start}
+@media(min-width:1201px){.order-side{position:sticky;top:70px}}
+@media(max-width:1350px){.order-basic-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.procurement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.procurement-contract,.procurement-stage{grid-column:auto}.procurement-note{grid-column:1/-1}}
+@media(max-width:700px){.order-basic-grid,.procurement-grid{grid-template-columns:1fr}.procurement-contract,.procurement-stage,.procurement-note{grid-column:1}}
+@media(max-width:1200px){.order-layout{grid-template-columns:1fr}.order-items-table{min-width:1080px}}
+@media(max-width:760px){.order-items-table{min-width:980px}.order-items-table th,.order-items-table td{padding:7px 6px}}
 
 .import1688-box{display:grid;grid-template-columns:150px 1fr;gap:14px}.import1688-mainimg{width:150px;height:150px;border:1px solid #e4e7ec;border-radius:12px;background:#f8fafc;display:grid;place-items:center;overflow:hidden;color:#98a2b3;font-size:10px}.import1688-mainimg img{width:100%;height:100%;object-fit:cover}.import1688-gallery{display:flex;gap:6px;overflow:auto;margin-top:8px;padding-bottom:3px}.import1688-gallery img{width:48px;height:48px;object-fit:cover;border:1px solid #e4e7ec;border-radius:7px;background:#fff}.import1688-confidence{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#ecfdf3;color:#067647}.import1688-warning{padding:9px 10px;border-radius:9px;background:#fff6ed;color:#b54708;font-size:10px;line-height:1.55;margin-top:8px}.source-link{display:inline-flex;align-items:center;gap:3px;font-size:9px;color:#155eef;text-decoration:none;margin-top:4px}.source-link:hover{text-decoration:underline}.import1688-source{padding:9px 10px;border:1px solid #dbe7ff;background:#f5f8ff;border-radius:9px;font-size:10px;color:#344054;word-break:break-all}.import1688-fallback{margin-top:10px;border-top:1px dashed #d0d5dd;padding-top:10px}.import1688-fallback summary{cursor:pointer;font-size:10px;color:#667085}.import1688-fallback textarea{width:100%;min-height:100px;margin-top:8px;border:1px solid #d0d5dd;border-radius:9px;padding:9px;font-size:10px}
 @media(max-width:700px){.import1688-box{grid-template-columns:1fr}.import1688-mainimg{width:120px;height:120px}}
@@ -491,7 +516,7 @@ function domesticCarrierPreset(v=''){return DOMESTIC_CARRIERS.includes(v)?v:(v?'
 function domesticCarrierOptions(v=''){const cur=domesticCarrierPreset(v);return `<option value="">选择物流</option>${DOMESTIC_CARRIERS.map(x=>`<option value="${x}" ${cur===x?'selected':''}>${x}</option>`).join('')}<option value="custom" ${cur==='custom'?'selected':''}>自定义</option>`}
 function domesticLogisticsRows(o){const rows=Array.isArray(o.domesticLogistics)?o.domesticLogistics:[];if(!rows.length)return '<div class="empty" style="padding:14px">暂无国内物流记录。工厂发货后点击“＋ 添加国内物流”。</div>';return `<div class="table-wrap"><table class="table"><tr><th>承运商</th><th>运单号</th><th>发货日期</th><th>预计到达</th><th>签收日期</th><th>状态</th><th>备注</th><th></th></tr>${rows.map((r,i)=>`<tr><td><input value="${esc(r.carrier||'')}" placeholder="顺丰 / 德邦..." onchange="window.setDomesticLogistics(${i},'carrier',this.value)"></td><td><input value="${esc(r.trackingNo||'')}" placeholder="国内运单号" onchange="window.setDomesticLogistics(${i},'trackingNo',this.value)"></td><td><input type="date" value="${esc(r.shipDate||'')}" onchange="window.setDomesticLogistics(${i},'shipDate',this.value)"></td><td><input type="date" value="${esc(r.eta||'')}" onchange="window.setDomesticLogistics(${i},'eta',this.value)"></td><td><input type="date" value="${esc(r.receivedDate||'')}" onchange="window.setDomesticLogistics(${i},'receivedDate',this.value)"></td><td><select onchange="window.setDomesticLogistics(${i},'status',this.value)">${logisticsStatusOptions(r.status||'pending')}</select></td><td><input value="${esc(r.note||'')}" placeholder="箱数/异常等" onchange="window.setDomesticLogistics(${i},'note',this.value)"></td><td><button class="btn small danger" onclick="window.removeDomesticLogistics(${i})">×</button></td></tr>`).join('')}</table></div>`}
 function internationalLogisticsRows(o){const rows=Array.isArray(o.internationalLogistics)?o.internationalLogistics:[];if(!rows.length)return '<div class="shipment-empty"><b>尚未添加国际运单</b><span>货代出货后，在右上角添加运单并记录 Tracking / AWB、ETD、ETA 和签收状态。</span></div>';return `<div class="table-wrap"><table class="table"><tr><th>货代 / 承运商</th><th>运输方式</th><th>国际运单号</th><th>发货 / ETD</th><th>ETA</th><th>签收日期</th><th>状态</th><th>备注</th><th></th></tr>${rows.map((r,i)=>`<tr><td><input value="${esc(r.forwarder||'')}" placeholder="货代公司 / DHL..." onchange="window.setInternationalLogistics(${i},'forwarder',this.value)"></td><td><input value="${esc(r.method||'')}" placeholder="Air / Sea / Express" onchange="window.setInternationalLogistics(${i},'method',this.value)"></td><td><input value="${esc(r.trackingNo||'')}" placeholder="Tracking / AWB" onchange="window.setInternationalLogistics(${i},'trackingNo',this.value)"></td><td><input type="date" value="${esc(r.shipDate||'')}" onchange="window.setInternationalLogistics(${i},'shipDate',this.value)"></td><td><input type="date" value="${esc(r.eta||'')}" onchange="window.setInternationalLogistics(${i},'eta',this.value)"></td><td><input type="date" value="${esc(r.receivedDate||'')}" onchange="window.setInternationalLogistics(${i},'receivedDate',this.value)"></td><td><select onchange="window.setInternationalLogistics(${i},'status',this.value)">${logisticsStatusOptions(r.status||'pending')}</select></td><td><input value="${esc(r.note||'')}" placeholder="件数/渠道/异常" onchange="window.setInternationalLogistics(${i},'note',this.value)"></td><td><button class="btn small danger" onclick="window.removeInternationalLogistics(${i})">×</button></td></tr>`).join('')}</table></div>`}
-function orderEditor(o){const m=orderMetrics(o),payRows=paymentsForOrder(o.id),cst=cust(o.customerId),pcCount=db.purchaseContracts.filter(x=>x.salesOrderId===o.id).length,docCount=db.documents.filter(x=>x.salesOrderId===o.id).length;return `<div class="order-layout"><div><div class="card"><div class="section-head"><div><h3>${o.id?'编辑销售订单':'新建销售订单'} ${dirtyStateBadge()}</h3><p>一笔真实业务一张 Sales Order；订单执行、采购、收款、客户出货分别独立跟踪，采购合同按需要生成。</p></div><div class="row"><button class="btn" onclick="window.closeSalesOrder()">返回</button>${o.id?`<button class="btn" onclick="window.attachmentCenter('sales_order','${o.id}','${esc(o.no)}')">📎 附件 <span class="attachment-count">${attachmentCount('sales_order',o.id)}</span></button>`:''}<button class="btn primary" id="saveOrderBtn" onclick="window.saveSalesOrder()">保存订单</button></div></div><div class="card-pad"><div class="form-grid">
+function orderEditor(o){const m=orderMetrics(o),payRows=paymentsForOrder(o.id),cst=cust(o.customerId),pcCount=db.purchaseContracts.filter(x=>x.salesOrderId===o.id).length,docCount=db.documents.filter(x=>x.salesOrderId===o.id).length;return `<div class="order-layout"><div><div class="card order-main-card"><div class="section-head"><div><h3>${o.id?'编辑销售订单':'新建销售订单'} ${dirtyStateBadge()}</h3><p>一笔真实业务一张 Sales Order；订单执行、采购、收款、客户出货分别独立跟踪，采购合同按需要生成。</p></div><div class="row"><button class="btn" onclick="window.closeSalesOrder()">返回</button>${o.id?`<button class="btn" onclick="window.attachmentCenter('sales_order','${o.id}','${esc(o.no)}')">📎 附件 <span class="attachment-count">${attachmentCount('sales_order',o.id)}</span></button>`:''}<button class="btn primary" id="saveOrderBtn" onclick="window.saveSalesOrder()">保存订单</button></div></div><div class="card-pad"><div class="order-basic-grid">
 ${input('订单号','soNo',o.no,'text',"window.setOrderField('no',this.value)")}${input('订单日期','soDate',o.date,'date',"window.setOrderField('date',this.value)")}
 <div class="field"><label>客户 *</label><select onchange="window.setOrderCustomer(this.value)"><option value="">选择客户</option>${db.customers.map(x=>`<option value="${x.id}" ${x.id===o.customerId?'selected':''}>${esc(x.company)}</option>`).join('')}</select></div>
 <div class="field"><label>订单执行状态</label><select onchange="window.setOrderField('status',this.value)">${orderStatusOptions(o.status)}</select></div>
@@ -504,15 +529,15 @@ ${input('目的地 / 地点','soDest',o.destination,'text',"window.setOrderField
 
 <div class="card" style="margin-top:12px"><div class="section-head"><div><h3>产品明细</h3><p>销售单价、采购单价、实际采购总额和每个产品对应的国内物流都可直接维护；工厂整单优惠或抹零时可直接修改采购总额，不改动产品库默认价格。<span class="order-col-tip">可拖动表头分隔线调整列宽</span></p></div><div class="row"><button class="btn order-col-reset" onclick="window.resetOrderColumnWidths()">↔ 恢复自适应</button><button class="btn" onclick="window.addOrderItem()">＋ 添加产品</button></div></div><div class="table-wrap order-items-wrap"><table class="table order-items-table" id="orderItemsTable">${orderItemColgroup()}<thead><tr>${orderItemHead('产品','product')}${orderItemHead('描述','desc')}${orderItemHead('数量','qty')}${orderItemHead('单位','unit')}${orderItemHead('销售单价','price')}${orderItemHead('销售金额','amount')}${orderItemHead('采购单价 RMB','purchasePrice')}${orderItemHead('采购金额 RMB','cost')}${orderItemHead('国内物流','domesticLogistics')}${orderItemHead('','action',true)}</tr></thead><tbody>${(o.items||[]).map(orderItemRow).join('')}</tbody></table></div></div>
 
-<div class="card" style="margin-top:12px"><div class="section-head"><div><h3>采购执行</h3><p>采购进度独立于客户收款；不要求必须生成采购合同。实际已经采购、生产或工厂发货时直接更新；一旦国际物流已发出，采购阶段自动标记为“采购完成”。</p></div><span class="badge">${esc(procurementStatusLabel(o.procurementStatus||'not_started'))}</span></div><div class="card-pad"><div class="form-grid">
+<div class="card order-procurement-card" style="margin-top:12px"><div class="section-head"><div><h3>采购执行</h3><p>采购进度独立于客户收款；不要求必须生成采购合同。实际已经采购、生产或工厂发货时直接更新；一旦国际物流已发出，采购阶段自动标记为“采购完成”。</p></div><span class="badge">${esc(procurementStatusLabel(o.procurementStatus||'not_started'))}</span></div><div class="card-pad"><div class="procurement-grid">
 <div class="field"><label>采购进度</label><select onchange="window.setOrderField('procurementStatus',this.value)">${procurementStatusOptions(o.procurementStatus||'not_started')}</select></div>
 ${input('下单日期','soPurchaseDate',o.purchaseOrderDate||'','date',"window.setOrderField('purchaseOrderDate',this.value)")}
 ${input('工厂发货日期','soFactoryShipDate',o.factoryShipDate||'','date',"window.setOrderField('factoryShipDate',this.value)")}
 ${input('采购到仓日期','soWarehouseReceiptDate',o.warehouseReceiptDate||'','date',"window.setOrderField('warehouseReceiptDate',this.value)")}
 
-<div class="field"><label>采购合同</label><div class="row" style="min-height:36px;align-items:center"><span class="muted">${pcCount ? ('已关联 '+pcCount+' 份') : '可选，不生成也可以正常推进订单'}</span>${o.id?'<button type="button" class="btn small" onclick="window.orderSplitPurchases(\''+o.id+'\')">需要时生成</button>':''}</div></div>
-<div class="field full"><label>采购进度</label>${procurementStageFlow(o)}</div>
-<div class="field full"><label>采购备注</label><textarea placeholder="例如：工厂已发货、分两箱、预计明天到仓……" onchange="window.setOrderField('procurementNote',this.value)">${esc(o.procurementNote||'')}</textarea></div>
+<div class="field procurement-contract"><label>采购合同</label><div class="row" style="min-height:36px;align-items:center"><span class="muted">${pcCount ? ('已关联 '+pcCount+' 份') : '可选，不生成也可以正常推进订单'}</span>${o.id?'<button type="button" class="btn small" onclick="window.orderSplitPurchases(\''+o.id+'\')">需要时生成</button>':''}</div></div>
+<div class="field procurement-stage"><label>采购流程</label>${procurementStageFlow(o)}</div>
+<div class="field procurement-note"><label>采购备注</label><textarea placeholder="例如：工厂已发货、分两箱、预计明天到仓……" onchange="window.setOrderField('procurementNote',this.value)">${esc(o.procurementNote||'')}</textarea></div>
 </div></div></div>
 
 <div class="card" style="margin-top:12px"><div class="section-head"><div><h3>收款 / 应收</h3><p>客户运费属于销售收入，与实际支付给货代/物流公司的运费成本分开记录。</p></div><button class="btn primary" ${o.id?'':'disabled'} onclick="window.paymentModal('${o.id||''}')">＋ 记录收款</button></div><div class="card-pad"><div class="form-grid">
@@ -543,14 +568,14 @@ ${internationalLogisticsRows(o)}
 <div class="field full shipping-note"><label>订单 / 物流总备注</label><textarea placeholder="例如：分批出货、特殊装柜要求、客户指定货代、异常情况等" onchange="window.setOrderField('notes',this.value)">${esc(o.notes||'')}</textarea></div>
 </div></div></div>
 
-<div class="order-side"><div class="card"><div class="section-head"><div><h3>订单经营结果</h3><p>${esc(cst?.company||'未选择客户')}</p></div></div><div class="card-pad"><div class="cost-grid">
-<div class="cost-chip"><span>销售额 RMB</span><b>${moneyCny(m.salesCny)}</b><span>锁定汇率 ${Number(orderRateToCny(o)||0).toFixed(4)}</span></div>
-<div class="cost-chip"><span>客户运费收入</span><b>${moneyCny(m.customerFreightCny)}</b></div>
+<div class="order-side"><div class="card order-result-card"><div class="section-head"><div><h3>订单经营结果</h3><p>${esc(cst?.company||'未选择客户')} · 汇率 ${Number(orderRateToCny(o)||0).toFixed(4)}</p></div></div><div class="card-pad"><div class="cost-grid">
+<div class="cost-chip key"><span>销售额 RMB</span><b>${moneyCny(m.salesCny)}</b></div>
+<div class="cost-chip key"><span>总成本 RMB</span><b>${moneyCny(m.totalCost)}</b></div>
+<div class="cost-chip profit"><span>净利润 RMB</span><b class="${(m.profit||0)>=0?'profit-pos':'profit-neg'}">${moneyCny(m.profit)}</b></div>
+<div class="cost-chip profit"><span>净利率</span><b class="${(m.profit||0)>=0?'profit-pos':'profit-neg'}">${m.margin==null?'-':m.margin.toFixed(1)+'%'}</b></div>
 <div class="cost-chip"><span>产品采购成本</span><b>${moneyCny(m.productCost)}</b></div>
 <div class="cost-chip"><span>其他费用</span><b>${moneyCny(m.extra)}</b></div>
-<div class="cost-chip"><span>总成本 RMB</span><b>${moneyCny(m.totalCost)}</b></div>
-<div class="cost-chip"><span>净利润 RMB</span><b class="${(m.profit||0)>=0?'profit-pos':'profit-neg'}">${moneyCny(m.profit)}</b></div>
-<div class="cost-chip"><span>净利率</span><b class="${(m.profit||0)>=0?'profit-pos':'profit-neg'}">${m.margin==null?'-':m.margin.toFixed(1)+'%'}</b></div>
+<div class="cost-chip"><span>客户运费收入</span><b>${moneyCny(m.customerFreightCny)}</b></div>
 </div></div></div>
 ${(()=>{const na=nextOrderAction(o);return `<div class="card"><div class="section-head"><div><h3>下一步建议</h3><p>根据当前订单状态自动判断</p></div></div><div class="card-pad"><div class="next-action"><div class="eyebrow">NEXT ACTION</div><b>${esc(na.title)}</b><p>${esc(na.desc)}</p></div></div></div>`})()}<div class="card"><div class="section-head"><div><h3>业务动作</h3><p>订单保存后可生成外贸单据；采购合同按实际需要生成</p></div></div><div class="card-pad actions" style="display:grid;grid-template-columns:1fr;gap:8px"><button class="btn" ${o.id?'':'disabled'} onclick="window.orderGenerateCiPl('${o.id||''}')">快速生成 CI + Packing List</button><button class="btn primary" ${o.id?'':'disabled'} onclick="window.orderGenerateDocs('${o.id||''}')">一键生成 PI / CI / PL / 报关单 / 销售合同</button><button class="btn" ${o.id?'':'disabled'} onclick="window.orderSplitPurchases('${o.id||''}')">生成采购合同（可选）</button><div class="notice">已关联销售单据：<b>${docCount}</b> 份<br>采购合同（可选）：<b>${pcCount}</b> 份</div></div></div>
 <div class="card"><div class="section-head"><div><h3>收款状态</h3></div></div><div class="card-pad"><div class="receivable-box"><div><span>订单金额</span><b>${money(m.salesNative,o.currency)}</b></div><div><span>已收</span><b>${money(m.totalPaid,o.currency)}</b></div><div><span>未收</span><b>${money(m.receivable,o.currency)}</b></div></div><div style="margin-top:10px"><span class="badge">${orderPaymentLabel(o)}</span></div></div></div></div></div>`}
