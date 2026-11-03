@@ -148,6 +148,68 @@
 @media(max-width:1200px){.order-layout{grid-template-columns:1fr}.order-items-table{min-width:1080px}}
 @media(max-width:760px){.order-items-table{min-width:980px}.order-items-table th,.order-items-table td{padding:7px 6px}}
 
+
+/* Sales order product cards */
+.order-products-card{overflow:hidden}
+.order-products-card .section-head{padding:13px 15px}
+.order-products-card .section-head p{max-width:780px;line-height:1.45}
+.order-product-actions{display:flex;align-items:center;gap:8px}
+.order-product-count{display:inline-flex;align-items:center;height:28px;padding:0 9px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:9px;font-weight:750}
+.order-products-body{padding:10px;background:#f7f9fc}
+.order-product-list{display:flex;flex-direction:column;gap:10px}
+.order-product-card{overflow:hidden;border:1px solid #dfe5ee;border-radius:11px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.025);transition:border-color .15s,box-shadow .15s}
+.order-product-card:hover{border-color:#b2ccff;box-shadow:0 5px 15px rgba(16,24,40,.055)}
+.opc-main{display:grid;grid-template-columns:minmax(260px,1.25fr) minmax(285px,1fr) minmax(245px,.9fr) 28px;gap:10px;padding:10px;align-items:stretch}
+.opc-product,.opc-group{min-width:0}
+.opc-label{font-size:8px;font-weight:800;letter-spacing:.04em;color:#667085;margin:0 0 5px}
+.opc-product-selector{width:100%;min-height:58px;display:flex;align-items:center;gap:9px;border:1px solid #d0d5dd;border-radius:8px;padding:6px;background:#fff;text-align:left;cursor:pointer;transition:.12s}
+.opc-product-selector:hover{border-color:#84adff;background:#f9fbff}
+.opc-product-image{width:46px;height:46px;flex:0 0 46px;border:1px solid #e4e7ec;border-radius:7px;background:#f8fafc;overflow:hidden;display:grid;place-items:center;color:#98a2b3;font-size:8px}
+.opc-product-image img{width:100%;height:100%;object-fit:cover}
+.opc-product-info{min-width:0;flex:1}
+.opc-product-info b{display:block;font-size:10.5px;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opc-product-info span{display:block;font-size:8.5px;color:#667085;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opc-change{font-size:8.5px;color:#155eef;font-weight:750;white-space:nowrap}
+.opc-description{margin-top:6px}
+.opc-field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.opc-field label{font-size:8.5px;font-weight:700;color:#667085}
+.opc-field input,.opc-field select{width:100%;height:32px;box-sizing:border-box;border:1px solid #d0d5dd;border-radius:7px;padding:0 7px;background:#fff;color:#101828;font-size:10px;outline:none}
+.opc-field input:focus,.opc-field select:focus{border-color:#84adff;box-shadow:0 0 0 3px rgba(46,144,250,.07)}
+.opc-group{border:1px solid #e4e7ec;border-radius:9px;padding:8px 9px;background:#fbfcfe}
+.opc-sales{background:#f8fbff;border-color:#dbe7ff}
+.opc-purchase{background:#fffdf8;border-color:#eee1c6}
+.opc-group-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-height:26px;margin-bottom:7px}
+.opc-group-head b{display:block;font-size:10.5px;color:#344054}
+.opc-group-head small{display:block;font-size:8px;color:#98a2b3;margin-top:1px}
+.opc-group-total{text-align:right}
+.opc-group-total span{display:block;font-size:8px;color:#667085}
+.opc-group-total strong{display:block;font-size:12.5px;color:#175cd3;margin-top:1px;white-space:nowrap}
+.opc-sales-grid{display:grid;grid-template-columns:62px 62px minmax(88px,1fr);gap:6px}
+.opc-sales-total{grid-column:1/-1;min-height:30px;margin-top:1px;padding:0 8px;border-radius:7px;background:#eef4ff;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.opc-sales-total span{font-size:8.5px;color:#475467}.opc-sales-total b{font-size:11px;color:#175cd3;white-space:nowrap}
+.opc-purchase-grid{display:grid;grid-template-columns:minmax(92px,.85fr) minmax(130px,1.15fr);gap:7px}
+.opc-purchase-total{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px}
+.opc-auto-btn{height:32px;min-width:48px;border:1px solid #d0d5dd;border-radius:7px;padding:0 6px;background:#fff;color:#475467;font-size:8.5px;cursor:pointer;white-space:nowrap}
+.opc-auto-btn:hover{border-color:#84adff;color:#175cd3;background:#f5f8ff}
+.purchase-mode{display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:999px;font-size:7.5px;font-weight:750;white-space:nowrap}
+.purchase-mode.auto{background:#ecfdf3;color:#067647}.purchase-mode.manual{background:#fff6ed;color:#b54708}
+.opc-delete{display:flex;justify-content:flex-end;align-items:flex-start}
+.opc-delete button{width:26px;height:26px;display:grid;place-items:center;border:1px solid #fecdca;border-radius:7px;background:#fff;color:#d92d20;font-size:14px;cursor:pointer}
+.opc-delete button:hover{background:#fef3f2}
+.opc-logistics{padding:8px 10px 10px;border-top:1px solid #eaecf0;background:#fafbfc}
+.opc-logistics-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.opc-logistics-head b{font-size:9.5px;color:#344054}.opc-logistics-head span.sub{margin-left:5px;font-size:8px;color:#98a2b3}
+.opc-logistics-grid{display:grid;grid-template-columns:.9fr 1.35fr 1fr .85fr;gap:7px}
+.logistics-status-pill{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font-size:7.5px;font-weight:750;white-space:nowrap}
+.logistics-status-pill.status-pending{background:#f2f4f7;color:#475467}.logistics-status-pill.status-in_transit{background:#eef4ff;color:#175cd3}.logistics-status-pill.status-received{background:#ecfdf3;color:#067647}.logistics-status-pill.status-exception{background:#fef3f2;color:#b42318}
+.product-logistics-custom{margin-top:7px;max-width:310px}
+.order-products-empty{padding:30px 18px;border:1px dashed #cfd8e6;border-radius:9px;text-align:center;background:#fff}
+.order-products-empty b{display:block;font-size:11px;color:#344054}.order-products-empty span{display:block;margin-top:3px;font-size:9px;color:#98a2b3}
+@media(max-width:1450px){.opc-main{grid-template-columns:minmax(235px,1.15fr) minmax(250px,1fr) minmax(220px,.9fr) 28px}}
+@media(max-width:1120px){.opc-main{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 28px}.opc-product{grid-column:1/-2}.opc-sales{grid-column:1}.opc-purchase{grid-column:2}.opc-delete{grid-column:3;grid-row:1}.opc-logistics-grid{grid-template-columns:1fr 1.4fr 1fr 1fr}}
+@media(max-width:720px){.opc-main{grid-template-columns:1fr}.opc-product,.opc-sales,.opc-purchase,.opc-delete{grid-column:1}.opc-delete{grid-row:auto}.opc-logistics-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.opc-sales-grid,.opc-purchase-grid,.opc-logistics-grid{grid-template-columns:1fr}.opc-sales-total{grid-column:1}}
+
 .import1688-box{display:grid;grid-template-columns:150px 1fr;gap:14px}.import1688-mainimg{width:150px;height:150px;border:1px solid #e4e7ec;border-radius:12px;background:#f8fafc;display:grid;place-items:center;overflow:hidden;color:#98a2b3;font-size:10px}.import1688-mainimg img{width:100%;height:100%;object-fit:cover}.import1688-gallery{display:flex;gap:6px;overflow:auto;margin-top:8px;padding-bottom:3px}.import1688-gallery img{width:48px;height:48px;object-fit:cover;border:1px solid #e4e7ec;border-radius:7px;background:#fff}.import1688-confidence{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#ecfdf3;color:#067647}.import1688-warning{padding:9px 10px;border-radius:9px;background:#fff6ed;color:#b54708;font-size:10px;line-height:1.55;margin-top:8px}.source-link{display:inline-flex;align-items:center;gap:3px;font-size:9px;color:#155eef;text-decoration:none;margin-top:4px}.source-link:hover{text-decoration:underline}.import1688-source{padding:9px 10px;border:1px solid #dbe7ff;background:#f5f8ff;border-radius:9px;font-size:10px;color:#344054;word-break:break-all}.import1688-fallback{margin-top:10px;border-top:1px dashed #d0d5dd;padding-top:10px}.import1688-fallback summary{cursor:pointer;font-size:10px;color:#667085}.import1688-fallback textarea{width:100%;min-height:100px;margin-top:8px;border:1px solid #d0d5dd;border-radius:9px;padding:9px;font-size:10px}
 @media(max-width:700px){.import1688-box{grid-template-columns:1fr}.import1688-mainimg{width:120px;height:120px}}
 
@@ -509,11 +571,80 @@ function getOrderItemColWidths(){try{const v=JSON.parse(localStorage.getItem('tr
 function orderItemColgroup(){const w=getOrderItemColWidths();return `<colgroup>${ORDER_ITEM_COLS.map((x,i)=>`<col data-order-col="${x[0]}" style="width:${Number(w[i]).toFixed(3)}%">`).join('')}</colgroup>`}
 function orderItemHead(label,key,last=false){return `<th data-order-head="${key}">${label}${last?'':`<span class="col-resizer" title="左右拖动调整列宽" onpointerdown="window.startOrderColumnResize(event,'${key}')"></span>`}</th>`}
 function orderItemRow(it,i){const p=db.products.find(x=>x.id===it.productId),purchaseUnit=orderItemPurchaseUnitCny(it),cost=orderItemCostCny(it),img=p?.imageUrl||it.productImageSnapshot||'',dl=it.domesticLogistics||{},customCarrier=domesticCarrierPreset(dl.carrier)==='custom'?'<input style="margin-top:4px;width:100%" value="'+esc(dl.carrier||'')+'" placeholder="输入物流公司名称" onchange="window.setOrderItemDomestic('+i+',\'carrier\',this.value)">':'';return `<tr><td><button type="button" class="order-product-button" onclick="window.openOrderProductPicker(${i})"><span class="pic">${img?`<img src="${esc(img)}" alt="${esc(p?.name||'product')}">`:'No Image'}</span><span class="txt">${p?`<span class="sku">${esc(p.sku)}</span><span class="name">${esc(p.name||p.nameCn||'')}</span>`:it.productSkuSnapshot?`<span class="sku">${esc(it.productSkuSnapshot)}</span><span class="name">${esc(it.productNameSnapshot||it.description||'')}</span>`:`<span class="sku">点击选择产品</span><span class="name">显示图片、SKU、名称和价格</span>`}</span><span class="choose">${p?'更换':'选择'} ›</span></button></td><td><input value="${esc(it.description||'')}" onchange="window.setOrderItem(${i},'description',this.value)"></td><td><input type="number" min="0" step="1" value="${Number(it.qty||0)}" onchange="window.setOrderItem(${i},'qty',this.value)"></td><td><input value="${esc(it.unit||p?.unit||'PCS')}" onchange="window.setOrderItem(${i},'unit',this.value)"></td><td><input type="number" min="0" step="0.0001" value="${Number(it.price||0)}" title="本订单销售单价，可按客户优惠直接修改" onchange="window.setOrderItem(${i},'price',this.value)"></td><td>${money(Number(it.qty||0)*Number(it.price||0),state.orderDraft.currency)}</td><td><input type="number" min="0" step="0.01" value="${purchaseUnit==null?'':Number(purchaseUnit).toFixed(2)}" title="本订单采购单价（人民币），可按工厂实际优惠直接修改" onchange="window.setOrderItemPurchasePrice(${i},this.value)"></td><td><div class="order-purchase-total"><input type="number" min="0" step="0.01" value="${cost==null?'':Number(cost).toFixed(2)}" title="实际采购总额，可直接填写；留空/恢复自动则按采购单价×数量计算" onchange="window.setOrderItemPurchaseTotal(${i},this.value)"><button type="button" class="btn small" title="恢复按采购单价 × 数量自动计算" onclick="window.resetOrderItemPurchaseTotal(${i})">↺ 自动</button></div>${it.purchaseTotalOverride!=null&&it.purchaseTotalOverride!==''?'<div class="muted" style="font-size:9px;margin-top:2px">已手工覆盖</div>':''}</td><td><div style="display:grid;grid-template-columns:.9fr 1.1fr;gap:4px"><select title="国内物流公司" onchange="window.setOrderItemDomesticCarrier(${i},this.value)">${domesticCarrierOptions(dl.carrier||'')}</select><input value="${esc(dl.trackingNo||'')}" placeholder="国内运单号" onchange="window.setOrderItemDomestic(${i},'trackingNo',this.value)"></div>${customCarrier}<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px"><input type="date" value="${esc(dl.shipDate||'')}" title="工厂发货日期" onchange="window.setOrderItemDomestic(${i},'shipDate',this.value)"><select onchange="window.setOrderItemDomestic(${i},'status',this.value)">${logisticsStatusOptions(dl.status||'pending')}</select></div></td><td><button class="btn small danger" onclick="window.removeOrderItem(${i})">×</button></td></tr>`}
+
+function orderItemCard(it,i){
+  const p=db.products.find(x=>x.id===it.productId),
+        purchaseUnit=orderItemPurchaseUnitCny(it),
+        cost=orderItemCostCny(it),
+        img=p?.imageUrl||it.productImageSnapshot||'',
+        dl=it.domesticLogistics||{},
+        salesAmount=Number(it.qty||0)*Number(it.price||0),
+        manual=it.purchaseTotalOverride!=null&&it.purchaseTotalOverride!=='',
+        isCustom=domesticCarrierPreset(dl.carrier||'',dl.customCarrier===true)==='custom',
+        customCarrier=isCustom?`<div class="opc-field product-logistics-custom"><label>自定义物流公司</label><input value="${esc(dl.carrier||'')}" placeholder="输入物流公司名称" onchange="window.setOrderItemDomestic(${i},'carrier',this.value)"></div>`:'';
+  return `<div class="order-product-card">
+    <div class="opc-main">
+      <div class="opc-product">
+        <div class="opc-label">产品信息</div>
+        <button type="button" class="opc-product-selector" onclick="window.openOrderProductPicker(${i})">
+          <span class="opc-product-image">${img?`<img src="${esc(img)}" alt="${esc(p?.name||it.productNameSnapshot||'product')}">`:'No Image'}</span>
+          <span class="opc-product-info">
+            <b>${esc(p?.sku||it.productSkuSnapshot||'点击选择产品')}</b>
+            <span>${esc(p?.name||p?.nameCn||it.productNameSnapshot||'从产品库选择商品')}</span>
+          </span>
+          <span class="opc-change">${p?'更换':'选择'} ›</span>
+        </button>
+        <div class="opc-field opc-description"><label>产品描述</label><input value="${esc(it.description||'')}" placeholder="产品描述" onchange="window.setOrderItem(${i},'description',this.value)"></div>
+      </div>
+
+      <div class="opc-group opc-sales">
+        <div class="opc-group-head">
+          <div><b>销售</b><small>${esc(state.orderDraft.currency||'')}</small></div>
+          <div class="opc-group-total"><span>销售金额</span><strong>${money(salesAmount,state.orderDraft.currency)}</strong></div>
+        </div>
+        <div class="opc-sales-grid">
+          <div class="opc-field"><label>数量</label><input type="number" min="0" step="1" value="${Number(it.qty||0)}" onchange="window.setOrderItem(${i},'qty',this.value)"></div>
+          <div class="opc-field"><label>单位</label><input value="${esc(it.unit||p?.unit||'PCS')}" onchange="window.setOrderItem(${i},'unit',this.value)"></div>
+          <div class="opc-field"><label>销售单价</label><input type="number" min="0" step="0.0001" value="${Number(it.price||0)}" onchange="window.setOrderItem(${i},'price',this.value)"></div>
+          <div class="opc-sales-total"><span>小计</span><b>${money(salesAmount,state.orderDraft.currency)}</b></div>
+        </div>
+      </div>
+
+      <div class="opc-group opc-purchase">
+        <div class="opc-group-head">
+          <div><b>采购</b><small>RMB</small></div>
+          <span class="purchase-mode ${manual?'manual':'auto'}">${manual?'手工金额':'自动计算'}</span>
+        </div>
+        <div class="opc-purchase-grid">
+          <div class="opc-field"><label>采购单价 RMB</label><input type="number" min="0" step="0.01" value="${purchaseUnit==null?'':Number(purchaseUnit).toFixed(2)}" onchange="window.setOrderItemPurchasePrice(${i},this.value)"></div>
+          <div class="opc-field"><label>实际采购金额 RMB</label><div class="opc-purchase-total"><input type="number" min="0" step="0.01" value="${cost==null?'':Number(cost).toFixed(2)}" onchange="window.setOrderItemPurchaseTotal(${i},this.value)"><button type="button" class="opc-auto-btn" title="恢复采购单价 × 数量自动计算" onclick="window.resetOrderItemPurchaseTotal(${i})">↺ 自动</button></div></div>
+        </div>
+      </div>
+
+      <div class="opc-delete"><button type="button" title="删除产品" onclick="window.removeOrderItem(${i})">×</button></div>
+    </div>
+
+    <div class="opc-logistics">
+      <div class="opc-logistics-head">
+        <div><b>国内物流</b><span class="sub">工厂 → 仓库 / 货代</span></div>
+        <span class="logistics-status-pill status-${esc(dl.status||'pending')}">${esc(LOGISTICS_STATUS_LABELS[dl.status||'pending']||'待发货')}</span>
+      </div>
+      <div class="opc-logistics-grid">
+        <div class="opc-field"><label>物流公司</label><select onchange="window.setOrderItemDomesticCarrier(${i},this.value)">${domesticCarrierOptions(dl.carrier||'',dl.customCarrier===true)}</select></div>
+        <div class="opc-field"><label>国内运单号</label><input value="${esc(dl.trackingNo||'')}" placeholder="填写物流单号" onchange="window.setOrderItemDomestic(${i},'trackingNo',this.value)"></div>
+        <div class="opc-field"><label>工厂发货日期</label><input type="date" value="${esc(dl.shipDate||'')}" onchange="window.setOrderItemDomestic(${i},'shipDate',this.value)"></div>
+        <div class="opc-field"><label>物流状态</label><select onchange="window.setOrderItemDomestic(${i},'status',this.value)">${logisticsStatusOptions(dl.status||'pending')}</select></div>
+      </div>
+      ${customCarrier}
+    </div>
+  </div>`;
+}
+
 const LOGISTICS_STATUS_LABELS={pending:'待发货',in_transit:'运输中',received:'已签收',exception:'异常'};
 const DOMESTIC_CARRIERS=['韵达','中通','顺丰','申通'];
 function logisticsStatusOptions(selected='pending'){return Object.entries(LOGISTICS_STATUS_LABELS).map(([v,n])=>`<option value="${v}" ${selected===v?'selected':''}>${n}</option>`).join('')}
-function domesticCarrierPreset(v=''){return DOMESTIC_CARRIERS.includes(v)?v:(v?'custom':'')}
-function domesticCarrierOptions(v=''){const cur=domesticCarrierPreset(v);return `<option value="">选择物流</option>${DOMESTIC_CARRIERS.map(x=>`<option value="${x}" ${cur===x?'selected':''}>${x}</option>`).join('')}<option value="custom" ${cur==='custom'?'selected':''}>自定义</option>`}
+function domesticCarrierPreset(v='',forceCustom=false){return forceCustom?'custom':DOMESTIC_CARRIERS.includes(v)?v:(v?'custom':'')}
+function domesticCarrierOptions(v='',forceCustom=false){const cur=domesticCarrierPreset(v,forceCustom);return `<option value="">选择物流</option>${DOMESTIC_CARRIERS.map(x=>`<option value="${x}" ${cur===x?'selected':''}>${x}</option>`).join('')}<option value="custom" ${cur==='custom'?'selected':''}>自定义</option>`}
 function domesticLogisticsRows(o){const rows=Array.isArray(o.domesticLogistics)?o.domesticLogistics:[];if(!rows.length)return '<div class="empty" style="padding:14px">暂无国内物流记录。工厂发货后点击“＋ 添加国内物流”。</div>';return `<div class="table-wrap"><table class="table"><tr><th>承运商</th><th>运单号</th><th>发货日期</th><th>预计到达</th><th>签收日期</th><th>状态</th><th>备注</th><th></th></tr>${rows.map((r,i)=>`<tr><td><input value="${esc(r.carrier||'')}" placeholder="顺丰 / 德邦..." onchange="window.setDomesticLogistics(${i},'carrier',this.value)"></td><td><input value="${esc(r.trackingNo||'')}" placeholder="国内运单号" onchange="window.setDomesticLogistics(${i},'trackingNo',this.value)"></td><td><input type="date" value="${esc(r.shipDate||'')}" onchange="window.setDomesticLogistics(${i},'shipDate',this.value)"></td><td><input type="date" value="${esc(r.eta||'')}" onchange="window.setDomesticLogistics(${i},'eta',this.value)"></td><td><input type="date" value="${esc(r.receivedDate||'')}" onchange="window.setDomesticLogistics(${i},'receivedDate',this.value)"></td><td><select onchange="window.setDomesticLogistics(${i},'status',this.value)">${logisticsStatusOptions(r.status||'pending')}</select></td><td><input value="${esc(r.note||'')}" placeholder="箱数/异常等" onchange="window.setDomesticLogistics(${i},'note',this.value)"></td><td><button class="btn small danger" onclick="window.removeDomesticLogistics(${i})">×</button></td></tr>`).join('')}</table></div>`}
 function internationalLogisticsRows(o){const rows=Array.isArray(o.internationalLogistics)?o.internationalLogistics:[];if(!rows.length)return '<div class="shipment-empty"><b>尚未添加国际运单</b><span>货代出货后，在右上角添加运单并记录 Tracking / AWB、ETD、ETA 和签收状态。</span></div>';return `<div class="table-wrap"><table class="table"><tr><th>货代 / 承运商</th><th>运输方式</th><th>国际运单号</th><th>发货 / ETD</th><th>ETA</th><th>签收日期</th><th>状态</th><th>备注</th><th></th></tr>${rows.map((r,i)=>`<tr><td><input value="${esc(r.forwarder||'')}" placeholder="货代公司 / DHL..." onchange="window.setInternationalLogistics(${i},'forwarder',this.value)"></td><td><input value="${esc(r.method||'')}" placeholder="Air / Sea / Express" onchange="window.setInternationalLogistics(${i},'method',this.value)"></td><td><input value="${esc(r.trackingNo||'')}" placeholder="Tracking / AWB" onchange="window.setInternationalLogistics(${i},'trackingNo',this.value)"></td><td><input type="date" value="${esc(r.shipDate||'')}" onchange="window.setInternationalLogistics(${i},'shipDate',this.value)"></td><td><input type="date" value="${esc(r.eta||'')}" onchange="window.setInternationalLogistics(${i},'eta',this.value)"></td><td><input type="date" value="${esc(r.receivedDate||'')}" onchange="window.setInternationalLogistics(${i},'receivedDate',this.value)"></td><td><select onchange="window.setInternationalLogistics(${i},'status',this.value)">${logisticsStatusOptions(r.status||'pending')}</select></td><td><input value="${esc(r.note||'')}" placeholder="件数/渠道/异常" onchange="window.setInternationalLogistics(${i},'note',this.value)"></td><td><button class="btn small danger" onclick="window.removeInternationalLogistics(${i})">×</button></td></tr>`).join('')}</table></div>`}
 function orderEditor(o){const m=orderMetrics(o),payRows=paymentsForOrder(o.id),cst=cust(o.customerId),pcCount=db.purchaseContracts.filter(x=>x.salesOrderId===o.id).length,docCount=db.documents.filter(x=>x.salesOrderId===o.id).length;return `<div class="order-layout"><div><div class="card order-main-card"><div class="section-head"><div><h3>${o.id?'编辑销售订单':'新建销售订单'} ${dirtyStateBadge()}</h3><p>一笔真实业务一张 Sales Order；订单执行、采购、收款、客户出货分别独立跟踪，采购合同按需要生成。</p></div><div class="row"><button class="btn" onclick="window.closeSalesOrder()">返回</button>${o.id?`<button class="btn" onclick="window.attachmentCenter('sales_order','${o.id}','${esc(o.no)}')">📎 附件 <span class="attachment-count">${attachmentCount('sales_order',o.id)}</span></button>`:''}<button class="btn primary" id="saveOrderBtn" onclick="window.saveSalesOrder()">保存订单</button></div></div><div class="card-pad"><div class="order-basic-grid">
@@ -527,7 +658,7 @@ ${input('目的地 / 地点','soDest',o.destination,'text',"window.setOrderField
 <div class="field full"><label>订单进度</label>${orderStageFlow(o)}</div>
 </div></div></div>
 
-<div class="card" style="margin-top:12px"><div class="section-head"><div><h3>产品明细</h3><p>销售单价、采购单价、实际采购总额和每个产品对应的国内物流都可直接维护；工厂整单优惠或抹零时可直接修改采购总额，不改动产品库默认价格。<span class="order-col-tip">可拖动表头分隔线调整列宽</span></p></div><div class="row"><button class="btn order-col-reset" onclick="window.resetOrderColumnWidths()">↔ 恢复自适应</button><button class="btn" onclick="window.addOrderItem()">＋ 添加产品</button></div></div><div class="table-wrap order-items-wrap"><table class="table order-items-table" id="orderItemsTable">${orderItemColgroup()}<thead><tr>${orderItemHead('产品','product')}${orderItemHead('描述','desc')}${orderItemHead('数量','qty')}${orderItemHead('单位','unit')}${orderItemHead('销售单价','price')}${orderItemHead('销售金额','amount')}${orderItemHead('采购单价 RMB','purchasePrice')}${orderItemHead('采购金额 RMB','cost')}${orderItemHead('国内物流','domesticLogistics')}${orderItemHead('','action',true)}</tr></thead><tbody>${(o.items||[]).map(orderItemRow).join('')}</tbody></table></div></div>
+<div class="card order-products-card" style="margin-top:12px"><div class="section-head"><div><h3>产品明细</h3><p>每个产品独立管理销售、采购和国内物流；实际采购金额可手工覆盖，不改变产品库默认采购价。</p></div><div class="order-product-actions"><span class="order-product-count">${(o.items||[]).length} 个产品</span><button class="btn primary" type="button" onclick="window.addOrderItem()">＋ 添加产品</button></div></div><div class="order-products-body"><div class="order-product-list">${(o.items||[]).length?(o.items||[]).map(orderItemCard).join(''):'<div class="order-products-empty"><b>还没有添加产品</b><span>点击右上角“添加产品”，从产品库选择商品。</span></div>'}</div></div></div>
 
 <div class="card order-procurement-card" style="margin-top:12px"><div class="section-head"><div><h3>采购执行</h3><p>采购进度独立于客户收款；不要求必须生成采购合同。实际已经采购、生产或工厂发货时直接更新；一旦国际物流已发出，采购阶段自动标记为“采购完成”。</p></div><span class="badge">${esc(procurementStatusLabel(o.procurementStatus||'not_started'))}</span></div><div class="card-pad"><div class="procurement-grid">
 <div class="field"><label>采购进度</label><select onchange="window.setOrderField('procurementStatus',this.value)">${procurementStatusOptions(o.procurementStatus||'not_started')}</select></div>
@@ -764,7 +895,7 @@ window.setOrderItemPurchasePrice=(i,v)=>{if(!state.orderDraft?.items?.[i])return
 window.setOrderItemPurchaseTotal=(i,v)=>{if(!state.orderDraft?.items?.[i])return;window.markDirty();state.orderDraft.items[i].purchaseTotalOverride=v===''?null:Number(v||0);render()};
 window.resetOrderItemPurchaseTotal=i=>{if(!state.orderDraft?.items?.[i])return;window.markDirty();state.orderDraft.items[i].purchaseTotalOverride=null;render()};
 window.setOrderItemDomestic=(i,k,v)=>{const it=state.orderDraft?.items?.[i];if(!it)return;window.markDirty();it.domesticLogistics={carrier:'',trackingNo:'',shipDate:'',receivedDate:'',status:'pending',note:'',...(it.domesticLogistics||{}),[k]:v};const all=state.orderDraft.items.filter(x=>x.productId||x.description).map(x=>x.domesticLogistics||{});if(all.some(x=>x.status==='in_transit'||x.trackingNo))state.orderDraft.procurementStatus='factory_shipped';if(all.length&&all.every(x=>x.status==='received'))state.orderDraft.procurementStatus='received';render()};
-window.setOrderItemDomesticCarrier=(i,v)=>{const it=state.orderDraft?.items?.[i];if(!it)return;window.markDirty();it.domesticLogistics={carrier:'',trackingNo:'',shipDate:'',receivedDate:'',status:'pending',note:'',...(it.domesticLogistics||{})};if(v==='custom'){if(DOMESTIC_CARRIERS.includes(it.domesticLogistics.carrier))it.domesticLogistics.carrier='';}else it.domesticLogistics.carrier=v;render()};
+window.setOrderItemDomesticCarrier=(i,v)=>{const it=state.orderDraft?.items?.[i];if(!it)return;window.markDirty();it.domesticLogistics={carrier:'',trackingNo:'',shipDate:'',receivedDate:'',status:'pending',note:'',customCarrier:false,...(it.domesticLogistics||{})};if(v==='custom'){it.domesticLogistics.customCarrier=true;if(DOMESTIC_CARRIERS.includes(it.domesticLogistics.carrier))it.domesticLogistics.carrier='';}else{it.domesticLogistics.customCarrier=false;it.domesticLogistics.carrier=v;}render()};
 window.openOrderProductPicker=i=>{if(!state.orderDraft)return;const current=state.orderDraft.items[i]?.productId||'',cards=db.products.map(p=>`<div class="product-pick-card ${p.id===current?'selected':''}" data-product-card data-search="${esc([p.sku,p.name,p.nameCn,p.hs,supplier(p.supplierId)?.company||''].join(' ').toLowerCase())}" onclick="window.chooseOrderProduct(${i},'${p.id}')"><div class="image">${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="${esc(p.name)}">`:'No Image'}</div><div class="meta"><b>${esc(p.sku||'-')}</b><div class="pname">${esc(p.name||p.nameCn||'-')}</div><div class="sub">HS: ${esc(p.hs||'-')}<br>供应商：${esc(supplier(p.supplierId)?.company||'未设置')}</div><div class="price">${money(p.salePrice,p.currency)}</div></div></div>`).join('');showModal('选择产品',`<div class="product-picker-search"><input id="productPickerSearch" placeholder="搜索 SKU / 产品名 / HS Code / 供应商" oninput="window.filterOrderProductPicker(this.value)"></div><div class="product-picker-grid" id="productPickerGrid">${cards||'<div class="product-picker-empty">产品库还没有产品，请先到“产品库”新增产品。</div>'}</div>`,'window.closeModal()','关闭');setTimeout(()=>document.getElementById('productPickerSearch')?.focus(),0)};
 window.filterOrderProductPicker=v=>{const q=String(v||'').trim().toLowerCase();let shown=0;document.querySelectorAll('[data-product-card]').forEach(el=>{const ok=!q||(el.dataset.search||'').includes(q);el.style.display=ok?'grid':'none';if(ok)shown++});const grid=document.getElementById('productPickerGrid');let empty=document.getElementById('productPickerNoMatch');if(!shown&&grid){if(!empty){empty=document.createElement('div');empty.id='productPickerNoMatch';empty.className='product-picker-empty';empty.textContent='没有找到匹配产品';grid.appendChild(empty)}empty.style.display='block'}else if(empty)empty.style.display='none'};
 window.chooseOrderProduct=(i,id)=>{window.markDirty();const p=db.products.find(x=>x.id===id);if(!p||!state.orderDraft)return;const old=state.orderDraft.items[i]||{},next=itemFrom(p);if(Number(old.qty||0)>0)next.qty=Number(old.qty);if(old.domesticLogistics)next.domesticLogistics=JSON.parse(JSON.stringify(old.domesticLogistics));state.orderDraft.items[i]=next;state.modal='';render();toast('产品已选择','ok',`${p.sku} · ${p.name}`)};
