@@ -237,9 +237,9 @@
 .order-basic-grid .rate-lock{margin-top:2px;padding:4px 6px;font-size:9px;line-height:1.35}
 .order-basic-grid>.full{margin-top:1px}
 .order-basic-grid .stage-flow{gap:5px}.order-basic-grid .stage-flow .stage{padding:5px 8px}
-.procurement-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.procurement-stage{grid-column:1/-1}.procurement-note{grid-column:1/-1}
-.procurement-note textarea{min-height:44px;padding:8px 9px}
+.procurement-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px 9px}
+.procurement-stage{grid-column:1/-1;margin-top:-1px}.procurement-note{grid-column:1/-1;margin-top:-2px}
+.procurement-stage .stage-flow{margin-top:1px}.procurement-note textarea{min-height:40px;padding:7px 9px}
 .order-result-card .section-head{padding:12px 14px}
 .order-result-card .card-pad{padding:12px 14px}
 .order-result-card .cost-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -292,7 +292,85 @@
 .bulkbar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f5f8ff;border-bottom:1px solid #dbe7ff;font-size:10px}.bulkbar b{color:#155eef}
 .col-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.col-menu label{display:flex;align-items:center;gap:6px;font-size:10px;border:1px solid #e4e7ec;border-radius:8px;padding:7px 8px;background:#fff}
 @media(max-width:900px){.backup-grid,.team-grid{grid-template-columns:1fr}}
-.column-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.column-settings label{display:flex;align-items:center;gap:8px;border:1px solid #e4e7ec;border-radius:9px;padding:9px 10px;background:#fff;font-size:11px}.column-settings input{width:auto}.sort-head{cursor:pointer;user-select:none}.sort-head:hover{background:#f5f8ff}.sort-mark{margin-left:5px;color:#98a2b3;font-size:9px}.bulkbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 14px;border-top:1px solid #eef1f5;border-bottom:1px solid #eef1f5;background:#fbfcfe;font-size:10px}.bulkbar label{display:flex;align-items:center;gap:5px}.bulkbar input{width:auto}@media(max-width:720px){.column-settings{grid-template-columns:1fr}}</style>
+.column-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.column-settings label{display:flex;align-items:center;gap:8px;border:1px solid #e4e7ec;border-radius:9px;padding:9px 10px;background:#fff;font-size:11px}.column-settings input{width:auto}.sort-head{cursor:pointer;user-select:none}.sort-head:hover{background:#f5f8ff}.sort-mark{margin-left:5px;color:#98a2b3;font-size:9px}.bulkbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 14px;border-top:1px solid #eef1f5;border-bottom:1px solid #eef1f5;background:#fbfcfe;font-size:10px}.bulkbar label{display:flex;align-items:center;gap:5px}.bulkbar input{width:auto}@media(max-width:720px){.column-settings{grid-template-columns:1fr}}
+/* Final order editor readability overrides */
+.order-layout input[type="number"]{
+  font-size:12.5px!important;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.01em;
+}
+.order-items-table input[type="number"]{
+  font-size:12px!important;
+  font-weight:600;
+}
+.order-layout input[type="date"]{
+  font-size:11.5px!important;
+}
+.oi-money{
+  font-size:12px!important;
+  font-weight:800;
+}
+.payment-summary-grid span{
+  font-size:10px!important;
+}
+.payment-summary-grid b{
+  font-size:14px!important;
+  font-weight:800;
+}
+.payment-breakdown{
+  font-size:10px!important;
+}
+.expense-total span{
+  font-size:9.5px!important;
+}
+.expense-total b{
+  font-size:17px!important;
+  font-weight:850;
+}
+.order-result-card .cost-chip span{
+  font-size:10px!important;
+}
+.order-result-card .cost-chip b{
+  font-size:15.5px!important;
+  font-weight:800;
+}
+.order-result-card .cost-chip.profit b{
+  font-size:17px!important;
+}
+.payment-history-block{
+  margin-top:8px;
+}
+.payment-history-head{
+  justify-content:space-between;
+  margin-bottom:4px;
+}
+.payment-history-head b{
+  font-size:10.5px;
+}
+.payment-history{
+  gap:4px!important;
+}
+.payment-history-empty{
+  min-height:30px;
+  margin-top:7px;
+  padding:5px 8px!important;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  border-top:1px solid #eef1f5;
+  color:#98a2b3;
+  font-size:10px!important;
+  text-align:left!important;
+}
+.payment-history-empty .pay-risk{
+  flex:0 0 auto;
+}
+.procurement-stage .stage{
+  font-size:9.5px;
+}
+</style>
 </head>
 <body>
 <div id="app">加载中...</div>
@@ -672,7 +750,7 @@ ${input('定金比例 %','soDepositRate',o.depositRate,'number',"window.setOrder
 ${input('尾款到期日','soBalanceDueDate',o.balanceDueDate,'date',"window.setOrderField('balanceDueDate',this.value)")}
 </div><div class="payment-summary-grid"><div><span>订单总额</span><b>${money(m.salesNative,o.currency)}</b></div><div><span>已收</span><b class="profit-pos">${money(m.totalPaid,o.currency)}</b></div><div><span>未收</span><b class="${m.receivable>0?'profit-neg':'profit-pos'}">${money(m.receivable,o.currency)}</b></div><div><span>收款状态</span><b>${esc(orderPaymentLabel(o))}</b></div></div>
 <div class="payment-breakdown">定金：应收 ${money(m.depositDue,o.currency)} / 已收 ${money(m.depositPaid,o.currency)}　·　尾款：应收 ${money(m.balanceDue,o.currency)} / 已收 ${money(m.balancePaid,o.currency)}</div>
-<div style="margin-top:9px"><div class="row" style="justify-content:space-between"><b style="font-size:10px">收款历史</b><span class="pay-risk ${paymentRisk(o).key}">${esc(paymentRisk(o).label)}</span></div><div class="payment-history" style="margin-top:5px">${payRows.length?payRows.map(p=>`<div class="payment-row"><span>${esc(p.date)}</span><span>${p.type==='deposit'?'定金':p.type==='balance'?'尾款':'其他'}</span><span class="payment-amount">${money(p.amount,p.currency)}${p.currency!==o.currency?' <small class="muted">≈ '+money(paymentToOrderCurrency(o,p),o.currency)+'</small>':''}</span><span class="payment-ref" title="${esc(p.bankRef||p.note||'')}">${esc(p.bankRef||p.note||'-')}</span><button class="btn small danger" onclick="window.delPayment('${p.id}')">×</button></div>`).join(''):`<div class="payment-history-empty">${o.id?'暂无收款记录':'请先保存订单，再记录收款'}</div>`}</div></div></div></div>
+${payRows.length?`<div class="payment-history-block"><div class="row payment-history-head"><b>收款历史</b><span class="pay-risk ${paymentRisk(o).key}">${esc(paymentRisk(o).label)}</span></div><div class="payment-history">${payRows.map(p=>`<div class="payment-row"><span>${esc(p.date)}</span><span>${p.type==='deposit'?'定金':p.type==='balance'?'尾款':'其他'}</span><span class="payment-amount">${money(p.amount,p.currency)}${p.currency!==o.currency?' <small class="muted">≈ '+money(paymentToOrderCurrency(o,p),o.currency)+'</small>':''}</span><span class="payment-ref" title="${esc(p.bankRef||p.note||'')}">${esc(p.bankRef||p.note||'-')}</span><button class="btn small danger" onclick="window.delPayment('${p.id}')">×</button></div>`).join('')}</div></div>`:`<div class="payment-history-empty"><span>${o.id?'暂无收款记录':'保存订单后可记录收款'}</span><span class="pay-risk ${paymentRisk(o).key}">${esc(paymentRisk(o).label)}</span></div>`}</div></div>
 
 <div class="card order-expense-card" style="margin-top:12px"><div class="section-head"><div><h3>订单费用</h3><p>按实际发生的费用分类录入，统一按 RMB 计入利润。</p></div><div class="expense-total"><span>附加费用合计 RMB</span><b>${moneyCny(m.extra)}</b></div></div><div class="card-pad"><div class="expense-grid">
 ${input('国内运费 RMB','soDomesticFreight',o.domesticFreightCost,'number',"window.setOrderNum('domesticFreightCost',this.value)")}
