@@ -33,11 +33,11 @@ jobs:
           from pathlib import Path
           import re
           source = Path("tradedesk/index.html").read_text(encoding="utf-8")
-          match = re.search(r'<script type="module">\\s*(.*?)\\s*</script>', source, re.S)
+          match = re.search(r'<script type="module">\s*(.*?)\s*</script>', source, re.S)
           if not match:
               raise SystemExit("TradeDesk module script not found")
           Path("/tmp/tradedesk.js").write_text(match.group(1), encoding="utf-8")
-          print("TradeDesk module lines:", match.group(1).count("\\n") + 1)
+          print("TradeDesk module lines:", match.group(1).count("\n") + 1)
           PY
       - name: Check TradeDesk JavaScript syntax
         run: node --input-type=module --check < /tmp/tradedesk.js
