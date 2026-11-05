@@ -391,12 +391,13 @@ function createLightSupabase(baseUrl,apiKey){
   async function refreshIfNeeded(){let s=getStored();if(!s?.access_token)return s;const exp=jwtExp(s.access_token);if(exp&&exp>Date.now()/1000+90)return s;if(!s.refresh_token)return s;const r=await request(`${apiBase}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{apikey:apiKey,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});if(r.error){store(null);listeners.forEach(fn=>fn('SIGNED_OUT',null));return null}const ns={...r.data,user:r.data.user||s.user};store(ns);listeners.forEach(fn=>fn('TOKEN_REFRESHED',ns));return ns}
   async function headers(extra={}){const s=await refreshIfNeeded();return {apikey:apiKey,'Content-Type':'application/json',...(s?.access_token?{Authorization:`Bearer ${s.access_token}`}:{ }),...extra}}
   class Query{
-    constructor(table){this.table=table;this.action='select';this.cols='*';this.filters=[];this.sort=null;this.max=null;this.payload=null;this.singleMode='';this.upsertOpts=null;this.selectOpts={}}
+    constructor(table){this.table=table;this.action='select';this.cols='*';this.filters=[];this.sort=null;this.max=null;this.payload=null;this.singleMode='';this.upsertOpts=null;this.selectOpts={};this.timeoutMs=12000}
     select(cols='*',opts={}){this.cols=cols;this.selectOpts=opts||{};return this}
     eq(k,v){this.filters.push([k,'eq',v]);return this}
     like(k,v){this.filters.push([k,'like',v]);return this}
     order(k,o={}){this.sort=[k,o?.ascending!==false];return this}
     limit(n){this.max=Number(n);return this}
+    timeout(ms){this.timeoutMs=Math.max(1000,Number(ms)||12000);return this}
     maybeSingle(){this.singleMode='maybe';return this.exec()}
     single(){this.singleMode='single';return this.exec()}
     insert(row){this.action='insert';this.payload=row;return this}
@@ -418,7 +419,7 @@ function createLightSupabase(baseUrl,apiKey){
         if(this.action==='update'){method='PATCH';body=JSON.stringify(this.payload);prefer='return=representation'}
         if(this.action==='delete'){method='DELETE';prefer='return=representation'}
         const h=await headers(prefer?{Prefer:prefer}:{});
-        const r=await request(u.toString(),{method,headers:h,body});
+        const r=await request(u.toString(),{method,headers:h,body},this.timeoutMs);
         if(r.error)return {data:null,error:r.error};
         let data=r.data;
         if(this.action==='select'&&!Array.isArray(data)&&data==null)data=[];
@@ -680,8 +681,8 @@ async function hydrateProductImages(){
   const task=(async()=>{
     const owner=state.dataOwnerId||user.id;
     const [linked,legacy]=await Promise.all([
-      supabase.from('trade_products').select('id,image_url').eq('user_id',owner).like('image_url','http%'),
-      supabase.from('trade_products').select('id,sku,image_url,source_meta').eq('user_id',owner).like('image_url','data:image/%')
+      supabase.from('trade_products').select('id,image_url').eq('user_id',owner).like('image_url','http%').timeout(60000),
+      supabase.from('trade_products').select('id,sku,image_url,source_meta').eq('user_id',owner).like('image_url','data:image/%').timeout(60000)
     ]);
     if(linked.error)throw linked.error;
     (linked.data||[]).forEach(row=>{
