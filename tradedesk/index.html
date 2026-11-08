@@ -386,6 +386,25 @@
   .order-save-dock-copy small{display:none}
   .order-save-dock .btn{min-width:120px;height:40px;padding:0 16px}
 }
+
+/* 17TRACK one-click tracking dialog */
+.intl-tracking-cell{display:flex;align-items:center;gap:6px;min-width:0}
+.intl-tracking-cell input{flex:1 1 auto;min-width:0;width:100%}
+.intl-track-btn{flex:0 0 auto;height:33px;padding:0 10px;border:1px solid #bfd3ff;border-radius:7px;background:#eff4ff;color:#175cd3;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s}
+.intl-track-btn:hover{background:#dbeafe;border-color:#84adff}
+.track17-modal-backdrop{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:20px;background:rgba(15,23,42,.58);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.track17-modal{display:flex;flex-direction:column;width:min(900px,96vw);max-height:90vh;overflow:hidden;border:1px solid #e3eaf4;border-radius:16px;background:#fff;box-shadow:0 24px 70px rgba(15,23,42,.28)}
+.track17-modal-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 20px;border-bottom:1px solid #e8edf4;background:#fbfcfe}
+.track17-modal-head b{display:block;color:#172033;font-size:16px;font-weight:800}
+.track17-modal-head small{display:block;margin-top:5px;color:#667085;font-size:12px}
+.track17-close{flex:0 0 36px;width:36px;height:36px;border:1px solid #dbe3ef;border-radius:9px;background:#fff;color:#344054;font-size:23px;line-height:1;cursor:pointer}
+.track17-close:hover{background:#f2f4f7}
+.track17-modal-content{min-height:280px;padding:16px 20px;overflow:auto}
+.track17-loading{display:grid;place-items:center;min-height:220px;color:#667085;font-size:13px}
+.track17-error{padding:28px 18px;text-align:center;color:#b42318;font-size:13px}
+.track17-error a{display:inline-block;margin-left:6px;color:#175cd3;font-weight:700;text-decoration:underline}
+.track17-modal-foot{padding:10px 20px;border-top:1px solid #edf0f4;color:#98a2b3;font-size:11px}
+@media(max-width:640px){.track17-modal-backdrop{padding:8px}.track17-modal{width:100%;max-height:94vh;border-radius:12px}.track17-modal-head{padding:13px 14px}.track17-modal-content{padding:12px;min-height:240px}.track17-modal-foot{padding:9px 14px}.intl-track-btn{padding:0 8px}}
 </style>
 </head>
 <body>
@@ -840,7 +859,7 @@ function domesticCarrierPreset(v='',forceCustom=false){return forceCustom?'custo
 function domesticCarrierOptions(v='',forceCustom=false){const cur=domesticCarrierPreset(v,forceCustom);return `<option value="">选择物流</option>${DOMESTIC_CARRIERS.map(x=>`<option value="${x}" ${cur===x?'selected':''}>${x}</option>`).join('')}<option value="custom" ${cur==='custom'?'selected':''}>自定义</option>`}
 function domesticLogisticsRows(o){const rows=Array.isArray(o.domesticLogistics)?o.domesticLogistics:[];if(!rows.length)return '<div class="empty" style="padding:14px">暂无国内物流记录。工厂发货后点击“＋ 添加国内物流”。</div>';return `<div class="table-wrap"><table class="table"><tr><th>承运商</th><th>运单号</th><th>发货日期</th><th>预计到达</th><th>签收日期</th><th>状态</th><th>备注</th><th></th></tr>${rows.map((r,i)=>`<tr><td><input value="${esc(r.carrier||'')}" placeholder="顺丰 / 德邦..." onchange="window.setDomesticLogistics(${i},'carrier',this.value)"></td><td><input value="${esc(r.trackingNo||'')}" placeholder="国内运单号" onchange="window.setDomesticLogistics(${i},'trackingNo',this.value)"></td><td><input type="date" value="${esc(r.shipDate||'')}" onchange="window.setDomesticLogistics(${i},'shipDate',this.value)"></td><td><input type="date" value="${esc(r.eta||'')}" onchange="window.setDomesticLogistics(${i},'eta',this.value)"></td><td><input type="date" value="${esc(r.receivedDate||'')}" onchange="window.setDomesticLogistics(${i},'receivedDate',this.value)"></td><td><select onchange="window.setDomesticLogistics(${i},'status',this.value)">${logisticsStatusOptions(r.status||'pending')}</select></td><td><input value="${esc(r.note||'')}" placeholder="箱数/异常等" onchange="window.setDomesticLogistics(${i},'note',this.value)"></td><td><button class="btn small danger" onclick="window.removeDomesticLogistics(${i})">×</button></td></tr>`).join('')}</table></div>`}
 function shippingModeBlock(o){const mode=o.shippingMode||((o.portLoading||o.portDischarge||o.blNo||o.containerNo)?'freight':'express'),freight=mode==='freight'?'<div class="shipping-grid">'+input('装运港 / Port of Loading','soPol',o.portLoading,'text',"window.setOrderField('portLoading',this.value)")+input('目的港 / Port of Discharge','soPod',o.portDischarge,'text',"window.setOrderField('portDischarge',this.value)")+input('提单号 / B/L No.','soBl',o.blNo,'text',"window.setOrderField('blNo',this.value)")+input('柜号 / Container No.','soContainer',o.containerNo,'text',"window.setOrderField('containerNo',this.value)")+'</div>':'';return `<div class="shipping-mode-line"><div class="field"><label>出货类型</label><select onchange="window.setOrderField('shippingMode',this.value)"><option value="express" ${mode==='express'?'selected':''}>商业快递（DHL / UPS / FedEx 等）</option><option value="freight" ${mode==='freight'?'selected':''}>传统货运（海运 / 空运 / 铁路等）</option></select></div><div class="shipping-mode-hint">${mode==='express'?'商业快递无需填写装运港、目的港、提单号和柜号，直接记录承运商和运单号即可。':'传统货运可填写港口、提单号和柜号；实际没有的字段可以留空。'}</div></div>${freight}`}
-function internationalLogisticsRows(o){const rows=Array.isArray(o.internationalLogistics)?o.internationalLogistics:[];if(!rows.length)return '';return `<div class="international-logistics-wrap"><table class="international-logistics-table"><thead><tr><th>货代 / 承运商</th><th>运输方式</th><th>国际运单号</th><th>发货日期</th><th>签收日期</th><th>状态</th><th>备注</th><th></th></tr></thead><tbody>${rows.map((r,i)=>{const custom=internationalMethodPreset(r.method||'',r.customMethod===true)==='custom';return `<tr><td><input value="${esc(r.forwarder||'')}" placeholder="DHL / UPS / FedEx / 货代" onchange="window.setInternationalLogistics(${i},'forwarder',this.value)"></td><td><div class="intl-method-cell"><select onchange="window.setInternationalMethod(${i},this.value)">${internationalMethodOptions(r.method||'',r.customMethod===true)}</select>${custom?`<input class="intl-method-custom" value="${esc(r.method||'')}" placeholder="自定义运输方式" onchange="window.setInternationalLogistics(${i},'method',this.value)">`:''}</div></td><td><input value="${esc(r.trackingNo||'')}" placeholder="Tracking / AWB" onchange="window.setInternationalLogistics(${i},'trackingNo',this.value)"></td><td><input type="date" value="${esc(r.shipDate||'')}" onchange="window.setInternationalLogistics(${i},'shipDate',this.value)"></td><td><input type="date" value="${esc(r.receivedDate||'')}" onchange="window.setInternationalLogistics(${i},'receivedDate',this.value)"></td><td><select class="intl-status status-${esc(r.status||'pending')}" onchange="window.setInternationalLogistics(${i},'status',this.value)">${logisticsStatusOptions(r.status||'pending')}</select></td><td><input value="${esc(r.note||'')}" placeholder="件数 / 渠道 / 异常" onchange="window.setInternationalLogistics(${i},'note',this.value)"></td><td class="intl-action"><button class="intl-delete-btn" title="删除运单" onclick="window.removeInternationalLogistics(${i})">×</button></td></tr>`}).join('')}</tbody></table></div>`}
+function internationalLogisticsRows(o){const rows=Array.isArray(o.internationalLogistics)?o.internationalLogistics:[];if(!rows.length)return '';return `<div class="international-logistics-wrap"><table class="international-logistics-table"><thead><tr><th>货代 / 承运商</th><th>运输方式</th><th>国际运单号</th><th>发货日期</th><th>签收日期</th><th>状态</th><th>备注</th><th></th></tr></thead><tbody>${rows.map((r,i)=>{const custom=internationalMethodPreset(r.method||'',r.customMethod===true)==='custom';return `<tr><td><input value="${esc(r.forwarder||'')}" placeholder="DHL / UPS / FedEx / 货代" onchange="window.setInternationalLogistics(${i},'forwarder',this.value)"></td><td><div class="intl-method-cell"><select onchange="window.setInternationalMethod(${i},this.value)">${internationalMethodOptions(r.method||'',r.customMethod===true)}</select>${custom?`<input class="intl-method-custom" value="${esc(r.method||'')}" placeholder="自定义运输方式" onchange="window.setInternationalLogistics(${i},'method',this.value)">`:''}</div></td><td><div class="intl-tracking-cell"><input value="${esc(r.trackingNo||'')}" placeholder="Tracking / AWB" oninput="window.setInternationalTrackingNo(${i},this.value)"><button type="button" class="intl-track-btn" onclick="window.queryInternationalTracking(${i})" title="使用17TRACK查询物流">查询</button></div></td><td><input type="date" value="${esc(r.shipDate||'')}" onchange="window.setInternationalLogistics(${i},'shipDate',this.value)"></td><td><input type="date" value="${esc(r.receivedDate||'')}" onchange="window.setInternationalLogistics(${i},'receivedDate',this.value)"></td><td><select class="intl-status status-${esc(r.status||'pending')}" onchange="window.setInternationalLogistics(${i},'status',this.value)">${logisticsStatusOptions(r.status||'pending')}</select></td><td><input value="${esc(r.note||'')}" placeholder="件数 / 渠道 / 异常" onchange="window.setInternationalLogistics(${i},'note',this.value)"></td><td class="intl-action"><button class="intl-delete-btn" title="删除运单" onclick="window.removeInternationalLogistics(${i})">×</button></td></tr>`}).join('')}</tbody></table></div>`}
 
 function orderEditor(o){const m=orderMetrics(o),payRows=paymentsForOrder(o.id),cst=cust(o.customerId),pcCount=db.purchaseContracts.filter(x=>x.salesOrderId===o.id).length,docCount=db.documents.filter(x=>x.salesOrderId===o.id).length;return `<div class="order-layout"><div><div class="card order-main-card"><div class="section-head"><div><h3>${o.id?'编辑销售订单':'新建销售订单'} ${dirtyStateBadge()}</h3><p>一笔真实业务一张 Sales Order；订单执行、采购、收款、客户出货分别独立跟踪，采购合同按需要生成。</p></div><div class="row"><button class="btn" onclick="window.closeSalesOrder()">返回</button>${o.id?`<button class="btn" onclick="window.attachmentCenter('sales_order','${o.id}','${esc(o.no)}')">📎 附件 <span class="attachment-count">${attachmentCount('sales_order',o.id)}</span></button>`:''}<button class="btn primary" id="saveOrderBtn" onclick="window.saveSalesOrder()">保存订单</button></div></div><div class="card-pad"><div class="order-basic-grid">
 ${input('订单号','soNo',o.no,'text',"window.setOrderField('no',this.value)")}${input('订单日期','soDate',o.date,'date',"window.setOrderField('date',this.value)")}
@@ -1129,6 +1148,45 @@ window.addInternationalLogistics=()=>{if(!state.orderDraft)return;window.markDir
 window.syncPrimaryInternational=()=>{const r=state.orderDraft?.internationalLogistics?.[0];if(!r||!state.orderDraft)return;state.orderDraft.forwarder=r.forwarder||'';state.orderDraft.shipmentMethod=r.method||'';state.orderDraft.trackingNo=r.trackingNo||'';state.orderDraft.etd=r.shipDate||''};
 window.setInternationalMethod=(i,v)=>{const r=state.orderDraft?.internationalLogistics?.[i];if(!r)return;window.markDirty();if(v==='custom'){r.customMethod=true;if(INTERNATIONAL_METHODS.includes(r.method))r.method='';}else{r.customMethod=false;r.method=v;}if(i===0)window.syncPrimaryInternational();render()};
 window.setInternationalLogistics=(i,k,v)=>{if(!state.orderDraft?.internationalLogistics?.[i])return;window.markDirty();const r=state.orderDraft.internationalLogistics[i];r[k]=v;if(i===0)window.syncPrimaryInternational();const intlShipped=!!r.shipDate||r.status==='in_transit'||r.status==='received';if(intlShipped){if(state.orderDraft.status!=='completed')state.orderDraft.status='shipped';state.orderDraft.procurementStatus='completed';if(!state.orderDraft.warehouseReceiptDate)state.orderDraft.warehouseReceiptDate=r.shipDate||today()}if(k==='receivedDate'&&v){r.status='received';if(state.orderDraft.status!=='completed')state.orderDraft.status='shipped';state.orderDraft.procurementStatus='completed'}render()};
+window.setInternationalTrackingNo=(i,v)=>{if(!state.orderDraft?.internationalLogistics?.[i])return;window.markDirty();const r=state.orderDraft.internationalLogistics[i];r.trackingNo=v;if(i===0)window.syncPrimaryInternational()};
+window.close17TrackModal=()=>{document.getElementById('tradeDesk17TrackModal')?.remove()};
+window.ensure17TrackWidget=()=>{
+  if(window.YQV5&&typeof window.YQV5.trackSingle==='function')return Promise.resolve();
+  if(window.__tradeDesk17TrackPromise)return window.__tradeDesk17TrackPromise;
+  window.__tradeDesk17TrackPromise=new Promise((resolve,reject)=>{
+    let script=document.querySelector('script[data-tradedesk-17track]');
+    const onReady=()=>{let tries=0;const check=()=>{if(window.YQV5&&typeof window.YQV5.trackSingle==='function'){if(script)script.dataset.loaded='true';resolve();return;}if(tries++<30){setTimeout(check,100)}else reject(new Error('17TRACK查询组件未能初始化'))};check()};
+    if(!script){script=document.createElement('script');script.src='https://www.17track.net/externalcall.js';script.async=true;script.dataset.tradedesk17track='true'}
+    if(script.dataset.loaded==='true'&&window.YQV5?.trackSingle){resolve();return}
+    script.addEventListener('load',onReady,{once:true});
+    script.addEventListener('error',()=>reject(new Error('无法加载17TRACK查询组件，请检查网络')),{once:true});
+    if(!script.isConnected)document.head.appendChild(script);
+  });
+  window.__tradeDesk17TrackPromise.catch(()=>{window.__tradeDesk17TrackPromise=null});
+  return window.__tradeDesk17TrackPromise;
+};
+window.queryInternationalTracking=async i=>{
+  const row=state.orderDraft?.internationalLogistics?.[i];
+  if(!row)return;
+  const number=String(row.trackingNo||'').trim();
+  if(!number){toast('请先填写国际运单号','warn','填写运单号后即可一键查询物流。');return}
+  window.close17TrackModal();
+  const modal=document.createElement('div');
+  modal.id='tradeDesk17TrackModal';modal.className='track17-modal-backdrop';
+  modal.innerHTML=`<section class="track17-modal" role="dialog" aria-modal="true" aria-label="17TRACK物流查询"><header class="track17-modal-head"><div><b>17TRACK 物流查询</b><small>运单号：${esc(number)} · 自动识别承运商</small></div><button type="button" class="track17-close" onclick="window.close17TrackModal()" aria-label="关闭">×</button></header><div class="track17-modal-content"><div id="tradeDesk17TrackResult"><div class="track17-loading">正在连接 17TRACK 查询服务...</div></div></div><footer class="track17-modal-foot">物流数据由 17TRACK 及承运商提供 · 查询结果可能存在更新延迟</footer></section>`;
+  modal.addEventListener('click',event=>{if(event.target===modal)window.close17TrackModal()});
+  document.body.appendChild(modal);
+  try{
+    await window.ensure17TrackWidget();
+    const target=document.getElementById('tradeDesk17TrackResult');
+    if(!target)return;
+    window.YQV5.trackSingle({YQ_ContainerId:'tradeDesk17TrackResult',YQ_Height:560,YQ_Fc:'0',YQ_Lang:'zh-cn',YQ_Num:number});
+  }catch(error){
+    const target=document.getElementById('tradeDesk17TrackResult');
+    if(target)target.innerHTML='<div class="track17-error">暂时无法加载 17TRACK 查询组件。请检查网络，或<a href="https://www.17track.net/zh-cn" target="_blank" rel="noopener noreferrer">打开 17TRACK 官网查询</a>。</div>';
+    toast('物流查询服务暂时不可用','err',error.message||'请稍后重试');
+  }
+};
 window.removeInternationalLogistics=i=>{if(!state.orderDraft?.internationalLogistics)return;window.markDirty();state.orderDraft.internationalLogistics.splice(i,1);window.syncPrimaryInternational();render()};
 window.setOrderCustomer=id=>{if(!state.orderDraft)return;window.markDirty();state.orderDraft.customerId=id;const cr=cust(id);if(cr?.depositRate&&!state.orderDraft.id)state.orderDraft.depositRate=Number(cr.depositRate);render()};
 window.addOrderItem=()=>{window.markDirty();state.orderDraft.items.push(itemFrom(null));render()};
