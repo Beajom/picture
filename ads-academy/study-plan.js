@@ -103,7 +103,7 @@ function plan(u){
  if(!p.caseResults||typeof p.caseResults!=='object')p.caseResults={};
  if(!p.quizWrong||typeof p.quizWrong!=='object')p.quizWrong={};
  if(!p.tab)p.tab='path';
- if(!Number.isInteger(p.week)||p.week<0||p.week>3)p.week=0;
+ if(!Number.isInteger(p.week)||p.week<0||p.week>3){var pending=DAYS.find(function(d){return !p.done[d.n]});p.week=pending?pending.week:3;}
  if(!Number.isInteger(p.caseIndex)||p.caseIndex<0||p.caseIndex>=CASES.length)p.caseIndex=0;
  if(!p.pace)p.pace='45';
  if(typeof p.asin!=='string')p.asin='';
@@ -137,7 +137,7 @@ function pathHtml(p,data){
  '<aside class="study-sticky"><div class="study-card study-pad"><div class="study-eyebrow">MY PRACTICE SETTINGS</div><h3 style="margin:8px 0 6px">我的实操项目</h3>'+
  '<p class="study-muted">建议选择1个正在投放的 ASIN 贯穿练习；填写仅存于你的学习记录，不公开显示给其他访客。</p>'+
  '<label class="study-tiny" for="studyAsin">产品 ASIN（可选）</label><input id="studyAsin" data-sp-input="asin" maxlength="40" class="study-asinput" placeholder="输入需要诊断的 ASIN" value="'+esc(p.asin)+'">'+
- '<div class="study-tiny" style="margin-top:13px">每天可投入的时间</div><div class="study-choice">'+['30','45','60'].map(function(x){return '<button type="button" data-sp="pace" data-pace="'+x+'" class="'+(p.pace===x?'selected':'')+'">'+x+' 分钟</button>'}).join('')+'</div>'+
+ '<div class="study-tiny" style="margin-top:13px">每天可投入的时间</div><div class="study-choice">'+['30','45','60'].map(function(x){return '<button type="button" data-sp="pace" data-pace="'+x+'" class="'+(p.pace===x?'selected':'')+'">'+x+' 分钟</button>'}).join('')+'</div><div class="study-muted">'+(p.pace==='30'?'建议：学理论10分钟 · 看报表15分钟 · 写复盘5分钟':p.pace==='60'?'建议：学理论20分钟 · 看报表25分钟 · 做实验与复盘15分钟':'建议：学理论15分钟 · 看报表20分钟 · 写行动复盘10分钟')+'</div>'+
  '<div class="study-step"><i>1</i><div><b>先学</b><div class="study-muted">打开关联课时，记住1个核心判断规则</div></div></div>'+
  '<div class="study-step"><i>2</i><div><b>再练</b><div class="study-muted">下载或读取当天指定报表，动手核对</div></div></div>'+
  '<div class="study-step"><i>3</i><div><b>再判断</b><div class="study-muted">写出结论、证据、潜在风险与回滚条件</div></div></div>'+
