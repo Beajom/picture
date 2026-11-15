@@ -521,13 +521,45 @@ async function readCSVFallback(file){
  if((raw.match(/\uFFFD/g)||[]).length>5&&window.TextDecoder)try{raw=new TextDecoder('gb18030').decode(buf)}catch(e){}
  return E.fromCSV(raw,file.name);
 }
+var excelLoader=null;
+function tryExternalScript(url,timeoutMs){
+ return new Promise(function(resolve,reject){
+  var el=document.createElement('script'),done=false;
+  function finish(ok){if(done)return;done=true;clearTimeout(timer);el.onerror=null;el.onload=null;if(!ok)el.remove();ok?resolve():reject(new Error('加载失败'))}
+  el.src=url;el.async=true;el.crossOrigin='anonymous';
+  el.onload=function(){finish(!!window.XLSX)};
+  el.onerror=function(){finish(false)};
+  var timer=setTimeout(function(){finish(false)},timeoutMs||6500);
+  (document.head||document.body).appendChild(el);
+ });
+}
+function ensureExcelParser(){
+ if(window.XLSX&&window.XLSX.read)return Promise.resolve(window.XLSX);
+ if(excelLoader)return excelLoader;
+ excelLoader=(async function(){
+  var sources=[
+   'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+   'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+  ];
+  for(var i=0;i<sources.length;i++){
+   try{await tryExternalScript(sources[i],5500);if(window.XLSX&&window.XLSX.read)return window.XLSX}catch(e){}
+  }
+  throw new Error('Excel解析组件无法加载，可能是网络屏蔽了外部CDN。可以将亚马逊报表另存为CSV后重新导入；CSV无需外部组件。');
+ })().catch(function(e){excelLoader=null;throw e});
+ return excelLoader;
+}
 async function parseFile(file){
- if(window.XLSX){
-  var buf=await file.arrayBuffer(),w=window.XLSX.read(buf,{type:'array',cellDates:false,raw:false});
-  return E.fromWorkbook(w,file.name);
+ if(/\.(csv|tsv)$/i.test(file.name))return readCSVFallback(file);
+ if(!/\.(xlsx|xls)$/i.test(file.name))throw new Error('文件格式不支持（需要 .xlsx、.xls、.csv 或 .tsv）。');
+ var XLSX=await ensureExcelParser();
+ try{
+  var buf=await file.arrayBuffer(),book=XLSX.read(buf,{type:'array',cellDates:false,raw:false});
+  return E.fromWorkbook(book,file.name);
+ }catch(e){
+  throw new Error('Excel读取失败：'+(e&&e.message||e)+'。请确认文件未损坏、未加密，或者尝试从亚马逊重新导出CSV。');
  }
- if(/\.csv$|\.tsv$/i.test(file.name))return readCSVFallback(file);
- throw new Error('Excel解析组件未加载，请确认网络可访问CDN，或先导出CSV报告。');
 }
 async function importFiles(){
  if(state.importBusy)return;
