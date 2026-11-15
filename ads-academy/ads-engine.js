@@ -1,5 +1,5 @@
 /* Amazon Ads Analytics Engine v1 | Local-only report parsing and metrics */
-(function(){
+window.AdsEngine=(function(){
 'use strict';
 var S = {
 date:['日期','报告日期','date','report date','start date'],
