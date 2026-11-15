@@ -161,6 +161,7 @@ function dayHtml(d,p,data,today){
 }
 function labHtml(p,data){
  var c=CASES[p.caseIndex], prev=p.caseResults[c.id], solved=Object.keys(p.caseResults).length, correct=CASES.filter(function(x){return p.caseResults[x.id]&&p.caseResults[x.id].choice===x.ans}).length;
+ var order=[0,1,2,3].map(function(i){return (i+((p.caseIndex*3+1)%4))%4;});
  var out='<div class="study-metrics">'+
  '<div class="study-card study-metric"><span class="study-muted">练习题库</span><b>'+CASES.length+' 道</b></div>'+
  '<div class="study-card study-metric"><span class="study-muted">已作答</span><b>'+solved+' 道</b></div>'+
@@ -168,8 +169,8 @@ function labHtml(p,data){
  out+='<div class="study-grid"><div>'+
  '<section class="study-card study-scenario"><div class="study-topline"><span class="study-eyebrow">SCENARIO '+(p.caseIndex+1)+' / '+CASES.length+'</span><span class="study-pill">'+esc(c.tags)+'</span></div>'+
  '<h3>'+esc(c.title)+'</h3><p style="line-height:1.9;color:#596d87">'+esc(c.desc)+'</p><p class="study-muted"><b>你会优先采取哪项动作？</b> 选择之后显示理由，不会自动修改广告账户。</p>'+
- '<div class="study-scenario-options">'+c.opts.map(function(a,i){var cls=prev?(i===c.ans?' correct':i===prev.choice?' incorrect':''):'';return '<button type="button" data-sp="answer" data-answer="'+i+'" class="study-option'+cls+(prev&&prev.choice===i?' selected':'')+'" aria-pressed="'+(!!prev&&prev.choice===i)+'"><b>'+String.fromCharCode(65+i)+'.</b> '+esc(a)+'</button>'}).join('')+'</div>'+
- (prev?'<div class="study-explanation"><b>'+(prev.choice===c.ans?'✓ 判断正确':'需要再想一想 · 正确选项 '+String.fromCharCode(65+c.ans))+'</b><div style="margin-top:7px">'+esc(c.why)+'</div></div>':'')+
+ '<div class="study-scenario-options">'+order.map(function(i,j){var a=c.opts[i],cls=prev?(i===c.ans?' correct':i===prev.choice?' incorrect':''):'';return '<button type="button" data-sp="answer" data-answer="'+i+'" class="study-option'+cls+(prev&&prev.choice===i?' selected':'')+'" aria-pressed="'+(!!prev&&prev.choice===i)+'"><b>'+String.fromCharCode(65+j)+'.</b> '+esc(a)+'</button>'}).join('')+'</div>'+
+ (prev?'<div class="study-explanation"><b>'+(prev.choice===c.ans?'✓ 判断正确':'需要再想一想 · 正确选项 '+String.fromCharCode(65+order.indexOf(c.ans)))+'</b><div style="margin-top:7px">'+esc(c.why)+'</div></div>':'')+
  '<div class="study-row" style="display:flex;gap:9px;margin-top:16px;flex-wrap:wrap"><button class="btn" data-sp="prevcase">上一题</button><button class="btn primary" data-sp="nextcase">下一题 →</button><button class="btn" data-sp="retry">重做本题</button></div></section>'+
  '<div class="study-card study-pad"><div class="study-eyebrow">KEY PRINCIPLE</div><h3 style="margin:8px 0">一个合格的优化动作必须回答</h3>'+
  '<div class="study-step"><i>1</i>数据来自哪个报表？是否同一期间和口径？</div>'+
