@@ -213,7 +213,9 @@ function selectFiles(items){
 }
 function importer(){
  var d=state.datasets;
- return '<section class="al-grid two"><div class="al-panel al-pad"><span class="al-eye">LOCAL DATA IMPORT</span><h2>导入亚马逊真实广告报表</h2><p class="al-muted">支持 SP/SB 搜索词报告、SP/SB 广告位报告和 Soju 的两份 Excel 模板，自动跳过透视结果页，不重复计算。</p>'+
+ var oldNoDate=d.filter(function(x){return (x.rows||[]).length>0&&!(x.rows||[]).some(function(r){return !!r.date})});
+ return (oldNoDate.length?'<div class="al-notice-danger"><strong>检测到 '+oldNoDate.length+' 份已导入报表没有解析出的日期。</strong>旧版不支持 Sep 05, 2026 等英文日期，现已修复。请重新选择原来的 Excel 文件，保持“更新同名文件与工作表的旧版本”，重新导入后将自动替换对应旧记录。原始文件有日期，不需要修改 Excel。</div>':'')+
+ '<section class="al-grid two"><div class="al-panel al-pad"><span class="al-eye">LOCAL DATA IMPORT</span><h2>导入亚马逊真实广告报表</h2><p class="al-muted">支持 SP/SB 搜索词报告、SP/SB 广告位报告和 Soju 的两份 Excel 模板，自动跳过透视结果页，不重复计算。</p>'+
  '<div class="al-drop" id="alDrop" tabindex="0" aria-label="拖入Excel或CSV文件的上传区域"><div class="al-drop-icon">⇪</div><strong>上传 SP / SB 广告报告</strong><p class="al-muted">将 Excel / CSV 拖到这里，或点击下方“选择文件”。选择后会显示文件清单，不会因为切换页面而丢失。</p>'+
  '<input id="alFiles" class="al-file-input" type="file" multiple accept=".xlsx,.xls,.csv,.tsv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">'+
  btn('① 选择文件','chooseFiles','primary')+
