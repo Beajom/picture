@@ -154,7 +154,8 @@ function makeDemo(){
 }
 async function installDemo(){
  if(!window.confirm('将添加清楚标记的虚拟广告示例数据，仅用于学习和测试。真实数据导入后同类型演示数据不会参与计算。继续吗？'))return;
- var ds=makeDemo();
+ var ds=makeDemo(),old=state.datasets.filter(function(x){return /^DEMO_/.test(x.file||'')});
+ for(var j=0;j<old.length;j++){try{await E.remove(old[j].id)}catch(err){}}
  for(var i=0;i<ds.length;i++){try{await E.put(ds[i])}catch(err){}}
  state.datasets=state.datasets.filter(function(x){return !/^DEMO_/.test(x.file||'')}).concat(ds);
  state.kind='sp_search';state.currency='USD';state.tab='overview';
