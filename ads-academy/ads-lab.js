@@ -127,7 +127,7 @@ function specialMetrics(m){
 function comparisonCard(d){
  var m=datasetSummary(d),days=Array.from(new Set(d.rows.map(function(x){return x.date}).filter(Boolean))).sort();
  return '<div class="al-source"><div class="al-between"><strong>'+esc(d.sheet||d.file)+'</strong>'+chip(KN[d.kind]||d.kind)+'</div>'+
- '<div class="al-source-meta">'+esc(d.file||'')+' · '+d.rows.length+'行 · '+esc(d.attr||'')+'</div><div class="al-minirow"><div><span>花费</span><b>'+money(m.spend)+'</b></div><div><span>销售额</span><b>'+money(m.sales)+'</b></div><div><span>ACOS</span><b>'+pct(m.acos)+'</b></div></div>'+
+ '<div class="al-source-meta">'+esc(d.file||'')+' · '+d.rows.length+'行 · '+esc(d.attr||'')+' · 全量原始文件汇总（不受当前筛选影响）'+'</div><div class="al-minirow"><div><span>花费</span><b>'+money(m.spend)+'</b></div><div><span>销售额</span><b>'+money(m.sales)+'</b></div><div><span>ACOS</span><b>'+pct(m.acos)+'</b></div></div>'+
  '<small class="al-muted">'+(days.length?esc(days[0]+' 至 '+days[days.length-1]):'无有效日期')+'</small></div>';
 }
 function makeDemo(){
