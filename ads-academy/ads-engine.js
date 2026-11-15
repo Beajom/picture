@@ -37,10 +37,37 @@ function locate(headers, opts){
 }
 function number(v){if(typeof v==='number')return Number.isFinite(v)?v:0;var s=String(v==null?'':v).trim();if(!s||s==='—'||s==='-')return 0;s=s.replace(/[$£€￥¥,%\s,]/g,'');var neg=/^\(.*\)$/.test(s);s=s.replace(/[()]/g,'');var n=Number(s);return Number.isFinite(n)?(neg?-n:n):0}
 function date(v){
- if(v==null||v==='')return '';
- if(typeof v==='number'&&v>30000&&v<100000){var t=new Date(Date.UTC(1899,11,30)+v*86400000);return t.toISOString().slice(0,10)}
- var s=String(v).trim().replace(/\u5e74|\u6708/g,'-').replace(/\u65e5/g,'').replace(/[./]/g,'-');
- var m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);return m?m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0'):'';
+ if(v===null||v===undefined||v==='')return '';
+ function format(y,m,d){
+  y=Number(y);m=Number(m);d=Number(d);
+  if(!Number.isInteger(y)||!Number.isInteger(m)||!Number.isInteger(d)||y<1900||y>2100||m<1||m>12||d<1||d>31)return '';
+  var t=new Date(Date.UTC(y,m-1,d));
+  if(t.getUTCFullYear()!==y||t.getUTCMonth()!==m-1||t.getUTCDate()!==d)return '';
+  return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+ }
+ if(v instanceof Date){return Number.isFinite(v.getTime())?format(v.getUTCFullYear(),v.getUTCMonth()+1,v.getUTCDate()):''}
+ // SheetJS may return a serial number or a formatted string for the same Excel date cell.
+ var s=String(v).trim().replace(/\uFEFF/g,'');
+ if(!s)return '';
+ if(/^\d{5}(?:\.\d+)?$/.test(s)&&Number(s)>30000&&Number(s)<100000){
+  var t=new Date(Date.UTC(1899,11,30)+Math.floor(Number(s))*86400000);
+  return format(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate());
+ }
+ s=s.replace(/\s+/g,' ').trim();
+ // ISO, Chinese, slash and dot-separated year-first dates.
+ var m=s.match(/^(\d{4})[-\/.\u5e74](\d{1,2})[-\/.\u6708](\d{1,2})(?:\u65e5)?(?:\b|$|[ T])/);
+ if(m)return format(m[1],m[2],m[3]);
+ // US Amazon reports commonly use "Sep 05, 2026" or "September 5, 2026".
+ var months={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+ var en=s.match(/^([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})(?:\b|$)/);
+ if(en){var mo=months[en[1].slice(0,3).toLowerCase()];return mo?format(en[3],mo,en[2]):''}
+ // Some exports render the day before the English month ("05 Sep 2026").
+ en=s.match(/^(\d{1,2})[\s-]+([A-Za-z]{3,9})\.?,?[\s-]+(\d{4})(?:\b|$)/);
+ if(en){var mo=months[en[2].slice(0,3).toLowerCase()];return mo?format(en[3],mo,en[1]):''}
+ // Digit-first dates: U.S. mm/dd/yyyy unless the first component is >12.
+ m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})(?:\b|$)/);
+ if(m){var first=Number(m[1]),second=Number(m[2]);return first>12?format(m[3],second,first):format(m[3],first,second)}
+ return '';
 }
 function text(row,idx){return idx===undefined?'':String(row[idx]==null?'':row[idx]).trim()}
 function num(row,idx){return idx===undefined?0:number(row[idx])}
@@ -71,10 +98,10 @@ function extract(sheetName,matrix,filename){
   var spend=num(line,map.spend),impressions=num(line,map.impressions),clicks=num(line,map.clicks),sales=num(line,map.sales),orders=num(line,map.orders);
   if(!(spend||impressions||clicks||sales||orders))continue;
   var currency=text(line,map.currency)||'';
-  var d=date(text(line,map.date));
+  var d=date(map.date===undefined?'':line[map.date]);
   if(currency)currencies.add(currency);if(d)distinctDates.add(d);
   out.push({
-    date:d,portfolio:text(line,map.portfolio),campaign:campaign,adgroup:text(line,map.adgroup),
+    date:d,rawDate:map.date===undefined?'':String(line[map.date]??''),portfolio:text(line,map.portfolio),campaign:campaign,adgroup:text(line,map.adgroup),
     term:term,target:text(line,map.target),match:text(line,map.match),placement:p,
     strategy:text(line,map.strategy),country:text(line,map.country),currency:currency,
     impressions:impressions,clicks:clicks,spend:spend,sales:sales,orders:orders,units:num(line,map.units),
