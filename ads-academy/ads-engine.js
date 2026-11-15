@@ -131,14 +131,15 @@ function group(rows,by){
  return Array.from(map.entries()).map(function(p){var m=metric(p[1]);return Object.assign({key:p[0],rows:p[1].length},m)}).sort(function(a,b){return b.spend-a.spend});
 }
 function unique(rows){
- // Keep newest overlapping report row. Do not sum search and placement by design.
- var keys=new Map(),duplicates=0;
- rows.forEach(function(r){
-  var k=[r.date,r.portfolio,r.campaign,r.adgroup,r.term,r.target,r.match,r.placement,r.currency,r._asin].join('\u0001');
+ // Deduplicate overlapping daily report snapshots, never combine search and placement views.
+ var keys=new Map(),duplicates=0,ambiguous=0;
+ rows.forEach(function(r,i){
+  var k=[r.date,r.country,r.portfolio,r.campaign,r.adgroup,r.term,r.target,r.match,r.placement,r.currency,r._asin].join('\u0001');
+  if(!r.date){k+='\u0001unknown_'+i;ambiguous++}
   if(keys.has(k))duplicates++;
   keys.set(k,r);
  });
- return {rows:Array.from(keys.values()),duplicates:duplicates};
+ return {rows:Array.from(keys.values()),duplicates:duplicates,undated:ambiguous};
 }
 function products(p){
  var price=number(p.price),fx=number(p.fx)||0,proc=number(p.procure),freight=number(p.freight),fba=number(p.fba),
