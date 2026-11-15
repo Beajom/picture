@@ -20,7 +20,7 @@ function f(x,n){return x===null||x===undefined||!Number.isFinite(x)?'—':Number
 function pct(x){return x===null||x===undefined||!Number.isFinite(x)?'—':f(x*100,1)+'%'}
 function usd(x){return x===null||x===undefined||!Number.isFinite(x)?'—':'$'+f(x,2)}
 function stamp(){return new Date().toISOString().slice(0,10)}
-function dataUser(){var u=context.user;if(!u.adsLab||typeof u.adsLab!=='object')u.adsLab={};var p=u.adsLab;if(!Array.isArray(p.products))p.products=[];if(!Array.isArray(p.actions))p.actions=[];if(!Array.isArray(p.practice))p.practice=[];if(!Array.isArray(p.ranks))p.ranks=[];if(!p.revenue||typeof p.revenue!=='object')p.revenue={amount:'',from:'',to:'',currency:'USD'};if(!p.targets||typeof p.targets!=='object')p.targets={cpa:'',acos:'',currency:'USD'};return p}
+function dataUser(){var u=context.user;if(!u.adsLab||typeof u.adsLab!=='object')u.adsLab={};var p=u.adsLab;if(!Array.isArray(p.products))p.products=[];if(!Array.isArray(p.actions))p.actions=[];if(!Array.isArray(p.practice))p.practice=[];if(!Array.isArray(p.ranks))p.ranks=[];if(!p.revenue||typeof p.revenue!=='object')p.revenue={amount:'',totalAds:'',from:'',to:'',currency:'USD'};if(!p.targets||typeof p.targets!=='object')p.targets={cpa:'',acos:'',currency:'USD'};return p}
 function notify(s,isError){state.notice=s;state.error=isError?s:'';context&&context.refresh()}
 function dirty(){context.save();context.refresh()}
 function init(ctx){context=ctx;dataUser();if(state.ready||state.loading)return;state.loading=true;E.load().then(function(items){state.datasets=Array.isArray(items)?items:[];state.ready=true;state.loading=false;autoKind();if(context)context.refresh()}).catch(function(e){state.ready=true;state.loading=false;state.error='当前浏览器无法持久保存报表：'+(e.message||e)+'；可继续使用临时分析，但刷新后可能丢失。';if(context)context.refresh()})}
@@ -119,17 +119,20 @@ function overview(){
  (a.duplicates?'<div class="al-note">发现'+a.duplicates+'条可能重复的报表维度记录，当前在所选视图中仅保留最新一条；请核对是否为重复下载或不同口径的原始报告。</div>':'')+impactNote();
 }
 function revenueSection(m){
- var r=dataUser().revenue||{},amount=num(r.amount),good=amount>0&&(!r.currency||r.currency===state.currency),actual=good?m.spend/amount:null;
- var match=(r.from||'')===(state.from||'')&&(r.to||'')===(state.to||'');
- return '<div class="al-panel al-pad"><div class="al-between"><div><span class="al-eye">FULL SALES PERFORMANCE</span><h2>总销售额 / TACOS 口径</h2></div>'+chip('人工录入营业额')+'</div>'+
- '<p class="al-muted">SP/SB 搜索词与广告位报表不含完整店铺自然销售额。要测 TACOS，请输入与所选广告报告相同期间、相同币种、相同店铺/商品范围的总销售额。若多个广告类型均有花费，需合计各类型不重复的实际花费才是完整 TACOS。</p>'+
- '<div class="al-formgrid"><div class="al-field"><label>所选范围总销售额（'+esc(state.currency||'币种')+'）</label><input data-al-revenue="amount" type="number" min="0" step="any" value="'+esc(r.amount||'')+'" placeholder="从业务报告填写"></div>'+
- '<div class="al-field"><label>总销售额币种</label><select data-al-revenue="currency"><option value="USD" '+(r.currency==='USD'?'selected':'')+'>USD</option><option value="GBP" '+(r.currency==='GBP'?'selected':'')+'>GBP</option><option value="EUR" '+(r.currency==='EUR'?'selected':'')+'>EUR</option><option value="JPY" '+(r.currency==='JPY'?'selected':'')+'>JPY</option><option value="CNY" '+(r.currency==='CNY'?'selected':'')+'>CNY</option></select></div>'+
+ var r=dataUser().revenue||{},amount=num(r.amount),good=amount>0&&r.currency===state.currency;
+ var match=!!r.from&&!!r.to&&!!state.from&&!!state.to&&r.from===state.from&&r.to===state.to;
+ var complete=good&&match&&num(r.totalAds)>0?num(r.totalAds)/amount:null;
+ return '<div class="al-panel al-pad"><div class="al-between"><div><span class="al-eye">FULL SALES PERFORMANCE</span><h2>总销售额 / TACOS</h2></div>'+chip('同期手工核对')+'</div>'+
+ '<p class="al-muted">搜索词/广告位报告不包含完整自然销售额。请从业务报告填写同期总销售额，另填写从所有不同广告类型汇总、且无重复的同期广告花费。需保持币种、日期、账户和商品范围一致。</p>'+
+ '<div class="al-formgrid"><div class="al-field"><label>同期总销售额（'+esc(state.currency||'币种')+'）</label><input data-al-revenue="amount" type="number" min="0" step="any" value="'+esc(r.amount||'')+'" placeholder="业务报告"></div>'+
+ '<div class="al-field"><label>同期完整广告花费（可选）</label><input data-al-revenue="totalAds" type="number" min="0" step="any" value="'+esc(r.totalAds||'')+'" placeholder="全部广告费用，按唯一维度汇总"></div>'+
+ '<div class="al-field"><label>总销售额与花费币种</label><select data-al-revenue="currency">'+['USD','GBP','EUR','JPY','CNY'].map(function(x){return '<option value="'+x+'" '+(r.currency===x?'selected':'')+'>'+x+'</option>'}).join('')+'</select></div>'+
  '<div class="al-field"><label>营业额起始日</label><input data-al-revenue="from" type="date" value="'+esc(r.from||'')+'"></div>'+
  '<div class="al-field"><label>营业额结束日</label><input data-al-revenue="to" type="date" value="'+esc(r.to||'')+'"></div></div>'+
- '<div class="al-between"><div><span class="al-muted">当前所选报告花费 / 已填总销售额：</span><strong style="font-size:21px;color:#225ca9">'+(match&&good?pct(actual):'—')+'</strong></div>'+btn('保存营业额','saveRevenue','primary')+'</div>'+
- (!match?'<div class="al-note">日期筛选与营业额日期不一致或未完整指定：不显示TACOS。请先设置相同的起止日期。</div>':'')+
- '<div class="al-note">这里显示的是所选报告花费占总销售额比例；只有确认它覆盖该期间全部广告花费后，才能称为全账户 TACOS。否则只是局部广告费用率。</div></div>';
+ '<div class="al-between"><div><span class="al-muted">当前选定广告报表费用率：</span><b class="al-tacos">'+(match&&good?pct(m.spend/amount):'—')+'</b></div>'+
+ '<div><span class="al-muted">全部广告 TACOS：</span><b class="al-tacos">'+pct(complete)+'</b></div>'+btn('保存营业额','saveRevenue','primary')+'</div>'+
+ (!match?'<div class="al-note">营业额日期和广告报表筛选日期尚未完全一致，暂不显示比率；请设置相同的起止日期。</div>':'')+
+ '<div class="al-note">只有填写“同期完整广告花费”，才展示完整 TACOS。不可把相同广告的搜索词花费和广告位花费相加；混合币种须先换算，归因销售额和自然销售额也不可重复统计。</div></div>';
 }
 function importer(){
  var d=state.datasets;
@@ -269,7 +272,7 @@ function overlap(){
 function rankRecord(r){
  var asin=String(r.asin||'').trim().toUpperCase(),keyword=String(r.keyword||'').trim(),date=String(r.date||stamp()),natural=num(r.natural),ad=num(r.ad);
  if(!/^[A-Z0-9]{10}$/.test(asin)||!keyword||!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;
- if(natural<0||ad<0||natural>10000||ad>10000)return false;
+ if(natural<=0||ad<0||natural>10000||ad>10000)return false;
  var key=asin+'|'+keyword.toLowerCase()+'|'+date,rs=dataUser().ranks;
  var x={asin:asin,keyword:keyword,date:date,natural:natural||null,ad:ad||null,source:r.source||'手动 / CSV',note:r.note||''};
  var i=rs.findIndex(function(a){return [a.asin,a.keyword.toLowerCase(),a.date].join('|')===key});
