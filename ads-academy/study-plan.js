@@ -260,10 +260,11 @@ function dl(filename,content,mime){
  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1500);
 }
 function exportPlan(p){
- var rows=['Day,周,课题,完成,ASIN,实操任务,验收标准,需要报表,学习笔记'];
+ var rows=['Day,周,课题,审核状态,ASIN,实操任务,验收标准,需要报表,学习笔记,审核时间,审核意见,证据附件'];
  DAYS.forEach(function(d){
   function csv(x){return '"'+String(x||'').replace(/"/g,'""')+'"'}
-  rows.push([d.n,d.week+1,d.title,p.done[d.n]?'完成':'未完成',p.asin,d.task,d.pass,d.report,p.notes[d.n]].map(csv).join(','));
+  var submission=p.submissions[d.n]||{};
+  rows.push([d.n,d.week+1,d.title,window.AdsStudyAssessment.dayLabel(submission),p.asin,d.task,d.pass,d.report,p.notes[d.n],submission.reviewedAt||'',submission.feedback||'',(submission.files||[]).map(function(x){return x.name}).join('、')].map(csv).join(','));
  });
  dl('AmazonAds_28天学习复盘.csv','\ufeff'+rows.join('\r\n'),'text/csv;charset=utf-8');
  notice('已导出28天学习复盘 CSV');
