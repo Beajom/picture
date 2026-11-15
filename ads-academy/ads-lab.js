@@ -19,6 +19,7 @@ function num(x){return E.number(x)}
 function f(x,n){return x===null||x===undefined||!Number.isFinite(x)?'—':Number(x).toLocaleString('en-US',{minimumFractionDigits:n||0,maximumFractionDigits:n===undefined?2:n})}
 function pct(x){return x===null||x===undefined||!Number.isFinite(x)?'—':f(x*100,1)+'%'}
 function usd(x){return x===null||x===undefined||!Number.isFinite(x)?'—':'$'+f(x,2)}
+function money(x){var sign={USD:'$',GBP:'£',EUR:'€',JPY:'¥',CNY:'¥'}[state.currency]||((state.currency||'USD')+' ');return x===null||x===undefined||!Number.isFinite(x)?'—':sign+f(x,2)}
 function stamp(){return new Date().toISOString().slice(0,10)}
 function dataUser(){var u=context.user;if(!u.adsLab||typeof u.adsLab!=='object')u.adsLab={};var p=u.adsLab;if(!Array.isArray(p.products))p.products=[];if(!Array.isArray(p.actions))p.actions=[];if(!Array.isArray(p.practice))p.practice=[];if(!Array.isArray(p.ranks))p.ranks=[];if(!p.revenue||typeof p.revenue!=='object')p.revenue={amount:'',totalAds:'',from:'',to:'',currency:'USD'};if(!p.targets||typeof p.targets!=='object')p.targets={cpa:'',acos:'',currency:'USD'};return p}
 function notify(s,isError){state.notice=s;state.error=isError?s:'';context&&context.refresh()}
@@ -52,6 +53,7 @@ function uniqueRows(){
 function productByAsin(asin){return dataUser().products.find(function(p){return p.asin===asin})}
 function targets(){
  var t=dataUser().targets,cpa=num(t.cpa),acos=num(t.acos)/100;
+ if(state.currency&&state.currency!=='USD')return {cpa:null,acos:null,from:'报表币种非USD，需先建立同币种利润模型'};
  if(state.asin!=='all'){
   var pr=productByAsin(state.asin);
   if(pr){var model=E.products(pr);if(model.valid)return {cpa:model.targetCPA,acos:model.targetACOS,from:'ASIN利润库：'+pr.asin,model:model}}
@@ -103,21 +105,21 @@ function specialMetrics(m){
   return '<section class="al-panel al-pad"><div class="al-between"><h2>SB 专项指标</h2>'+chip('点击归因、品牌新买家与视频')+'</div>'+
    '<p class="al-muted">按照上传的 SB 报表字段独立展示；点击归因销售额已经包含在相应总归因口径中，不能重复相加。</p>'+
    '<div class="al-grid four">'+
-   (click?kpi('14天点击归因销售额',usd(m.clickSales),'不与总销售额相加')+kpi('14天点击归因订单',f(m.clickOrders,0),'仅点击归因拆分'):'')+
-   (ntb?kpi('品牌新买家订单',f(m.newBrandOrders,0),'14天报告指标')+kpi('品牌新买家销售额',usd(m.newBrandSales),'14天报告指标'):'')+
+   (click?kpi('14天点击归因销售额',money(m.clickSales),'不与总销售额相加')+kpi('14天点击归因订单',f(m.clickOrders,0),'仅点击归因拆分'):'')+
+   (ntb?kpi('品牌新买家订单',f(m.newBrandOrders,0),'14天报告指标')+kpi('品牌新买家销售额',money(m.newBrandSales),'14天报告指标'):'')+
    (video?kpi('完整视频观看次数',f(m.videoComplete,0),'视频投放时有意义')+kpi('5秒观看次数',f(m.videoFive,0),'视频投放时有意义'):'')+
    (brand?kpi('品牌搜索次数',f(m.brandSearch,0),'基于报表列定义'):'')+
    '</div></section>';
  }
  if(has(/广告SKU销售额|广告sku销售额/i))return '<section class="al-panel al-pad"><div class="al-between"><h2>SP 归因拆分</h2>'+chip('广告商品 / 其他SKU')+'</div>'+
  '<p class="al-muted">区分实际广告商品产生的销售与同店其他SKU归因销售，不将拆分指标额外加到总销售额。</p>'+
- '<div class="al-grid four">'+kpi('广告商品销售额',usd(m.skuSales),'SP 7天归因')+kpi('其他SKU销售额',usd(m.otherSkuSales),'SP 7天归因')+'</div></section>';
+ '<div class="al-grid four">'+kpi('广告商品销售额',money(m.skuSales),'SP 7天归因')+kpi('其他SKU销售额',money(m.otherSkuSales),'SP 7天归因')+'</div></section>';
  return '';
 }
 function comparisonCard(d){
  var m=datasetSummary(d),days=Array.from(new Set(d.rows.map(function(x){return x.date}).filter(Boolean))).sort();
  return '<div class="al-source"><div class="al-between"><strong>'+esc(d.sheet||d.file)+'</strong>'+chip(KN[d.kind]||d.kind)+'</div>'+
- '<div class="al-source-meta">'+esc(d.file||'')+' · '+d.rows.length+'行 · '+esc(d.attr||'')+'</div><div class="al-minirow"><div><span>花费</span><b>'+usd(m.spend)+'</b></div><div><span>销售额</span><b>'+usd(m.sales)+'</b></div><div><span>ACOS</span><b>'+pct(m.acos)+'</b></div></div>'+
+ '<div class="al-source-meta">'+esc(d.file||'')+' · '+d.rows.length+'行 · '+esc(d.attr||'')+'</div><div class="al-minirow"><div><span>花费</span><b>'+money(m.spend)+'</b></div><div><span>销售额</span><b>'+money(m.sales)+'</b></div><div><span>ACOS</span><b>'+pct(m.acos)+'</b></div></div>'+
  '<small class="al-muted">'+(days.length?esc(days[0]+' 至 '+days[days.length-1]):'无有效日期')+'</small></div>';
 }
 function makeDemo(){
@@ -165,13 +167,13 @@ function overview(){
  var anyDemo=state.datasets.some(function(d){return /^DEMO_/.test(d.file||'')});
  var a=uniqueRows(),m=E.metric(a.rows),t=targets();
  return summary+(anyDemo?'<div class="al-notice-danger">当前包含虚拟演示数据；只有在当前报告类型没有真实数据时才用于分析，演示结果不可用来调整真实广告。</div>':'')+filters()+'<div class="al-grid four">'+
- kpi('广告花费',usd(m.spend),'所选报告类型及筛选范围')+kpi('归因销售额',usd(m.sales),'按该报表自身口径')+
- kpi('ACOS',pct(m.acos),'花费 / 广告归因销售额')+kpi('平均 CPA',usd(m.cpa),'花费 / 归因订单')+'</div>'+
+ kpi('广告花费',money(m.spend),'所选报告类型及筛选范围')+kpi('归因销售额',money(m.sales),'按该报表自身口径')+
+ kpi('ACOS',pct(m.acos),'花费 / 广告归因销售额')+kpi('平均 CPA',money(m.cpa),'花费 / 归因订单')+'</div>'+
  revenueSection(m)+
  '<div class="al-grid two"><section class="al-panel al-pad"><div class="al-between"><h2>每日广告趋势</h2>'+chip('所选报告：'+(KN[state.kind]||'未选择'))+'</div>'+spark(a.rows)+'</section>'+
  '<section class="al-panel al-pad"><h2>利润与可行动性</h2><div class="al-process">'+
- '<div><i>1</i><span>可承受 CPA：<b>'+usd(t.cpa)+'</b>（'+esc(t.from)+'）</span></div>'+
- '<div><i>2</i><span>当前平均 CPA：<b>'+usd(m.cpa)+'</b></span></div>'+
+ '<div><i>1</i><span>可承受 CPA：<b>'+money(t.cpa)+'</b>（'+esc(t.from)+'）</span></div>'+
+ '<div><i>2</i><span>当前平均 CPA：<b>'+money(m.cpa)+'</b></span></div>'+
  '<div><i>3</i><span>已标记可复盘任务：<b>'+dataUser().actions.length+'</b> 条</span></div></div>'+
  btn('维护 ASIN 利润模型','tab','primary','data-tab="products"')+' '+btn('查看搜索词决策','tab','soft','data-tab="terms"')+
  '<div class="al-muted al-mt">只对选择的同一报告类型计算，避免重复统计。若报告没有 ASIN 字段，应在导入时手动关联商品。</div></section></div>'+
@@ -227,11 +229,11 @@ function analysis(type){
  var meta=need==='search'?'搜索词分层与否定决策':need==='placement'?'广告位的成本与转化表现':'活动级预算与收益治理';
  return filters({search:need==='search'})+
  '<section class="al-panel al-pad"><div class="al-between"><div><span class="al-eye">DATA DIAGNOSIS</span><h2>'+esc(meta)+'</h2></div><div class="al-actions">'+chip(KN[selected]||'')+btn('导出分析CSV','exportAnalysis','soft','data-group="'+need+'"')+'</div></div>'+
- '<p class="al-muted">共 '+full+' 行分组结果（最多展示前200行），目标 CPA：'+usd(t.cpa)+'，目标 ACOS：'+pct(t.acos)+'。建议是辅助判断，不会自动修改广告。</p>'+
+ '<p class="al-muted">共 '+full+' 行分组结果（最多展示前200行），目标 CPA：'+money(t.cpa)+'，目标 ACOS：'+pct(t.acos)+'。建议是辅助判断，不会自动修改广告。</p>'+
  '<div class="al-tablewrap"><table class="al-table"><thead><tr><th>'+esc(need==='search'?'客户搜索词':need==='placement'?'广告位':'广告活动')+'</th><th>曝光</th><th>点击</th><th>花费</th><th>订单</th><th>销售额</th><th>CTR</th><th>CVR</th><th>CPC</th><th>CPA</th><th>ACOS</th><th>行动判断</th><th>操作</th></tr></thead><tbody>'+
  groups.map(function(g,i){return '<tr><td class="al-key"><strong title="'+esc(g.key)+'">'+esc(g.key)+'</strong><small>'+esc(g.confidence)+'可信度</small></td>'+
- '<td>'+f(g.impressions,0)+'</td><td>'+f(g.clicks,0)+'</td><td>'+usd(g.spend)+'</td><td>'+f(g.orders,0)+'</td><td>'+usd(g.sales)+'</td>'+
- '<td>'+pct(g.ctr)+'</td><td>'+pct(g.cvr)+'</td><td>'+usd(g.cpc)+'</td><td>'+usd(g.cpa)+'</td><td>'+pct(g.acos)+'</td><td>'+chip(g.type,g.rank===1?'ok':g.rank===2?'warn':'')+'</td>'+
+ '<td>'+f(g.impressions,0)+'</td><td>'+f(g.clicks,0)+'</td><td>'+money(g.spend)+'</td><td>'+f(g.orders,0)+'</td><td>'+money(g.sales)+'</td>'+
+ '<td>'+pct(g.ctr)+'</td><td>'+pct(g.cvr)+'</td><td>'+money(g.cpc)+'</td><td>'+money(g.cpa)+'</td><td>'+pct(g.acos)+'</td><td>'+chip(g.type,g.rank===1?'ok':g.rank===2?'warn':'')+'</td>'+
  '<td>'+btn('详情','detail','soft','data-idx="'+i+'" data-group="'+need+'"')+' '+btn('加入行动','addAction','primary','data-idx="'+i+'" data-group="'+need+'"')+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
  (state.detail?detailView(need,groups):'')+impactNote();
 }
@@ -239,7 +241,7 @@ function detailView(by,groups){
  var g=groups.find(function(x){return x.key===state.detail});
  if(!g)return '';
  return '<div class="al-panel al-pad"><div class="al-between"><h2>诊断依据：'+esc(g.key)+'</h2>'+btn('关闭详情','closeDetail','soft')+'</div><p class="al-muted">'+esc(g.evidence)+'</p>'+
- '<div class="al-grid four">'+kpi('CPC',usd(g.cpc),'')+kpi('CPA',usd(g.cpa),'')+kpi('CVR',pct(g.cvr),'')+kpi('样本可信度',esc(g.confidence),'')+'</div>'+
+ '<div class="al-grid four">'+kpi('CPC',money(g.cpc),'')+kpi('CPA',money(g.cpa),'')+kpi('CVR',pct(g.cvr),'')+kpi('样本可信度',esc(g.confidence),'')+'</div>'+
  '<div class="al-note">推荐的下一步：核对搜索词相关性、历史归因、商品可售库存与利润，单次只改少量变量，并在操作记录中设置复查日期。</div></div>';
 }
 function productEmpty(){
@@ -294,8 +296,8 @@ function weeklyReview(){
  var a=E.metric(recent),b=E.metric(past);
  function change(a,b){return b>0?((a-b)/b*100).toFixed(1)+'%':'—'}
  return '<section class="al-panel al-pad"><div class="al-between"><h2>最近7日 vs 前7日（同类报告）</h2>'+btn('复制周复盘','copyReview','soft')+'</div>'+
- '<div class="al-grid four">'+kpi('广告花费',usd(a.spend),'环比 '+change(a.spend,b.spend))+kpi('广告订单',f(a.orders,0),'环比 '+change(a.orders,b.orders))+
- kpi('ACOS',pct(a.acos),'前期 '+pct(b.acos))+kpi('CPA',usd(a.cpa),'前期 '+usd(b.cpa))+'</div>'+
+ '<div class="al-grid four">'+kpi('广告花费',money(a.spend),'环比 '+change(a.spend,b.spend))+kpi('广告订单',f(a.orders,0),'环比 '+change(a.orders,b.orders))+
+ kpi('ACOS',pct(a.acos),'前期 '+pct(b.acos))+kpi('CPA',money(a.cpa),'前期 '+money(b.cpa))+'</div>'+
  '<p class="al-muted">时间截至 '+esc(last)+'；本分析仅使用当前筛选的 '+esc(KN[state.kind])+' 报表，并非全账户 TACOS。计算总销售额与 TACOS 还需另外导入业务报告或手动输入营业额。</p></section>';
 }
 function practice(){
@@ -305,7 +307,7 @@ function practice(){
  var g=tested[state.practiceIndex%tested.length],answer=state.practiceReveal?E.decision(g,t.cpa,t.acos):null;
  return '<div class="al-grid two"><section class="al-panel al-pad"><span class="al-eye">REAL DATA CASE</span><h2>用你的真实报表练判断</h2><p class="al-muted">第 '+(state.practiceIndex%tested.length+1)+' / '+tested.length+' 题 · '+esc(KN[state.kind]||'')+'，本题来自已导入报告（非模拟账户数据）。</p>'+
  '<h3 style="margin:16px 0">'+esc(g.key)+'</h3>'+
- '<div class="al-grid four">'+kpi('点击',f(g.clicks,0),'')+kpi('广告花费',usd(g.spend),'')+kpi('订单',f(g.orders,0),'')+kpi('CPA',usd(g.cpa),'')+'</div>'+
+ '<div class="al-grid four">'+kpi('点击',f(g.clicks,0),'')+kpi('广告花费',money(g.spend),'')+kpi('订单',f(g.orders,0),'')+kpi('CPA',money(g.cpa),'')+'</div>'+
  '<p class="al-muted">你会选择“放量、核查缩量、继续验证，还是暂不判断”？先写出依据，再揭晓参考判断。</p>'+
  '<textarea class="al-practice-answer" id="alPracticeReason" placeholder="我的判断、证据、计划动作、复查时间……">'+esc((dataUser().practice.slice().reverse().find(function(x){return x.key===g.key&&x.kind===state.kind})||{}).reason||'')+'</textarea>'+
  '<div class="al-actions">'+btn('显示参考分析','showAnswer','primary')+' '+btn('换一道真实数据题','nextPractice','soft')+' '+btn('打开相关课程','courseLink','soft','data-course="'+(by==='placement'?'11':'07')+'"')+'</div>'+
@@ -327,7 +329,7 @@ function overlap(){
  return '<section class="al-panel al-pad"><span class="al-eye">DUPLICATE TARGETING REVIEW</span><h2>搜索词重叠投放检查 · '+items.length+'个待核对词</h2>'+
  '<p class="al-muted">这里发现的是多个活动共享同一“实际客户搜索词”，不代表必然发生内部竞价或浪费。请结合匹配方式、分工、转化和归因做判断。</p>'+
  (items.length?'<div class="al-tablewrap"><table class="al-table"><thead><tr><th>搜索词</th><th>覆盖活动数</th><th>活动列表</th><th>累计花费</th><th>订单</th><th>ACOS</th><th>建议操作</th></tr></thead><tbody>'+
- items.slice(0,120).map(function(x){return '<tr><td class="al-key"><b>'+esc(x.term)+'</b></td><td>'+x.campaigns.size+'</td><td class="al-key">'+esc(Array.from(x.campaigns).join(' / '))+'</td><td>'+usd(x.spend)+'</td><td>'+f(x.orders,0)+'</td><td>'+pct(x.sales>0?x.spend/x.sales:null)+'</td><td>核对主推/探索角色和CPA，不要直接互相否定</td></tr>'}).join('')+'</tbody></table></div>':empty('当前未发现多个活动使用同一客户搜索词的记录，或报表未覆盖足够的活动。'))+
+ items.slice(0,120).map(function(x){return '<tr><td class="al-key"><b>'+esc(x.term)+'</b></td><td>'+x.campaigns.size+'</td><td class="al-key">'+esc(Array.from(x.campaigns).join(' / '))+'</td><td>'+money(x.spend)+'</td><td>'+f(x.orders,0)+'</td><td>'+pct(x.sales>0?x.spend/x.sales:null)+'</td><td>核对主推/探索角色和CPA，不要直接互相否定</td></tr>'}).join('')+'</tbody></table></div>':empty('当前未发现多个活动使用同一客户搜索词的记录，或报表未覆盖足够的活动。'))+
  '<div class="al-note">不同广告位、不同时间段、SP和SB之间可能出现重复归因，不能把这张检测结果当成实际自我竞价损失金额。</div></section>';
 }
 function rankRecord(r){
@@ -428,8 +430,8 @@ function exportActions(){csv(dataUser().actions,[['created','创建日期'],['la
 function backupUser(){download('AmazonAds_Lab_Config_'+stamp()+'.json',JSON.stringify({version:1,at:new Date().toISOString(),adsLab:dataUser()},null,2),'application/json')}
 function copyReview(){
  var m=E.metric(uniqueRows().rows),t=targets(),s='亚马逊广告运营复盘\n报表类型：'+(KN[state.kind]||'未选择')+'\n归因口径：'+(state.kind.startsWith('sb')?'SB 14天':'SP 7天')+
- '\n分析日期：'+stamp()+'\n广告花费：'+usd(m.spend)+'\n广告销售额：'+usd(m.sales)+'\n订单：'+f(m.orders,0)+'\nACOS：'+pct(m.acos)+'\nCPA：'+usd(m.cpa)+
- '\n目标CPA：'+usd(t.cpa)+'\n优化计划：\n执行后复查日期：\n风险及回滚条件：';
+ '\n分析日期：'+stamp()+'\n广告花费：'+money(m.spend)+'\n广告销售额：'+money(m.sales)+'\n订单：'+f(m.orders,0)+'\nACOS：'+pct(m.acos)+'\nCPA：'+money(m.cpa)+
+ '\n目标CPA：'+money(t.cpa)+'\n优化计划：\n执行后复查日期：\n风险及回滚条件：';
  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(function(){state.notice='复盘已复制';refresh()}).catch(function(){window.prompt('复制复盘',s)});
  else window.prompt('复制复盘',s);
 }
