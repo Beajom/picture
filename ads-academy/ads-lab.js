@@ -33,7 +33,7 @@ var KN={sp_search:'SP · 搜索词',sp_placement:'SP · 广告位',sb_search:'SB
 function chip(x,type){return '<span class="al-chip '+(type||'')+'">'+esc(x)+'</span>'}
 function btn(text,action,cls,extras){return '<button type="button" class="al-btn '+(cls||'')+'" data-al="'+action+'" '+(extras||'')+'>'+esc(text)+'</button>'}
 function datasetSummary(d){return E.metric(d.rows||[])}
-function activeDatasets(){return state.datasets.filter(function(d){return d.kind===state.kind})}
+function activeDatasets(){var a=state.datasets.filter(function(d){return d.kind===state.kind}),real=a.filter(function(d){return !/^DEMO_/.test(d.file||'')});return real.length?real:a}
 function uniqueRows(){
  var selected=activeDatasets();
  var currencies=Array.from(new Set(selected.flatMap(function(d){return (d.rows||[]).map(function(r){return r.currency||'未注明'})})));if(currencies.length&&!currencies.includes(state.currency))state.currency=currencies[0];
@@ -120,11 +120,51 @@ function comparisonCard(d){
  '<div class="al-source-meta">'+esc(d.file||'')+' · '+d.rows.length+'行 · '+esc(d.attr||'')+'</div><div class="al-minirow"><div><span>花费</span><b>'+usd(m.spend)+'</b></div><div><span>销售额</span><b>'+usd(m.sales)+'</b></div><div><span>ACOS</span><b>'+pct(m.acos)+'</b></div></div>'+
  '<small class="al-muted">'+(days.length?esc(days[0]+' 至 '+days[days.length-1]):'无有效日期')+'</small></div>';
 }
+function makeDemo(){
+ var start=new Date('2026-11-01T00:00:00Z'),all=[];
+ var configs=[
+  {kind:'sp_search',attr:'7天总归因',sheet:'演示SP搜索词',terms:['compression socks for women','calf compression sleeves','random unrelated query'],base:[15,12,10]},
+  {kind:'sp_placement',attr:'7天总归因',sheet:'演示SP广告位',terms:['Top of Search','Rest of Search','Product Pages'],base:[14,8,7]},
+  {kind:'sb_search',attr:'14天总归因',sheet:'演示SB搜索词',terms:['compression stockings','arm sleeves for women'],base:[10,8]},
+  {kind:'sb_placement',attr:'14天总归因',sheet:'演示SB广告位',terms:['Top of Search','Other Placements'],base:[9,7]}
+ ];
+ configs.forEach(function(c){
+  var rows=[];
+  for(var day=0;day<14;day++){
+   var date=new Date(start.getTime()+day*86400000).toISOString().slice(0,10);
+   c.terms.forEach(function(t,i){
+    var clicks=c.base[i]+(day%4)*3,orders=i===2?0:Math.max(0,Math.round(clicks*(i===0?.15:.07))),
+    spend=Math.round(clicks*(.75+i*.17)*100)/100,sales=orders*(15.99+i);
+    rows.push({date:date,portfolio:'DEMO',campaign:'演示活动-'+(i+1),adgroup:'DEMO GROUP',term:c.kind.endsWith('search')?t:'',
+     placement:c.kind.endsWith('placement')?t:'',target:c.kind.endsWith('search')?t:'',match:'exact',currency:'USD',country:'US',
+     impressions:clicks*(20+i*5),clicks:clicks,spend:spend,orders:orders,sales:sales,skuSales:c.kind==='sp_search'?sales*.8:0,
+     otherSkuSales:c.kind==='sp_search'?sales*.2:0,clickSales:c.kind.startsWith('sb')?sales*.8:0,
+     clickOrders:c.kind.startsWith('sb')?Math.round(orders*.8):0,videoComplete:c.kind==='sb_placement'?clicks*2:0,
+     videoFive:c.kind==='sb_placement'?clicks*3:0,newBrandOrders:c.kind.startsWith('sb')?Math.round(orders*.3):0,
+     newBrandSales:c.kind.startsWith('sb')?sales*.3:0,_asin:''});
+   });
+  }
+  all.push({id:'demo_'+c.kind+'_'+Date.now(),file:'DEMO_虚拟广告报表（非真实数据）',sheet:c.sheet,kind:c.kind,attr:c.attr,
+   headers:['花费','展示量','点击量','7天内广告SKU销售额','14 天内总销售额 -（点击）','品牌新买家','完整视频观看次数'],rows:rows,currencies:['USD'],
+   importedAt:new Date().toISOString(),demo:true});
+ });
+ return all;
+}
+async function installDemo(){
+ if(!window.confirm('将添加清楚标记的虚拟广告示例数据，仅用于学习和测试。真实数据导入后同类型演示数据不会参与计算。继续吗？'))return;
+ var ds=makeDemo();
+ for(var i=0;i<ds.length;i++){try{await E.put(ds[i])}catch(err){}}
+ state.datasets=state.datasets.filter(function(x){return !/^DEMO_/.test(x.file||'')}).concat(ds);
+ state.kind='sp_search';state.currency='USD';state.tab='overview';
+ state.notice='已添加4份虚拟演示报告。这些不是你的真实广告数据；真实报告导入后会优先分析真实数据。';
+ refresh();
+}
 function overview(){
- if(!state.datasets.length)return '<div class="al-grid two"><div class="al-panel al-pad"><h2>快速开始 · 3步</h2><div class="al-process">'+['导入亚马逊原始搜索词/广告位报告（CSV、XLSX）','在 ASIN 利润库录入费用，计算目标 CPA 与 ACOS','根据搜索词、广告位和活动分析生成优化行动'].map(function(s,i){return '<div><i>'+(i+1)+'</i>'+esc(s)+'</div>'}).join('')+'</div>'+btn('立即导入','tab','primary','data-tab="import"')+'</div><div class="al-panel al-pad"><h2>现有 Soju 模板怎样使用？</h2><p class="al-muted">SP、SB Excel 模板各有4张表，原始数据页有完整的报告字段，但目前没有有效广告明细。可以导入本系统识别结构；真正分析时请下载亚马逊后台的原始报告。</p>'+impactNote()+'</div></div>';
+ if(!state.datasets.length)return '<div class="al-grid two"><div class="al-panel al-pad"><h2>快速开始 · 3步</h2><div class="al-process">'+['导入亚马逊原始搜索词/广告位报告（CSV、XLSX）','在 ASIN 利润库录入费用，计算目标 CPA 与 ACOS','根据搜索词、广告位和活动分析生成优化行动'].map(function(s,i){return '<div><i>'+(i+1)+'</i>'+esc(s)+'</div>'}).join('')+'</div>'+btn('立即导入','tab','primary','data-tab="import"')+' '+btn('加载虚拟演示数据','demo','soft')+'</div><div class="al-panel al-pad"><h2>现有 Soju 模板怎样使用？</h2><p class="al-muted">SP、SB Excel 模板各有4张表，原始数据页有完整的报告字段，但目前没有有效广告明细。可以导入本系统识别结构；真正分析时请下载亚马逊后台的原始报告。</p>'+impactNote()+'</div></div>';
  var summary='<div class="al-grid four">'+kinds().map(function(k){var ds=state.datasets.filter(function(d){return d.kind===k});return kpi(KN[k],ds.length+'份',ds.reduce(function(a,d){return a+d.rows.length},0)+'行数据')}).join('')+'</div>';
+ var anyDemo=state.datasets.some(function(d){return /^DEMO_/.test(d.file||'')});
  var a=uniqueRows(),m=E.metric(a.rows),t=targets();
- return summary+filters()+'<div class="al-grid four">'+
+ return summary+(anyDemo?'<div class="al-notice-danger">当前包含虚拟演示数据；只有在当前报告类型没有真实数据时才用于分析，演示结果不可用来调整真实广告。</div>':'')+filters()+'<div class="al-grid four">'+
  kpi('广告花费',usd(m.spend),'所选报告类型及筛选范围')+kpi('归因销售额',usd(m.sales),'按该报表自身口径')+
  kpi('ACOS',pct(m.acos),'花费 / 广告归因销售额')+kpi('平均 CPA',usd(m.cpa),'花费 / 归因订单')+'</div>'+
  revenueSection(m)+
@@ -404,6 +444,7 @@ function handleAction(z){
  if(type==='closeDetail'){state.detail='';refresh();return}
  if(type==='addAction'){actionFromGroup(z.dataset.group,Number(z.dataset.idx));return}
  if(type==='importFiles'){void importFiles();return}
+ if(type==='demo'){void installDemo();return}
  if(type==='removeDataset'){if(!confirmAction('确认永久删除该浏览器存储的广告报表吗？'))return;
   var before=state.datasets.slice(),d=before.find(function(x){return x.id===id});
   state.datasets=before.filter(function(x){return x.id!==id});E.remove(id).then(function(){state.notice='已删除 '+(d?d.file:'数据');refresh()}).catch(function(e){state.datasets=before;notify('删除失败：'+e.message,true)});refresh();return}
