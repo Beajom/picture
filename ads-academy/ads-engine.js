@@ -173,10 +173,10 @@ function unique(rows){
  return {rows:Array.from(keys.values()),duplicates:duplicates,undated:ambiguous};
 }
 function products(p){
- var price=number(p.price),fx=number(p.fx)||0,proc=number(p.procure),freight=number(p.freight),fba=number(p.fba),
+ var price=number(p.price),fx=number(p.fx)||0,proc=number(p.procure),freight=number(p.freight),otherRMB=number(p.otherRMB),fba=number(p.fba),
  commission=number(p.commission)/100,returns=number(p.returns)/100,discount=number(p.discount)/100,
  other=number(p.other),target=number(p.target)/100;
- var valid=price>0&&fx>0,base=valid?price*(1-commission-returns-discount)-(proc+freight)/fx-fba-other:null;
+ var valid=price>0&&fx>0,base=valid?price*(1-commission-returns-discount)-(proc+freight+otherRMB)/fx-fba-other:null;
  return {valid:valid,contribution:base,breakEvenCPA:base,breakEvenACOS:valid?base/price:null,targetCPA:valid?base-price*target:null,targetACOS:valid?(base/price-target):null};
 }
 function decision(m,cpaTarget,acosTarget){
