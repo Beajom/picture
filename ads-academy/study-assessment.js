@@ -139,10 +139,11 @@ function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navi
 function toast(t){var a=document.createElement('div');a.className='toast';a.textContent=t;document.body.appendChild(a);setTimeout(function(){a.remove()},3100)}
 function draftText(d,p){
  var s=read(p,d.n);
- return '请作为亚马逊广告实战课程的审核老师，严格审核我的Day '+d.n+'作业。先检查算术、单位、归因日期和广告报表口径，再评价运营判断及风险；不要只给鼓励性反馈。请按「正确之处／关键错误／应如何修正／是否通过（通过或退回修改）」回答。\n\n'+
+ return '请作为亚马逊广告实战课程的审核老师，严格审核我的Day '+d.n+'作业。先检查算术、单位、归因日期和广告报表口径，再评价运营判断及风险；不要只给鼓励性反馈。请独立检查本日每个验收清单及实际证据，不能把“勾选完成”视为正确；尤其注意样本量、归因窗口、站点、币种、利润。请分别给出计算/推理、数据证据、广告判断和风险识别四项0-25分评分及总分0-100、错误、修改建议和是否通过；不许假装已经读过尚未上传的附件。\n\n'+
  '课程：'+d.title+'\n学习目标：'+d.task+'\n验收标准：'+d.pass+
  '\n练习ASIN：'+(p.asin||'未指定')+'\n需要的报表：'+d.report+
  (FIELDS[d.n]?'\n计算输入：\n'+FIELDS[d.n].map(function(x){return x[1]+'：'+(s.values[x[0]]??'未填')}).join('\n'):'')+
+ '\n本日验收清单与完成证据：\n'+window.AdsDayRubrics.forDay(d.n).map(function(x){var a=s.criteria[x.id]||{};return x.title+'（'+x.hint+'）\n完成：'+(a.checked?'是':'否')+'；证据：'+(a.proof||'未填写')}).join('\n')+
  '\n证据来源和数据：'+(s.evidence||'未填写')+
  '\n我的判断及计算过程：'+(s.conclusion||'未填写')+
  '\n风险和复查：'+(s.risks||'未填写')+
