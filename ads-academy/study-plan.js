@@ -122,7 +122,7 @@ function next(p){return DAYS.find(function(d){return !['passed','manual_reviewed
 function pct(n,total){return Math.round(100*n/Math.max(1,total))}
 function hero(p){
  var c=count(p), n=next(p);
- return '<section class="study-hero"><div><div class="eyebrow">PRACTICE-LED LEARNING · v3</div><h1>28 天，从看懂广告到独立做优化决策</h1>'+
+ return '<section class="study-hero"><div><div class="eyebrow">PRACTICE-LED LEARNING · v5</div><h1>28 天，从看懂广告到独立做优化决策</h1>'+
  '<p>不再只看课程页：每天有明确的学习内容、对应课时、真实报表任务和验收标准。先算利润，再找流量、做测试，最后学会判断何时放量、收缩或否定。</p>'+
  '<div class="row wrap" style="margin-top:16px"><span class="study-pill" style="background:#ffffff20;color:#fff">4 周 / 28 天</span><span class="study-pill" style="background:#ffffff20;color:#fff">15 章关联课程</span><span class="study-pill" style="background:#ffffff20;color:#fff">实操提交与审核</span></div></div>'+
  '<div class="study-progress"><small>学习计划完成度</small><b>'+c+' <span style="font-size:18px;font-weight:500">/ 28 天</span></b><div class="progress-track"><div class="progress-fill" style="width:'+pct(c,28)+'%"></div></div>'+
@@ -261,11 +261,11 @@ function dl(filename,content,mime){
  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1500);
 }
 function exportPlan(p){
- var rows=['Day,周,课题,审核状态,ASIN,实操任务,验收标准,需要报表,学习笔记,审核时间,审核意见,证据附件'];
+ var rows=['Day,周,课题,审核状态,AI分数,ASIN,实操任务,验收标准,需要报表,学习笔记,审核时间,审核意见,验收项目,证据附件,云端附件数'];
  DAYS.forEach(function(d){
   function csv(x){return '"'+String(x||'').replace(/"/g,'""')+'"'}
   var submission=p.submissions[d.n]||{};
-  rows.push([d.n,d.week+1,d.title,window.AdsStudyAssessment.dayLabel(submission),p.asin,d.task,d.pass,d.report,p.notes[d.n],submission.reviewedAt||'',submission.feedback||'',(submission.files||[]).map(function(x){return x.name}).join('、')].map(csv).join(','));
+  rows.push([d.n,d.week+1,d.title,window.AdsStudyAssessment.dayLabel(submission),submission.ai?.score??'',p.asin,d.task,d.pass,d.report,p.notes[d.n],submission.reviewedAt||'',submission.feedback||'',window.AdsDayRubrics.forDay(d.n).map(function(x){return x.title+'：'+String(submission.criteria?.[x.id]?.proof||'')}).join('；'),(submission.files||[]).map(function(x){return x.name}).join('、'),(submission.files||[]).filter(function(x){return !!x.cloudPath}).length].map(csv).join(','));
  });
  dl('AmazonAds_28天学习复盘.csv','\ufeff'+rows.join('\r\n'),'text/csv;charset=utf-8');
  notice('已导出28天学习复盘 CSV');
