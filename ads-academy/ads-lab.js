@@ -38,17 +38,17 @@ function activeDatasets(){var a=state.datasets.filter(function(d){return d.kind=
 function uniqueRows(){
  var selected=activeDatasets();
  var currencies=Array.from(new Set(selected.flatMap(function(d){return (d.rows||[]).map(function(r){return r.currency||'未注明'})})));if(currencies.length&&!currencies.includes(state.currency))state.currency=currencies[0];
- var all=[];
+ var all=[],excludedUndated=0;
  selected.slice().sort(function(a,b){return String(a.importedAt).localeCompare(String(b.importedAt))}).forEach(function(d){
   (d.rows||[]).forEach(function(r){if(state.currency&&((r.currency||'未注明')!==state.currency))return;
    if(!productSelectionMatches(r,d))return;
-   if(state.from&&r.date&&r.date<state.from)return;if(state.to&&r.date&&r.date>state.to)return;
+   if((state.from||state.to)&&!r.date){excludedUndated++;return}if(state.from&&r.date<state.from)return;if(state.to&&r.date>state.to)return;
    if(state.campaign&&!String(r.campaign||'').toLowerCase().includes(state.campaign.toLowerCase()))return;
    all.push(Object.assign({},r,{_asin:r._asin||d.asin||'',_kind:d.kind,_dataset:d.id}));
   });
  });
  var u=E.unique(all);
- return {rows:u.rows,duplicates:u.duplicates,original:all.length,datasets:selected.length};
+ return {rows:u.rows,duplicates:u.duplicates,original:all.length,datasets:selected.length,excludedUndated:excludedUndated};
 }
 function productByAsin(asin){return dataUser().products.find(function(p){return p.asin===asin})}
 function portfolioGroup(r){return window.AdsAsin.groupCode(r.portfolio||'')}
@@ -83,6 +83,10 @@ function filters(opts){
  (opts.search?'<div class="al-field al-grow"><label>搜索活动或关键词</label><input id="alSearch" data-al-input="q" type="search" placeholder="筛选搜索词…" value="'+esc(state.q)+'"></div>':'')+
  '<div class="al-field al-grow"><label>广告活动筛选</label><input data-al-input="campaign" type="search" placeholder="输入活动名称" value="'+esc(state.campaign)+'"></div>'+ 
  '<div class="al-filter-actions">'+btn('重置筛选','resetFilters','soft')+'</div></div>';
+}
+function dateQualityNote(){
+ var q=uniqueRows(),n=q.excludedUndated||0;
+ return n?'<div class="al-notice-danger"><b>日期质量保护：</b>当前日期筛选排除了 '+n+' 行没有有效日期的广告明细，避免污染指定期间的ACOS和趋势。请重新导入原始Excel，或清空日期筛选核查异常行。</div>':'';
 }
 function impactNote(){
  return '<div class="al-note">重要：搜索词报告与广告位报告通常是同一批广告表现的不同维度，绝不能互相累加。SP通常使用7天归因，SB模板使用14天归因。跨币种、跨归因窗口及缺失日期的数据不直接合并为经营总额。</div>';
@@ -171,7 +175,7 @@ function overview(){
  var summary='<div class="al-grid four">'+kinds().map(function(k){var ds=state.datasets.filter(function(d){return d.kind===k});return kpi(KN[k],ds.length+'份',ds.reduce(function(a,d){return a+d.rows.length},0)+'行数据')}).join('')+'</div>';
  var anyDemo=state.datasets.some(function(d){return /^DEMO_/.test(d.file||'')});
  var a=uniqueRows(),m=E.metric(a.rows),t=targets();
- return summary+familySelectionWarning()+(anyDemo?'<div class="al-notice-danger">当前包含虚拟演示数据；只有在当前报告类型没有真实数据时才用于分析，演示结果不可用来调整真实广告。</div>':'')+filters()+'<div class="al-grid four">'+
+ return summary+familySelectionWarning()+dateQualityNote()+(anyDemo?'<div class="al-notice-danger">当前包含虚拟演示数据；只有在当前报告类型没有真实数据时才用于分析，演示结果不可用来调整真实广告。</div>':'')+filters()+'<div class="al-grid four">'+
  kpi('广告花费',money(m.spend),'所选报告类型及筛选范围')+kpi('归因销售额',money(m.sales),'按该报表自身口径')+
  kpi('ACOS',pct(m.acos),'花费 / 广告归因销售额')+kpi('平均 CPA',money(m.cpa),'花费 / 归因订单')+'</div>'+
  revenueSection(m)+
@@ -258,7 +262,7 @@ function analysis(type){
  var full=groups.length;
  groups=groups.slice(0,200);
  var meta=need==='search'?'搜索词分层与否定决策':need==='placement'?'广告位的成本与转化表现':'活动级预算与收益治理';
- return filters({search:need==='search'})+familySelectionWarning()+
+ return filters({search:need==='search'})+familySelectionWarning()+dateQualityNote()+
  '<section class="al-panel al-pad"><div class="al-between"><div><span class="al-eye">DATA DIAGNOSIS</span><h2>'+esc(meta)+'</h2></div><div class="al-actions">'+chip(KN[selected]||'')+btn('导出分析CSV','exportAnalysis','soft','data-group="'+need+'"')+'</div></div>'+
  '<p class="al-muted">共 '+full+' 行分组结果（最多展示前200行），目标 CPA：'+money(t.cpa)+'，目标 ACOS：'+pct(t.acos)+'。建议是辅助判断，不会自动修改广告。</p>'+
  '<div class="al-tablewrap"><table class="al-table"><thead><tr><th>'+esc(need==='search'?'客户搜索词':need==='placement'?'广告位':'广告活动')+'</th><th>曝光</th><th>点击</th><th>花费</th><th>订单</th><th>销售额</th><th>CTR</th><th>CVR</th><th>CPC</th><th>CPA</th><th>ACOS</th><th>行动判断</th><th>操作</th></tr></thead><tbody>'+
