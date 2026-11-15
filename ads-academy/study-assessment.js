@@ -12,6 +12,7 @@ var FIELDS={
 3:[['spend','广告花费（USD）'],['adSales','广告归因销售额（USD）'],['totalSales','同期总销售额（USD）'],['acos','我算的 ACOS（%）'],['tacos','我算的 TACOS（%）']]
 };
 function esc(s){return String(s===undefined||s===null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function history(s,action,summary){if(!Array.isArray(s.history))s.history=[];s.history.push({at:stamp(),action:action,summary:String(summary||'').slice(0,500)});if(s.history.length>35)s.history.splice(0,s.history.length-35)}
 function read(p,n){if(!p.submissions||typeof p.submissions!=='object')p.submissions={};if(!p.submissions[n])p.submissions[n]={status:'draft',values:{},criteria:{},history:[],evidence:'',conclusion:'',risks:'',files:[],feedback:''};var v=p.submissions[n];if(!v.criteria)v.criteria={};if(!Array.isArray(v.history))v.history=[];if(!Array.isArray(v.files))v.files=[];if(!v.values)v.values={};return v}
 function stamp(){return new Date().toISOString()}
 function niceDate(t){return t?String(t).slice(0,16).replace('T',' '):'—'}
@@ -183,8 +184,8 @@ function collected(day,context){
  return s;
 }
 function modified(s,p,day){
- if(s.status==='passed'||s.status==='submitted'||s.status==='revision'||s.status==='failed'){
-  s.status='draft';s.autoMessages=[];s.reviewedAt='';p.done[day]=false;
+ if(s.status==='passed'||s.status==='manual_reviewed'||s.status==='submitted'||s.status==='revision'||s.status==='failed'){
+  s.status='draft';s.autoMessages=[];s.reviewedAt='';s.ai=null;p.done[day]=false;
  }
 }
 async function attach(day,files){
@@ -216,6 +217,27 @@ async function download(id,name){
  var f=await retrieveFile(id);if(!f){toast('当前浏览器找不到该附件。请重新选择原始文件。');return}
  var url=URL.createObjectURL(f),a=document.createElement('a');a.href=url;a.download=name;a.target='_blank';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},3000);
 }
+async function aiReview(day,d,p,options){
+ if(aiBusy){toast('已有作业在审核，请稍后再次提交。');return}
+ var s=collected(day,options),check=audit(day,s);
+ if(!check.passed||s.status!=='submitted'){
+  if(!check.passed){s.autoMessages=check.messages;s.status='failed';options.save();options.refresh()}
+  toast('请先提交作业并通过规则初审，再进行AI正式复核。');return;
+ }
+ if(!window.AcademyReviewService){toast('尚未检测到AI服务，使用复制材料到ChatGPT审核。');return}
+ var rubrics=window.AdsDayRubrics.forDay(day).map(function(r){return {title:r.title,evidence:String(s.criteria[r.id]?.proof||'')}});
+ var payload={day,title:d.title,task:d.task,standard:d.pass,evidence:s.evidence,conclusion:s.conclusion,risks:s.risks,
+  values:s.values,checklist:rubrics,fileNames:(s.files||[]).map(function(f){return f.name}),localMessages:check.messages};
+ aiBusy=true;options.refresh();
+ try{
+  var result=await window.AcademyReviewService.review(payload);
+  s.ai=result;s.status=result.verdict==='pass'?'passed':'revision';s.reviewedAt=stamp();
+  p.done[day]=result.verdict==='pass';s.feedback=String(result.summary||'');
+  history(s,'AI复核',result.score+'/100 · '+result.verdict+' · '+String(result.summary||'').slice(0,300));
+  options.save();toast(result.verdict==='pass'?'AI评分 '+result.score+'/100，审核通过。':'AI已列出需要修改的问题，修正后可再次提交。');
+ }catch(e){toast(String(e?.message||e).slice(0,230))}
+ finally{aiBusy=false;options.refresh()}
+}
 function handle(action,z,options,days){
  if(!/^review/.test(action))return false;
  ctx=options;var day=Number(z.dataset.day),d=days.find(function(x){return x.n===day});
@@ -223,14 +245,18 @@ function handle(action,z,options,days){
  var p=options.user.studyPlan,s=read(p,day);
  if(action==='reviewSubmit'){
   collected(day,options);var check=audit(day,s);s.autoMessages=check.messages;s.autoCheck=check.calc;s.status=check.passed?'submitted':'failed';s.submittedAt=stamp();
-  p.done[day]=false;options.save();options.refresh();toast(check.passed?'规则初审通过，下一步是复制材料给ChatGPT或老师复核。':'初审发现待修正内容，已在作业下方标注。');
+  s.ai=null;p.done[day]=false;history(s,'规则初审',check.passed?'材料和公式完整性通过':check.messages.join('；').slice(0,350));
+  options.save();options.refresh();toast(check.passed?'规则初审完成，请继续AI审核或老师复核；此时未算作正式通过。':'规则初审有待修正的内容，请查看下方反馈。');
  }else if(action==='reviewCopy'){collected(day,options);options.save();copyText(draftText(d,p))}
+ else if(action==='reviewAI'){void aiReview(day,d,p,options)}
+ else if(action==='reviewSyncFiles'){void syncFiles(day)}
  else if(action==='reviewApprove'||action==='reviewReject'){
   collected(day,options);
   if(s.status!=='submitted'&&s.status!=='passed'){toast('请先修改并重新提交作业、通过公式初审，再录入新的审核结论。');return true}
   if((s.feedback||'').trim().length<15){toast('请先粘贴真实审核意见（至少15字符），再记录审核结论。');return true}
-  s.status=action==='reviewApprove'?'passed':'revision';s.reviewedAt=stamp();p.done[day]=action==='reviewApprove';options.save();options.refresh();
-  toast(action==='reviewApprove'?'已记录实际审核通过，可进入下一天。':'已标记需要修改，请根据审核意见重新提交。');
+  s.status=action==='reviewApprove'?'manual_reviewed':'revision';s.reviewedAt=stamp();p.done[day]=action==='reviewApprove';history(s,action==='reviewApprove'?'手工登记复核意见':'要求重做',s.feedback);
+  options.save();options.refresh();
+  toast(action==='reviewApprove'?'已登记人工反馈（由用户自行确认），与系统AI审核区分显示。':'已标记需要修改，请根据审核意见重新提交。');
  }else if(action==='reviewRemove'){void remove(day,z.dataset.file)}
  else if(action==='reviewDownload'){var attachment=(s.files||[]).find(function(x){return x.id===z.dataset.file});if(attachment)void download(attachment.id,attachment.name)}
  return true;
@@ -240,6 +266,13 @@ function change(event,options){
  if(el.hasAttribute('data-sra-upload')){
   var day=Number(el.getAttribute('data-sra-upload'));
   ctx=options;void attach(day,el.files);return true;
+ }
+ if(el.hasAttribute('data-sra-criterion-check')||el.hasAttribute('data-sra-criterion-proof')){
+  var dy=Number(el.dataset.day),pp=options.user.studyPlan,ss=read(pp,dy),
+   id=el.getAttribute('data-sra-criterion-check')||el.getAttribute('data-sra-criterion-proof');
+  if(!ss.criteria[id])ss.criteria[id]={checked:false,proof:''};
+  if(el.hasAttribute('data-sra-criterion-check'))ss.criteria[id].checked=!!el.checked;else ss.criteria[id].proof=el.value;
+  modified(ss,pp,dy);options.save();return true;
  }
  if(!el.hasAttribute('data-sra-field'))return false;
  var day=Number(el.dataset.day),p=options.user.studyPlan,s=read(p,day),key=el.getAttribute('data-sra-field');
