@@ -199,7 +199,7 @@ function handle(action,z,options,days){
  }else if(action==='reviewCopy'){collected(day,options);options.save();copyText(draftText(d,p))}
  else if(action==='reviewApprove'||action==='reviewReject'){
   collected(day,options);
-  if(s.status!=='submitted'&&s.status!=='passed'&&s.status!=='revision'){toast('请先提交作业并通过规则初审，再录入实际审核结论。');return true}
+  if(s.status!=='submitted'&&s.status!=='passed'){toast('请先修改并重新提交作业、通过公式初审，再录入新的审核结论。');return true}
   if((s.feedback||'').trim().length<15){toast('请先粘贴真实审核意见（至少15字符），再记录审核结论。');return true}
   s.status=action==='reviewApprove'?'passed':'revision';s.reviewedAt=stamp();p.done[day]=action==='reviewApprove';options.save();options.refresh();
   toast(action==='reviewApprove'?'已记录实际审核通过，可进入下一天。':'已标记需要修改，请根据审核意见重新提交。');
