@@ -104,6 +104,7 @@ function plan(u){
  if(!p.quizWrong||typeof p.quizWrong!=='object')p.quizWrong={};
  if(!p.submissions||typeof p.submissions!=='object')p.submissions={};
  if(!Number.isInteger(p.reviewOpenDay))p.reviewOpenDay=0;
+ if(!Number.isInteger(p.focusDay)||p.focusDay<0||p.focusDay>28)p.focusDay=0;
  if(!p.tab)p.tab='path';
  if(!Number.isInteger(p.week)||p.week<0||p.week>3){var pending=DAYS.find(function(d){return p.submissions[d.n]?.status!=='passed'});p.week=pending?pending.week:3;}
  if(!Number.isInteger(p.caseIndex)||p.caseIndex<0||p.caseIndex>=CASES.length)p.caseIndex=0;
@@ -116,8 +117,8 @@ function lessonLinks(d,data){
  var ids=ch&&ch.lesson_ids||[];
  return d.idx.map(function(i){return ids[Math.min(i,ids.length-1)]}).filter(function(id,index,a){return id&&a.indexOf(id)===index}).map(function(id){return (data.lessons||[]).find(function(x){return x.id===id})}).filter(Boolean);
 }
-function count(p){return DAYS.filter(function(d){return p.submissions[d.n]?.status==='passed'}).length}
-function next(p){return DAYS.find(function(d){return p.submissions[d.n]?.status!=='passed'})||DAYS[DAYS.length-1]}
+function count(p){return DAYS.filter(function(d){return ['passed','manual_reviewed'].includes(p.submissions[d.n]?.status)}).length}
+function next(p){return DAYS.find(function(d){return !['passed','manual_reviewed'].includes(p.submissions[d.n]?.status)})||DAYS[DAYS.length-1]}
 function pct(n,total){return Math.round(100*n/Math.max(1,total))}
 function hero(p){
  var c=count(p), n=next(p);
@@ -128,13 +129,13 @@ function hero(p){
  '<small>'+pct(c,28)+'% 已完成 · '+(c===28?'全部完成，可按周复盘':'下一任务：Day '+n.n+' '+esc(n.title))+'</small></div></section>';
 }
 function pathHtml(p,data){
- var current=next(p), w=p.week, complete=count(p), doneThisWeek=DAYS.filter(function(d){return d.week===w&&p.submissions[d.n]?.status==='passed'}).length;
+ var current=next(p), w=p.week, complete=count(p), doneThisWeek=DAYS.filter(function(d){return d.week===w&&['passed','manual_reviewed'].includes(p.submissions[d.n]?.status)}).length;
  var out='<div class="study-metrics">'+
   '<div class="study-card study-metric"><span class="study-muted">累计任务</span><b>'+complete+'/28</b></div>'+
   '<div class="study-card study-metric"><span class="study-muted">当前阶段</span><b>Week '+(w+1)+'</b></div>'+
   '<div class="study-card study-metric"><span class="study-muted">本周完成</span><b>'+doneThisWeek+'/7</b></div></div>';
  out+=window.AdsStudyAssessment.renderSummary(p);
- out+='<div class="study-weeknav">'+WEEKS.map(function(x,i){var n=DAYS.filter(function(d){return d.week===i&&p.submissions[d.n]?.status==='passed'}).length;return '<button type="button" data-sp="week" data-week="'+i+'" class="'+(i===w?'active':'')+'"><strong>Week '+(i+1)+' · '+esc(x.color)+'</strong><small>'+esc(x.name)+' · '+n+'/7</small><span class="study-wbar"><i style="width:'+pct(n,7)+'%"></i></span></button>'}).join('')+'</div>';
+ out+='<div class="study-weeknav">'+WEEKS.map(function(x,i){var n=DAYS.filter(function(d){return d.week===i&&['passed','manual_reviewed'].includes(p.submissions[d.n]?.status)}).length;return '<button type="button" data-sp="week" data-week="'+i+'" class="'+(i===w?'active':'')+'"><strong>Week '+(i+1)+' · '+esc(x.color)+'</strong><small>'+esc(x.name)+' · '+n+'/7</small><span class="study-wbar"><i style="width:'+pct(n,7)+'%"></i></span></button>'}).join('')+'</div>';
  out+='<div class="study-grid"><div class="study-card"><div class="study-pad"><div class="study-topline"><div><span class="study-eyebrow">WEEK '+(w+1)+' · LEARNING OBJECTIVES</span><h2 style="margin:8px 0 7px">'+esc(WEEKS[w].name)+'</h2><p class="study-muted" style="margin:0">本周交付：'+esc(WEEKS[w].result)+'</p></div><span class="study-pill">'+doneThisWeek+'/7 已完成</span></div></div>'+
  DAYS.filter(function(d){return d.week===w}).map(function(d){return dayHtml(d,p,data,current.n)}).join('')+'</div>'+
  '<aside class="study-sticky"><div class="study-card study-pad"><div class="study-eyebrow">MY PRACTICE SETTINGS</div><h3 style="margin:8px 0 6px">我的实操项目</h3>'+
@@ -150,16 +151,16 @@ function pathHtml(p,data){
  return out;
 }
 function dayHtml(d,p,data,today){
- var ll=lessonLinks(d,data), active=d.n===today, submission=window.AdsStudyAssessment.read(p,d.n),isDone=submission.status==='passed';
+ var ll=lessonLinks(d,data), active=d.n===today, submission=window.AdsStudyAssessment.read(p,d.n),isDone=['passed','manual_reviewed'].includes(submission.status), expanded=p.focusDay===d.n||(!p.focusDay&&(active||(Math.floor((today-1)/7)!==p.week&&d.n===p.week*7+1)));
  return '<section id="studyday'+d.n+'" class="study-day '+(isDone?'done ':'')+(active?'today':'')+'"><div class="study-day-num">'+d.n+'<small>DAY</small></div><div>'+
- '<div class="study-topline"><span class="study-tiny">第 '+(d.week+1)+' 周 · 模块 '+esc(d.chapter)+'</span><span class="study-pill '+(isDone?'ok':'')+'">'+(isDone?'✓ 审核通过':submission.status==='submitted'?'待审核':submission.status==='failed'||submission.status==='revision'?'待修改':p.done[d.n]?'旧版已勾选（未审核）':active?'下一步学习':'待学习')+'</span></div>'+
- '<h3>'+esc(d.title)+'</h3><p><b>今天实操：</b>'+esc(d.task)+'</p>'+
+ '<div class="study-topline"><span class="study-tiny">第 '+(d.week+1)+' 周 · 模块 '+esc(d.chapter)+'</span><span class="study-pill '+(isDone?'ok':'')+'">'+(submission.status==='passed'?'✓ AI审核通过':submission.status==='manual_reviewed'?'人工登记完成':submission.status==='submitted'?'待审核':submission.status==='failed'||submission.status==='revision'?'待修改':p.done[d.n]?'旧版已勾选（未审核）':active?'下一步学习':'待学习')+'</span></div>'+
+ '<h3>'+esc(d.title)+'</h3><p class="study-day-brief"><b>今天实操：</b>'+esc(d.task)+'</p>'+ '<button type="button" class="study-expand" data-sp="focusDay" data-day="'+d.n+'">'+(expanded?'收起任务':'展开学习与作业')+' ▾</button>'+ (expanded?
  '<div class="study-day-target"><b>验收标准：</b>'+esc(d.pass)+'</div>'+
  '<div class="study-muted"><b>需要的报表：</b>'+esc(d.report)+'</div>'+
  '<div class="study-related">'+ll.map(function(l){return '<button class="study-link" type="button" data-lesson="'+esc(l.id)+'">↗ '+esc(l.title)+'</button>'}).join('')+'</div>'+
  '<div class="study-row"><button type="button" class="study-action '+(isDone?'completed':'primary')+'" data-sp="openReview" data-day="'+d.n+'">'+(p.reviewOpenDay===d.n?'收起作业提交':'提交作业 / 查看审核')+'</button>'+
- '<button type="button" class="study-action" data-sp="copy" data-day="'+d.n+'">复制复盘模板</button></div>'+ (p.reviewOpenDay===d.n?window.AdsStudyAssessment.renderPanel(d,p):'')+
- '<details><summary>展开本日学习笔记与结果</summary><textarea data-sp-note="'+d.n+'" placeholder="我的观察 / 证据 / 广告调整动作 / 复查日期……">'+esc(p.notes[d.n]||'')+'</textarea><div class="study-tiny">输入后自动保存。不要在笔记中填写敏感账号凭据。</div></details>'+
+ '<button type="button" class="study-action" data-sp="copy" data-day="'+d.n+'">复制复盘模板</button></div>'+ (p.reviewOpenDay===d.n?window.AdsStudyAssessment.renderPanel(d,p,ctx?.user):'')+
+ '<details><summary>展开本日学习笔记与结果</summary><textarea data-sp-note="'+d.n+'" placeholder="我的观察 / 证据 / 广告调整动作 / 复查日期……">'+esc(p.notes[d.n]||'')+'</textarea><div class="study-tiny">输入后自动保存。不要在笔记中填写敏感账号凭据。</div></details>':'')+
  '</div></section>';
 }
 function labHtml(p,data){
@@ -276,9 +277,10 @@ document.addEventListener('click',function(e){
  var z=e.target.closest('[data-sp]');if(!z||!ctx)return;
  var action=z.getAttribute('data-sp');
  if(action==='tab')change(function(p){p.tab=z.dataset.tab});
- else if(action==='week')change(function(p){p.week=Number(z.dataset.week)});
+ else if(action==='week')change(function(p){p.week=Number(z.dataset.week);p.focusDay=p.week*7+1;p.reviewOpenDay=0});
+ else if(action==='focusDay')change(function(p){var n=Number(z.dataset.day);p.focusDay=p.focusDay===n?0:n;p.reviewOpenDay=0});
  else if(action==='pace')change(function(p){p.pace=z.dataset.pace});
- else if(action==='openReview')change(function(p){var n=Number(z.dataset.day);p.reviewOpenDay=p.reviewOpenDay===n?0:n;p.week=Math.floor((n-1)/7)});
+ else if(action==='openReview')change(function(p){var n=Number(z.dataset.day);p.reviewOpenDay=p.reviewOpenDay===n?0:n;p.focusDay=n;p.week=Math.floor((n-1)/7)});
  else if(/^review/.test(action)){window.AdsStudyAssessment.handle(action,z,ctx,DAYS)}
  else if(action==='copy'){var d=DAYS.find(function(x){return x.n===Number(z.dataset.day)});if(d)copyText(textForDay(d,plan(ctx.user)))}
  else if(action==='case'||action==='revisit')change(function(p){p.caseIndex=Number(z.dataset.case);p.tab='lab'});
