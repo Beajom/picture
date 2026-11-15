@@ -26,8 +26,8 @@ clickOrders:['14 天内订单总量 (#) -（点击）','14天内订单总量(#)-
 videoComplete:['完整视频观看次数','video complete'],
 videoFive:['5 秒观看次数','5 second views'],
 brandSearch:['14 天内品牌搜索量','brand searches'],
-newBrandOrders:['14天品牌新买家订单数','new-to-brand orders'],
-newBrandSales:['14天品牌新买家销售额','new-to-brand sales']
+newBrandOrders:['14天内“品牌新买家”订单数量(#)','14天品牌新买家订单数','new-to-brand orders'],
+newBrandSales:['14天内“品牌新买家”销售额','14天品牌新买家销售额','new-to-brand sales']
 };
 function normalize(t){return String(t==null?'':t).trim().toLowerCase().replace(/[\s\u00a0（()）_:：#\-—]/g,'').replace(/sku/g,'sku').replace(/\uFEFF/g,'')}
 function locate(headers, opts){
