@@ -121,10 +121,14 @@ function fromWorkbook(book,filename){
   if(/透视表|pivot\s*table/i.test(name)){result.recognized.push(name+'（透视结果页跳过，防止重复计数）');return}
   var found=extract(name,matrix,filename);
   if(!found)return;
-  result.recognized.push(name+'（'+found.kind+'）');
+  var dates=found.rows.map(function(r){return r.date}).filter(Boolean).sort();
+  var range=dates.length?dates[0]+' 至 '+dates[dates.length-1]:'未识别出日期';
+  result.recognized.push(name+'（'+found.kind+'，'+found.rows.length+'行，日期：'+range+'）');
   if(!found.rows.length){result.warnings.push(name+'：识别到报表字段，但没有广告明细行。请导入亚马逊后台导出的真实报告。');return}
   if(found.currencies.length>1)result.warnings.push(name+'：检测到多种币种，系统不会进行自动汇率换算。');
-  if(found.dateCount===0)result.warnings.push(name+'：缺少可识别日期，无法用于日期对比。');
+  if(found.dateCount===0)result.warnings.push(name+'：缺少可识别日期，无法用于日期对比。原始日期示例：'+String(found.rows.find(function(r){return r.rawDate})?.rawDate||'空白')+'。');
+  else {var invalid=found.rows.filter(function(r){return !r.date});
+    if(invalid.length)result.warnings.push(name+'：'+invalid.length+'行日期无法识别，其他行可参与日期分析。示例：'+String(invalid[0].rawDate||'空白'))}
   found.file=filename;found.importedAt=new Date().toISOString();
   found.id='ad_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);
   result.datasets.push(found);
