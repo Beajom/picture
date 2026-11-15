@@ -1,0 +1,16 @@
+name: Wedding planner checks
+on:
+  push:
+    paths:
+      - "wedding-planner/**"
+      - ".github/workflows/wedding-planner-check.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364 # v4.2.2
+      - name: Run static and finance checks
+        run: node wedding-planner/check.mjs
