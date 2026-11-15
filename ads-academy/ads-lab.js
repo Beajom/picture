@@ -141,7 +141,7 @@ function importer(){
  '<input id="alFiles" type="file" multiple accept=".xlsx,.xls,.csv,.tsv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>'+
  '<div class="al-field"><label>手动关联 ASIN（可选）</label><select id="alImportAsin"><option value="">不关联 / 原始报表缺少 ASIN</option>'+
  dataUser().products.map(function(p){return '<option value="'+esc(p.asin)+'" '+(state.importAsin===p.asin?'selected':'')+'>'+esc(p.asin)+' / '+esc(p.name||'')+'</option>'}).join('')+'</select></div>'+
- '<div class="al-field"><label>上传相同报告类型时</label><select id="alImportMode"><option value="replace" '+(state.uploadMode==='replace'?'selected':'')+'>替换原有同类型数据（推荐，避免重叠）</option><option value="append" '+(state.uploadMode==='append'?'selected':'')+'>追加新期间报表（可能需要去重）</option></select></div>'+
+ '<div class="al-field"><label>上传相同报告类型时</label><select id="alImportMode"><option value="replace" '+(state.uploadMode==='replace'?'selected':'')+'>更新同名文件与工作表的旧版本（推荐）</option><option value="append" '+(state.uploadMode==='append'?'selected':'')+'>追加新期间报表（可能需要去重）</option></select></div>'+
  btn(state.importBusy?'正在解析…':'开始解析并保存','importFiles','primary',state.importBusy?'disabled':'')+
  '<p class="al-muted al-mt">导入后原始行保存在此浏览器 IndexedDB；跨设备不会自动同步广告原始报表。可以导出诊断结果和手动重新导入。</p></div>'+
  '<div class="al-panel al-pad"><h2>数据检查与模板说明</h2>'+
@@ -456,12 +456,22 @@ async function importFiles(){
     for(var n=0;n<result.datasets.length;n++){
       var d=result.datasets[n];
       d.asin=state.importAsin;d.rows.forEach(function(r){r._asin=d.asin||''});
-      if(state.uploadMode==='replace'){
-        var old=state.datasets.filter(function(a){return a.kind===d.kind});
-        for(var k=0;k<old.length;k++){await E.remove(old[k].id);state.datasets=state.datasets.filter(function(x){return x.id!==old[k].id})}
+      // Save first; only replace the earlier version of the same source and sheet.
+      var old=state.uploadMode==='replace'?state.datasets.filter(function(a){
+        return a.file===d.file&&a.sheet===d.sheet&&a.kind===d.kind
+      }):[];
+      try{
+        await E.put(d);
+        for(var k=0;k<old.length;k++){
+          try{await E.remove(old[k].id)}catch(err){errors.push('旧数据清理未完成：'+err.message)}
+        }
+      }catch(err){
+        errors.push('本机数据保存失败：'+err.message+'；未替换之前的历史报告。');
+        continue;
       }
-      try{await E.put(d)}catch(e){errors.push('本机数据库保存失败：'+e.message+'；本次数据可能只能临时使用。')}
-      state.datasets.push(d);state.kind=d.kind;imported++;
+      state.datasets=state.datasets.filter(function(x){return !old.some(function(a){return a.id===x.id})});
+      state.datasets.push(d);state.kind=d.kind;state.currency=d.currencies&&d.currencies[0]||state.currency;
+      imported++;
     }
    }catch(e){errors.push(files[i].name+': '+(e.message||e))}
   }
