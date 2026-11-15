@@ -103,7 +103,7 @@ function renderPanel(d,p){
  out+='<div class="study-audit-text">'+areas.map(function(x){return '<label><span>'+x[1]+'</span><textarea data-sra-field="'+x[0]+'" data-day="'+d.n+'" rows="3" placeholder="'+esc(x[2])+'">'+esc(s[x[0]]||'')+'</textarea></label>'}).join('')+'</div>'+
  '<div class="study-audit-upload"><div class="study-topline"><div><strong>上传证据文件（可选）</strong><p>支持图片、PDF、Excel、CSV，最多4个文件，每个不超过15MB。当前设备先保留本地副本；登录后可同步至私人云端附件库。</p></div></div>'+
  '<input type="file" data-sra-upload="'+d.n+'" accept=".png,.jpg,.jpeg,.webp,.pdf,.xlsx,.xls,.csv,.txt" multiple>'+
- (s.files&&s.files.length?'<div class="study-audit-filelist">'+s.files.map(function(f){return '<div class="study-audit-file"><span>'+esc(f.name)+' <small>('+Math.round(f.size/1024)+' KB)</small></span><div><button type="button" data-sp="reviewDownload" data-day="'+d.n+'" data-file="'+esc(f.id)+'">查看/下载</button><button type="button" data-sp="reviewRemove" data-day="'+d.n+'" data-file="'+esc(f.id)+'">移除</button></div></div>'}).join('')+'</div>':'<p class="study-tiny">暂无附件。附件必须明确上传或同步；AI文字审核不会自动读取附件内容。</p>')+
+ (s.files&&s.files.length?'<div class="study-audit-filelist">'+s.files.map(function(f){return '<div class="study-audit-file"><span>'+esc(f.name)+' <small>('+Math.round(f.size/1024)+' KB · '+(f.cloudPath?'已存私人云端':'仅本机')+')</small></span><div><button type="button" data-sp="reviewDownload" data-day="'+d.n+'" data-file="'+esc(f.id)+'">查看/下载</button><button type="button" data-sp="reviewRemove" data-day="'+d.n+'" data-file="'+esc(f.id)+'">移除</button></div></div>'}).join('')+'</div>':'<p class="study-tiny">暂无附件。附件必须明确上传或同步；AI文字审核不会自动读取附件内容。</p>')+
  '</div>'+
  '<div class="study-row">'+
  '<button class="study-action primary" type="button" data-sp="reviewSubmit" data-day="'+d.n+'">① 提交规则初审</button>'+
@@ -188,6 +188,34 @@ function modified(s,p,day){
   s.status='draft';s.autoMessages=[];s.reviewedAt='';s.ai=null;p.done[day]=false;
  }
 }
+async function cloudAccess(){
+ var ctx=window.AcademyReviewService?.context;
+ if(typeof ctx!=='function')return null;
+ return ctx();
+}
+async function cloudUpload(day,meta,blob){
+ var auth=await cloudAccess();
+ if(!auth?.user||!auth?.client)return false;
+ var ext=String(meta.name||'').match(/\.[a-z0-9]{1,5}$/i)?.[0].toLowerCase()||'.bin';
+ var path=auth.user.id+'/day-'+day+'/'+meta.id+ext;
+ var bucket=auth.client.storage.from('academy-homework-private');
+ var res=await bucket.upload(path,blob,{contentType:meta.type||'application/octet-stream',upsert:false});
+ if(res.error)throw res.error;
+ meta.cloudPath=path;return true;
+}
+async function syncFiles(day){
+ var s=read(ctx.user.studyPlan,day),auth=await cloudAccess();
+ if(!auth?.user){toast('请先登录云端账号，才能将附件安全同步到跨设备私人存储。');return}
+ var ok=0,missing=0,errors=[];
+ for(var meta of s.files||[]){
+  if(meta.cloudPath){ok++;continue}
+  var blob=await retrieveFile(meta.id);
+  if(!blob){missing++;continue}
+  try{if(await cloudUpload(day,meta,blob))ok++}catch(e){errors.push(meta.name+': '+String(e.message||e).slice(0,80))}
+ }
+ ctx.save();ctx.refresh();
+ toast('已同步/已有云端附件 '+ok+' 个，当前设备缺失 '+missing+' 个。'+(errors.length?errors.slice(0,2).join('; '):''));
+}
 async function attach(day,files){
  var p=ctx.user.studyPlan,s=read(p,day),items=Array.from(files||[]);
  if(!items.length)return;
@@ -200,7 +228,9 @@ async function attach(day,files){
   var id='day'+day+'-'+Date.now()+'-'+Math.random().toString(36).slice(2);
   try{
    await writeFile(f,id);
-   s.files.push({id:id,name:f.name,size:f.size,type:f.type||'application/octet-stream',at:stamp()});
+   var meta={id:id,name:f.name,size:f.size,type:f.type||'application/octet-stream',at:stamp(),cloudPath:''};
+   s.files.push(meta);
+   try{await cloudUpload(day,meta,f)}catch(err){errors.push(f.name+'：私人云端同步暂不可用（本地附件仍已保存），'+String(err.message||err).slice(0,90))}
   }catch(e){errors.push(f.name+'：'+(e.message||e))}
  }
  if(items.length>pendingFiles.length)errors.push('每个作业最多保存4个附件');
@@ -209,12 +239,29 @@ async function attach(day,files){
 }
 async function remove(day,id){
  var p=ctx.user.studyPlan,s=read(p,day);
- try{await deleteFile(id)}catch(e){toast('移除附件失败：'+(e.message||e));return}
+ var target=(s.files||[]).find(function(f){return f.id===id});
+ if(target?.cloudPath){
+  var auth=await cloudAccess();
+  if(!auth?.client){toast('该附件已同步云端，请先登录账号后再删除。');return}
+  var result=await auth.client.storage.from('academy-homework-private').remove([target.cloudPath]);
+  if(result.error){toast('云端删除失败，附件仍然保留：'+String(result.error.message||result.error));return}
+ }
+ try{await deleteFile(id)}catch(e){}
  s.files=(s.files||[]).filter(function(f){return f.id!==id});
  modified(s,p,day);ctx.save();ctx.refresh();
 }
 async function download(id,name){
- var f=await retrieveFile(id);if(!f){toast('当前浏览器找不到该附件。请重新选择原始文件。');return}
+ var f=await retrieveFile(id);
+ if(!f){
+  var p=ctx.user.studyPlan,all=Object.values(p.submissions||{}),meta=all.flatMap(function(x){return x.files||[]}).find(function(x){return x.id===id});
+  if(meta?.cloudPath){
+   var auth=await cloudAccess();if(!auth?.client){toast('这是私人云端附件，请先登录原账号。');return}
+   var remote=await auth.client.storage.from('academy-homework-private').download(meta.cloudPath);
+   if(remote.error){toast('跨设备下载失败：'+String(remote.error.message||remote.error));return}
+   f=remote.data;
+  }
+ }
+ if(!f){toast('本机和云端都找不到该附件，请重新上传。');return}
  var url=URL.createObjectURL(f),a=document.createElement('a');a.href=url;a.download=name;a.target='_blank';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},3000);
 }
 async function aiReview(day,d,p,options){
