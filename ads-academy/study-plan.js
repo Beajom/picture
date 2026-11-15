@@ -102,8 +102,10 @@ function plan(u){
  if(!p.notes||typeof p.notes!=='object')p.notes={};
  if(!p.caseResults||typeof p.caseResults!=='object')p.caseResults={};
  if(!p.quizWrong||typeof p.quizWrong!=='object')p.quizWrong={};
+ if(!p.submissions||typeof p.submissions!=='object')p.submissions={};
+ if(!Number.isInteger(p.reviewOpenDay))p.reviewOpenDay=0;
  if(!p.tab)p.tab='path';
- if(!Number.isInteger(p.week)||p.week<0||p.week>3){var pending=DAYS.find(function(d){return !p.done[d.n]});p.week=pending?pending.week:3;}
+ if(!Number.isInteger(p.week)||p.week<0||p.week>3){var pending=DAYS.find(function(d){return p.submissions[d.n]?.status!=='passed'});p.week=pending?pending.week:3;}
  if(!Number.isInteger(p.caseIndex)||p.caseIndex<0||p.caseIndex>=CASES.length)p.caseIndex=0;
  if(!p.pace)p.pace='45';
  if(typeof p.asin!=='string')p.asin='';
@@ -114,24 +116,25 @@ function lessonLinks(d,data){
  var ids=ch&&ch.lesson_ids||[];
  return d.idx.map(function(i){return ids[Math.min(i,ids.length-1)]}).filter(function(id,index,a){return id&&a.indexOf(id)===index}).map(function(id){return (data.lessons||[]).find(function(x){return x.id===id})}).filter(Boolean);
 }
-function count(p){return DAYS.filter(function(d){return !!p.done[d.n]}).length}
-function next(p){return DAYS.find(function(d){return !p.done[d.n]})||DAYS[DAYS.length-1]}
+function count(p){return DAYS.filter(function(d){return p.submissions[d.n]?.status==='passed'}).length}
+function next(p){return DAYS.find(function(d){return p.submissions[d.n]?.status!=='passed'})||DAYS[DAYS.length-1]}
 function pct(n,total){return Math.round(100*n/Math.max(1,total))}
 function hero(p){
  var c=count(p), n=next(p);
  return '<section class="study-hero"><div><div class="eyebrow">PRACTICE-LED LEARNING · v3</div><h1>28 天，从看懂广告到独立做优化决策</h1>'+
  '<p>不再只看课程页：每天有明确的学习内容、对应课时、真实报表任务和验收标准。先算利润，再找流量、做测试，最后学会判断何时放量、收缩或否定。</p>'+
- '<div class="row wrap" style="margin-top:16px"><span class="study-pill" style="background:#ffffff20;color:#fff">4 周 / 28 天</span><span class="study-pill" style="background:#ffffff20;color:#fff">15 章关联课程</span><span class="study-pill" style="background:#ffffff20;color:#fff">实际运营作业</span></div></div>'+
+ '<div class="row wrap" style="margin-top:16px"><span class="study-pill" style="background:#ffffff20;color:#fff">4 周 / 28 天</span><span class="study-pill" style="background:#ffffff20;color:#fff">15 章关联课程</span><span class="study-pill" style="background:#ffffff20;color:#fff">实操提交与审核</span></div></div>'+
  '<div class="study-progress"><small>学习计划完成度</small><b>'+c+' <span style="font-size:18px;font-weight:500">/ 28 天</span></b><div class="progress-track"><div class="progress-fill" style="width:'+pct(c,28)+'%"></div></div>'+
  '<small>'+pct(c,28)+'% 已完成 · '+(c===28?'全部完成，可按周复盘':'下一任务：Day '+n.n+' '+esc(n.title))+'</small></div></section>';
 }
 function pathHtml(p,data){
- var current=next(p), w=p.week, complete=count(p), doneThisWeek=DAYS.filter(function(d){return d.week===w&&p.done[d.n]}).length;
+ var current=next(p), w=p.week, complete=count(p), doneThisWeek=DAYS.filter(function(d){return d.week===w&&p.submissions[d.n]?.status==='passed'}).length;
  var out='<div class="study-metrics">'+
   '<div class="study-card study-metric"><span class="study-muted">累计任务</span><b>'+complete+'/28</b></div>'+
   '<div class="study-card study-metric"><span class="study-muted">当前阶段</span><b>Week '+(w+1)+'</b></div>'+
   '<div class="study-card study-metric"><span class="study-muted">本周完成</span><b>'+doneThisWeek+'/7</b></div></div>';
- out+='<div class="study-weeknav">'+WEEKS.map(function(x,i){var n=DAYS.filter(function(d){return d.week===i&&p.done[d.n]}).length;return '<button type="button" data-sp="week" data-week="'+i+'" class="'+(i===w?'active':'')+'"><strong>Week '+(i+1)+' · '+esc(x.color)+'</strong><small>'+esc(x.name)+' · '+n+'/7</small><span class="study-wbar"><i style="width:'+pct(n,7)+'%"></i></span></button>'}).join('')+'</div>';
+ out+=window.AdsStudyAssessment.renderSummary(p);
+ out+='<div class="study-weeknav">'+WEEKS.map(function(x,i){var n=DAYS.filter(function(d){return d.week===i&&p.submissions[d.n]?.status==='passed'}).length;return '<button type="button" data-sp="week" data-week="'+i+'" class="'+(i===w?'active':'')+'"><strong>Week '+(i+1)+' · '+esc(x.color)+'</strong><small>'+esc(x.name)+' · '+n+'/7</small><span class="study-wbar"><i style="width:'+pct(n,7)+'%"></i></span></button>'}).join('')+'</div>';
  out+='<div class="study-grid"><div class="study-card"><div class="study-pad"><div class="study-topline"><div><span class="study-eyebrow">WEEK '+(w+1)+' · LEARNING OBJECTIVES</span><h2 style="margin:8px 0 7px">'+esc(WEEKS[w].name)+'</h2><p class="study-muted" style="margin:0">本周交付：'+esc(WEEKS[w].result)+'</p></div><span class="study-pill">'+doneThisWeek+'/7 已完成</span></div></div>'+
  DAYS.filter(function(d){return d.week===w}).map(function(d){return dayHtml(d,p,data,current.n)}).join('')+'</div>'+
  '<aside class="study-sticky"><div class="study-card study-pad"><div class="study-eyebrow">MY PRACTICE SETTINGS</div><h3 style="margin:8px 0 6px">我的实操项目</h3>'+
@@ -147,15 +150,15 @@ function pathHtml(p,data){
  return out;
 }
 function dayHtml(d,p,data,today){
- var ll=lessonLinks(d,data), active=d.n===today, isDone=!!p.done[d.n];
+ var ll=lessonLinks(d,data), active=d.n===today, submission=window.AdsStudyAssessment.read(p,d.n),isDone=submission.status==='passed';
  return '<section id="studyday'+d.n+'" class="study-day '+(isDone?'done ':'')+(active?'today':'')+'"><div class="study-day-num">'+d.n+'<small>DAY</small></div><div>'+
- '<div class="study-topline"><span class="study-tiny">第 '+(d.week+1)+' 周 · 模块 '+esc(d.chapter)+'</span><span class="study-pill '+(isDone?'ok':'')+'">'+(isDone?'✓ 已完成':active?'下一步学习':'待学习')+'</span></div>'+
+ '<div class="study-topline"><span class="study-tiny">第 '+(d.week+1)+' 周 · 模块 '+esc(d.chapter)+'</span><span class="study-pill '+(isDone?'ok':'')+'">'+(isDone?'✓ 审核通过':submission.status==='submitted'?'待审核':submission.status==='failed'||submission.status==='revision'?'待修改':p.done[d.n]?'旧版已勾选（未审核）':active?'下一步学习':'待学习')+'</span></div>'+
  '<h3>'+esc(d.title)+'</h3><p><b>今天实操：</b>'+esc(d.task)+'</p>'+
  '<div class="study-day-target"><b>验收标准：</b>'+esc(d.pass)+'</div>'+
  '<div class="study-muted"><b>需要的报表：</b>'+esc(d.report)+'</div>'+
  '<div class="study-related">'+ll.map(function(l){return '<button class="study-link" type="button" data-lesson="'+esc(l.id)+'">↗ '+esc(l.title)+'</button>'}).join('')+'</div>'+
- '<div class="study-row"><button type="button" class="study-action '+(isDone?'completed':'primary')+'" data-sp="toggle" data-day="'+d.n+'">'+(isDone?'✓ 取消完成':'✓ 作业已完成')+'</button>'+
- '<button type="button" class="study-action" data-sp="copy" data-day="'+d.n+'">复制复盘模板</button></div>'+
+ '<div class="study-row"><button type="button" class="study-action '+(isDone?'completed':'primary')+'" data-sp="openReview" data-day="'+d.n+'">'+(p.reviewOpenDay===d.n?'收起作业提交':'提交作业 / 查看审核')+'</button>'+
+ '<button type="button" class="study-action" data-sp="copy" data-day="'+d.n+'">复制复盘模板</button></div>'+ (p.reviewOpenDay===d.n?window.AdsStudyAssessment.renderPanel(d,p):'')+
  '<details><summary>展开本日学习笔记与结果</summary><textarea data-sp-note="'+d.n+'" placeholder="我的观察 / 证据 / 广告调整动作 / 复查日期……">'+esc(p.notes[d.n]||'')+'</textarea><div class="study-tiny">输入后自动保存。不要在笔记中填写敏感账号凭据。</div></details>'+
  '</div></section>';
 }
@@ -194,7 +197,7 @@ function reviewHtml(p,data){
  if(!wrong.length&&!qs.length)out+='<div class="study-alert">目前没有待复习的错题。完成“广告情景演练”或“训练测验”后，这里会自动汇总需要巩固的判断。</div>';
  wrong.forEach(function(c){var i=CASES.indexOf(c);out+='<div class="study-review-item"><div class="study-topline"><b>'+esc(c.title)+'</b><span class="study-pill">情景题</span></div><p>'+esc(c.why)+'</p><button class="study-link" data-sp="revisit" data-case="'+i+'">重新挑战 →</button></div>'});
  qs.forEach(function(q){var ch=(data.chapters||[]).find(function(x){return x.id===q.ch}),id=ch&&ch.lesson_ids[0];out+='<div class="study-review-item"><div class="study-topline"><b>'+esc(q.q)+'</b><span class="study-pill">课程测验</span></div><p><b>正确答案：</b>'+esc(q.correct)+'<br>'+esc(q.why)+'</p>'+(id?'<button type="button" class="study-link" data-lesson="'+esc(id)+'">返回对应章节 →</button>':'')+'</div>'});
- out+='</div></div><aside class="study-sticky"><div class="study-card study-pad"><span class="study-eyebrow">WEEKLY REVIEW</span><h3 style="margin:8px 0">每周复盘四问</h3>'+
+ out+='</div>'+window.AdsStudyAssessment.reviewList(p)+'</div><aside class="study-sticky"><div class="study-card study-pad"><span class="study-eyebrow">WEEKLY REVIEW</span><h3 style="margin:8px 0">每周复盘四问</h3>'+
  '<div class="study-step"><i>1</i>本周利润和 TACOS 是否同时改善？</div>'+
  '<div class="study-step"><i>2</i>获得了哪些高相关、高转化搜索词？</div>'+
  '<div class="study-step"><i>3</i>哪些改动有对照数据，哪些只是推测？</div>'+
@@ -217,13 +220,13 @@ function render(options){
 }
 function courseBanner(user){
  var p=plan(user),n=next(p),c=count(p);
- return '<div class="study-inline"><div><strong>你的 28 天系统学习计划 · '+c+'/28 天已完成</strong><span>建议今天：Day '+n.n+'「'+esc(n.title)+'」。每个知识点都配有实操任务、报表和验收标准。</span></div><button type="button" data-route="studyplan">打开学习计划 →</button></div>';
+ return '<div class="study-inline"><div><strong>你的 28 天系统学习计划 · '+c+'/28 天已完成</strong><span>建议今天：Day '+n.n+'「'+esc(n.title)+'」。每个知识点都配有实操任务、报表、公式初审和人工复核。</span></div><button type="button" data-route="studyplan">打开学习计划 →</button></div>';
 }
 function lessonBox(l,user){
  var p=plan(user);
  var ds=DAYS.filter(function(d){return d.chapter===l.chapter});
  if(!ds.length)return '';
- var n=ds.find(function(d){return !p.done[d.n]})||ds[0];
+ var n=ds.find(function(d){return p.submissions[d.n]?.status!=='passed'})||ds[0];
  return '<div class="study-inline" style="margin:18px 0 14px"><div><strong>这节课学完之后，如何用到广告账户？</strong>'+
  '<span>关联实操 Day '+n.n+'：'+esc(n.task)+'<br>验收：'+esc(n.pass)+'</span></div><button type="button" data-route="studyplan">查看学习任务 →</button></div>';
 }
@@ -274,7 +277,8 @@ document.addEventListener('click',function(e){
  if(action==='tab')change(function(p){p.tab=z.dataset.tab});
  else if(action==='week')change(function(p){p.week=Number(z.dataset.week)});
  else if(action==='pace')change(function(p){p.pace=z.dataset.pace});
- else if(action==='toggle')change(function(p){var k=z.dataset.day;p.done[k]=!p.done[k];});
+ else if(action==='openReview')change(function(p){var n=Number(z.dataset.day);p.reviewOpenDay=p.reviewOpenDay===n?0:n;p.week=Math.floor((n-1)/7)});
+ else if(/^review/.test(action)){window.AdsStudyAssessment.handle(action,z,ctx,DAYS)}
  else if(action==='copy'){var d=DAYS.find(function(x){return x.n===Number(z.dataset.day)});if(d)copyText(textForDay(d,plan(ctx.user)))}
  else if(action==='case'||action==='revisit')change(function(p){p.caseIndex=Number(z.dataset.case);p.tab='lab'});
  else if(action==='prevcase')change(function(p){p.caseIndex=(p.caseIndex+CASES.length-1)%CASES.length});
@@ -283,6 +287,7 @@ document.addEventListener('click',function(e){
  else if(action==='retry')change(function(p){var c=CASES[p.caseIndex];delete p.caseResults[c.id]});
  else if(action==='export')exportPlan(plan(ctx.user));
 });
+document.addEventListener('change',function(e){if(!ctx)return;window.AdsStudyAssessment.change(e,ctx)});
 document.addEventListener('input',function(e){
  if(!ctx)return;
  var t=e.target,p=plan(ctx.user);
