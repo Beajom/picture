@@ -1,0 +1,133 @@
+/* 婚礼家庭共享 V2：publishable key 可公开，真正的访问权限由 PostgreSQL RLS 控制 */
+(function(){
+"use strict";
+var app=window.WeddingApp,root=document.getElementById("cloudPanel");
+var db=null,session=null,spaces=[],mine=[],base=null,pending=null,busy=false,loading=false,channel=null,notice="",authMode="login";
+var api="https://whajxxonwtlfuvjyrooh.supabase.co";
+var key="sb_publishable_R3C66b8mtDzaKyKogBYQCw_KyUbw6G1";
+var c=window.WeddingCloud={active:false,role:null,spaceId:null,members:[],onSave:onSave,refresh:load};
+if(!app||!root)return;
+var st=document.createElement("style");st.textContent=".cloud-card{border:1px solid #eaded7;background:#fffaf7;border-radius:15px;padding:14px;margin:12px 0}.cloud-card h3{margin:0 0 10px}.cloud-card p{font-size:12px;color:#8b7770;line-height:1.7}.cloud-stack{display:grid;gap:9px}.cloud-in{width:100%;padding:12px;border:1px solid #eaded7;background:#fff;border-radius:10px;font-size:15px}.cloud-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.cloud-actions>*{flex:1}.cloud-member{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #eee;padding:10px 0;gap:6px}.cloud-chip{font-size:12px;background:#f5ede7;border-radius:99px;padding:4px 8px}.cloud-error{color:#ad4242}";document.head.appendChild(st);
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(x){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x]})}
+function copy(s){return JSON.parse(JSON.stringify(s))}
+function label(s){return s==="admin"?"管理员":"家人"}
+function err(e){return e&&e.message||String(e||"未知错误")}
+function tip(s){notice=s;app.toast(s);draw()}
+function getCacheKey(){return "wedding-cloud-v2:"+c.spaceId}
+function draw(){
+if(!db){root.innerHTML='<div class="cloud-card"><h3>家庭共享服务暂不可用</h3><p>请检查网络并刷新；本机旧数据不会丢失。</p>'+esc(notice)+'</div>';return}
+var status=notice?'<p>'+esc(notice)+'</p>':"";
+if(!session){
+root.innerHTML='<div class="cloud-card"><h3>家庭共享 · '+(authMode==="login"?"登录":"注册")+'</h3><p>每位家庭成员使用自己的邮箱账号。请勿把你的管理员账号密码告诉家人。</p><form id="cloudAuth" class="cloud-stack"><input class="cloud-in" name="email" type="email" placeholder="邮箱" autocomplete="email" required><input class="cloud-in" name="password" type="password" minlength="8" autocomplete="'+(authMode==="login"?"current-password":"new-password")+'" placeholder="密码不少于8位" required><button class="btn full" type="submit">'+(authMode==="login"?"登录":"注册账号")+'</button></form><div class="cloud-actions"><button class="btn secondary" type="button" data-cloud="switch-auth">'+(authMode==="login"?"没有账号，创建账号":"已有账号，返回登录")+'</button></div><p>新注册账号可能需要先在邮箱中验证，验证后返回这个网页登录。</p>'+status+'</div>';bindForms();return
+}
+if(!c.active){
+var link=new URLSearchParams(location.search).get("invite")||"";
+var current=mine.length?'<div class="cloud-card"><h3>已有共享婚礼</h3>'+mine.map(function(m){return '<button class="btn secondary full" data-open-space="'+esc(m.space_id)+'">'+esc(spaces.find(function(x){return x.id===m.space_id})?.title||"共享婚礼")+' · '+label(m.role)+'</button>'}).join("")+'</div>':"";
+root.innerHTML='<div class="cloud-card"><span class="cloud-chip">已登录 '+esc(session.user.email||"账号")+'</span> <button class="btn secondary small" data-cloud="logout">退出</button></div>'+current+'<div class="cloud-card"><h3>创建我们的婚礼</h3><form id="cloudCreate" class="cloud-stack"><input class="cloud-in" name="title" placeholder="婚礼名称" maxlength="80" required><input class="cloud-in" name="nickname" placeholder="我在家庭中的称呼" maxlength="60" required><button class="btn full" type="submit">创建共享婚礼</button></form></div><div class="cloud-card"><h3>凭邀请码加入</h3><form id="cloudJoin" class="cloud-stack"><input class="cloud-in" name="invite" placeholder="粘贴邀请码或邀请链接" value="'+esc(link)+'" required><input class="cloud-in" name="nickname" placeholder="我的称呼" maxlength="60" required><button class="btn secondary full" type="submit">加入婚礼</button></form></div>'+status;bindForms();return
+}
+var admin=c.role==="admin",old=app.getLegacy(),count=old.expenses.length+old.tasks.length+old.guests.length;
+var invite=admin?'<div class="cloud-card"><h3>邀请对象和家人</h3><p>对象以管理员加入，能管理全部数据；家人只能修改分配给自己的筹备任务。邀请码有效期为7天。</p><div class="cloud-actions"><button class="btn secondary" data-cloud="invite-admin">邀请对象</button><button class="btn secondary" data-cloud="invite-family">邀请家人</button></div><div id="cloudInviteResult"></div></div>':"";
+var members='<div class="cloud-card"><h3>家庭成员</h3>'+c.members.map(function(m){return '<div class="cloud-member"><span>'+esc(m.display_name)+' <small>('+label(m.role)+(m.user_id===session.user.id?",我":"")+')</small></span>'+(admin&&m.user_id!==session.user.id?'<button class="btn small secondary" data-remove-user="'+esc(m.user_id)+'">移除</button>':"")+'</div>'}).join("")+'</div>';
+var migration=admin?'<div class="cloud-card"><h3>迁移旧手机数据</h3><p>旧版本机共有 '+count+' 条记录（含默认清单）。先下载备份，再将其导入空白共享婚礼；服务器已有数据时会拒绝导入，不会自动合并或覆盖。</p><div class="cloud-actions"><button class="btn secondary" data-cloud="backup">下载旧版备份</button><button class="btn secondary" data-cloud="migrate">确认迁移</button></div></div>':"";
+root.innerHTML='<div class="cloud-card"><h3>家庭共享已连接 <span class="cloud-chip">'+(busy||pending?"正在同步":"实时同步")+'</span></h3><p>'+esc(spaces.find(function(x){return x.id===c.spaceId})?.title||"我们的婚礼")+' · '+label(c.role)+'</p><p>'+(admin?"你和对象均可管理全部花费与待办。":"你只会看到分配给自己的事项，不能查看全部预算、花费和宾客。")+'</p><div class="cloud-actions"><button class="btn secondary" data-cloud="refresh">刷新同步</button><button class="btn secondary" data-cloud="logout">退出账号</button></div>'+status+'</div>'+invite+members+migration;
+}
+function bindForms(){
+var f=document.getElementById("cloudAuth");if(f)f.onsubmit=async function(e){e.preventDefault();var email=f.elements.email.value.trim(),pass=f.elements.password.value,button=f.querySelector("button[type=submit]");button.disabled=true;
+try{var r=authMode==="login"?await db.auth.signInWithPassword({email:email,password:pass}):await db.auth.signUp({email:email,password:pass,options:{emailRedirectTo:location.origin+location.pathname}});if(r.error)throw r.error;
+if(authMode==="signup"&&!r.data.session){authMode="login";tip("注册成功，请查看验证邮件。验证后返回本页面登录。")}else{await bootSession();tip("登录成功")}}catch(x){tip("登录/注册失败："+err(x))}finally{button.disabled=false}};
+var a=document.getElementById("cloudCreate");if(a)a.onsubmit=async function(e){e.preventDefault();try{var r=await db.rpc("wedding_create_space",{p_title:a.elements.title.value.trim(),p_name:a.elements.nickname.value.trim()});if(r.error)throw r.error;await memberships();await openSpace(r.data);tip("婚礼共享空间已创建")}catch(x){tip("创建失败："+err(x))}};
+var b=document.getElementById("cloudJoin");if(b)b.onsubmit=async function(e){e.preventDefault();var invite=b.elements.invite.value.trim();try{if(invite.includes("invite="))invite=new URL(invite).searchParams.get("invite")||invite;var r=await db.rpc("wedding_join_space",{p_token:invite,p_name:b.elements.nickname.value.trim()});if(r.error)throw r.error;history.replaceState(null,"",location.pathname);await memberships();await openSpace(r.data);tip("成功加入家庭共享")}catch(x){tip("加入失败："+err(x))}}
+}
+function roleUI(){
+var family=c.active&&c.role==="family";
+["home","expenses","guests"].forEach(function(p){var b=document.querySelector('[data-page="'+p+'"]');if(b)b.style.display=family?"none":""});
+var fab=document.getElementById("fab");if(fab)fab.style.display=family?"none":"";
+["add-task","reset-template"].forEach(function(action){document.querySelectorAll('[data-action="'+action+'"]').forEach(function(x){x.style.display=family?"none":""})});
+var settings=document.getElementById("settings");if(settings)[...settings.children].forEach(function(x){if(x.id!=="cloudPanel"&&x.tagName!=="H1")x.style.display=family?"none":""});
+if(family)app.view("tasks");
+}
+function mapItems(s){var m=new Map();[["expense",s.expenses],["task",s.tasks],["guest",s.guests]].forEach(function(q){q[1].forEach(function(item){m.set(item.id,{space_id:c.spaceId,id:item.id,item_type:q[0],data:item,assigned_to:q[0]==="task"?(item.assigned_to||null):null})})});return m}
+function same(a,b){return JSON.stringify(a)===JSON.stringify(b)}
+function onSave(next){
+if(!c.active)return;
+pending=copy(next);
+try{localStorage.setItem(getCacheKey(),JSON.stringify({data:pending,dirty:true}))}catch(e){}
+draw();void flush();
+}
+async function flush(){
+if(!c.active||busy||!pending||!navigator.onLine)return;busy=true;draw();
+try{while(pending&&c.active){var next=pending;pending=null;var old=base||{settings:{},customCategories:[],expenses:[],tasks:[],guests:[]};
+if(c.role==="admin"){var s0={settings:old.settings,customCategories:old.customCategories||[]},s1={settings:next.settings,customCategories:next.customCategories||[]};
+if(!same(s0,s1)){var w=await db.from("wedding_settings").upsert({space_id:c.spaceId,data:s1,updated_at:new Date().toISOString()},{onConflict:"space_id"});if(w.error)throw w.error}}
+var prev=mapItems(old),curr=mapItems(next);
+for(var [id,row] of prev){if(!curr.has(id)){if(c.role!=="admin")throw Error("家人无权删除记录");var del=await db.from("wedding_items").delete().eq("space_id",c.spaceId).eq("id",id);if(del.error)throw del.error}}
+for(var [id,row] of curr){var before=prev.get(id);if(!before||!same(before.data,row.data)||before.assigned_to!==row.assigned_to){
+if(c.role==="family"){if(!before||row.item_type!=="task"||before.assigned_to!==session.user.id||row.assigned_to!==session.user.id)throw Error("只能更改分配给自己的任务");var up=await db.from("wedding_items").update({data:row.data,updated_at:new Date().toISOString()}).eq("space_id",c.spaceId).eq("id",id).select("id");if(up.error)throw up.error;if(!up.data?.length)throw Error("该任务已无法编辑")}
+else {var ups=await db.from("wedding_items").upsert({...row,updated_at:new Date().toISOString()},{onConflict:"space_id,id"});if(ups.error)throw ups.error}
+}}
+base=copy(next);localStorage.setItem(getCacheKey(),JSON.stringify({data:next,dirty:false}));
+}}
+catch(e){if(!pending)pending=app.snapshot();notice="云端暂未保存，修改仍保留在本机缓存："+err(e);app.toast("云端同步失败，可稍后重试")}
+finally{busy=false;draw()}
+if(!pending&&c.active)void load(true);
+}
+async function memberships(){
+var r=await Promise.all([db.from("wedding_members").select("space_id,user_id,role,display_name").eq("user_id",session.user.id),db.from("wedding_spaces").select("id,title")]);if(r[0].error)throw r[0].error;if(r[1].error)throw r[1].error;mine=r[0].data||[];spaces=r[1].data||[];draw();
+}
+async function load(silent){
+if(!c.active||busy||pending||loading)return;
+loading=true;
+try{var r=await Promise.all([db.from("wedding_items").select("id,item_type,data,assigned_to").eq("space_id",c.spaceId),db.from("wedding_settings").select("data").eq("space_id",c.spaceId).maybeSingle(),db.from("wedding_members").select("role").eq("space_id",c.spaceId).eq("user_id",session.user.id).maybeSingle(),db.from("wedding_members").select("space_id,user_id,role,display_name").eq("space_id",c.spaceId)]);
+for(var v of r)if(v.error)throw v.error;
+if(!r[2].data)throw Error("当前账号不再属于该婚礼");
+c.role=r[2].data.role;c.members=r[3].data||[];
+var state={settings:{date:"",budget:null,partner:"",seats:10},customCategories:[],expenses:[],tasks:[],guests:[]};
+if(r[1].data&&c.role==="admin"){Object.assign(state.settings,r[1].data.data?.settings||{});state.customCategories=r[1].data.data?.customCategories||[]}
+r[0].data.forEach(function(row){var it={...row.data};if(row.item_type==="task")it.assigned_to=row.assigned_to||null;var k={expense:"expenses",task:"tasks",guest:"guests"}[row.item_type];if(k)state[k].push(it)});
+base=copy(state);
+var cache=null;try{cache=JSON.parse(localStorage.getItem(getCacheKey())||"null")}catch(e){}
+if(cache?.dirty&&!silent){app.replace(cache.data);pending=copy(cache.data);void flush()}else{app.replace(state);roleUI()}
+notice="";draw()
+}catch(e){notice="加载云端失败："+err(e);if(/不再属于/.test(err(e))){c.active=false;c.spaceId=null;app.replace(app.getLegacy());roleUI()}if(!silent)app.toast(notice);draw()}
+finally{loading=false}
+}
+async function openSpace(space){
+if(channel){await db.removeChannel(channel);channel=null}
+var m=mine.find(function(x){return x.space_id===space});if(!m)throw Error("未获得该婚礼的访问权限");
+c.spaceId=space;c.role=m.role;c.active=true;localStorage.setItem("wedding-current-space-v2",space);
+await load(false);
+channel=db.channel("wedding:"+space).on("postgres_changes",{event:"*",schema:"public",table:"wedding_items",filter:"space_id=eq."+space},function(){if(!busy&&!pending)void load(true)}).on("postgres_changes",{event:"*",schema:"public",table:"wedding_settings",filter:"space_id=eq."+space},function(){if(!busy&&!pending)void load(true)}).on("postgres_changes",{event:"*",schema:"public",table:"wedding_members",filter:"space_id=eq."+space},function(){if(!busy&&!pending)void load(true)}).subscribe();
+roleUI();draw()
+}
+async function bootSession(){
+var a=await db.auth.getSession();if(a.error)throw a.error;session=a.data.session||null;
+if(!session){c.active=false;c.spaceId=null;c.role=null;c.members=[];base=null;pending=null;app.replace(app.getLegacy());roleUI();draw();return}
+await memberships();
+var remembered=localStorage.getItem("wedding-current-space-v2");
+var m=mine.find(function(x){return x.space_id===remembered})||mine[0];
+if(m)await openSpace(m.space_id);else draw()
+}
+root.addEventListener("click",async function(e){
+var b=e.target.closest("[data-cloud],[data-open-space],[data-remove-user]");if(!b||!db)return;
+if(b.dataset.openSpace){try{await openSpace(b.dataset.openSpace)}catch(x){tip(err(x))}return}
+if(b.dataset.removeUser){if(!confirm("移除后对方不能再访问共享数据，确定继续？"))return;var rem=await db.rpc("wedding_remove_member",{p_space:c.spaceId,p_user:b.dataset.removeUser});if(rem.error)tip(err(rem.error));else{await load(true);tip("成员已移除")}return}
+var action=b.dataset.cloud;
+if(action==="switch-auth"){authMode=authMode==="login"?"signup":"login";draw();return}
+if(action==="logout"){if(channel){await db.removeChannel(channel);channel=null}if(c.spaceId)localStorage.removeItem(getCacheKey());await db.auth.signOut();session=null;c.active=false;c.spaceId=null;base=null;pending=null;localStorage.removeItem("wedding-current-space-v2");await bootSession();return}
+if(action==="refresh"){if(pending)await flush();else await load(false);tip(pending?"仍有未同步修改":"已重新读取云端数据");return}
+if(action==="invite-admin"||action==="invite-family"){try{var role=action==="invite-admin"?"admin":"family";var rr=await db.rpc("wedding_create_invite",{p_space:c.spaceId,p_role:role});if(rr.error)throw rr.error;var inviteUrl=location.origin+location.pathname+"?invite="+rr.data;document.getElementById("cloudInviteResult").innerHTML='<div class="cloud-card"><b>'+label(role)+'邀请链接</b><input class="cloud-in" id="inviteToCopy" value="'+esc(inviteUrl)+'" readonly><button class="btn secondary" data-cloud="copy-link">复制链接</button><p>请私下发送。对象邀请链接仅供信任的另一半使用，拥有它可取得管理员权限。</p></div>'}catch(x){tip("邀请码创建失败："+err(x))}return}
+if(action==="copy-link"){var input=document.getElementById("inviteToCopy");if(input){try{await navigator.clipboard.writeText(input.value);app.toast("链接已复制")}catch(x){input.select();document.execCommand("copy");app.toast("已尝试复制")}}return}
+if(action==="backup"){try{var backup=app.getLegacy();var blob=new Blob([JSON.stringify({format:"wedding-planner-v1",exportedAt:new Date().toISOString(),data:backup},null,2)],{type:"application/json"});var u=URL.createObjectURL(blob),el=document.createElement("a");el.href=u;el.download="婚礼管家_原手机备份.json";document.body.append(el);el.click();el.remove();setTimeout(function(){URL.revokeObjectURL(u)},2000);app.toast("已开始下载旧版备份")}catch(x){tip(err(x))}return}
+if(action==="migrate"){if(!c.active||c.role!=="admin")return;if(!confirm("请先成功下载本机完整备份。仅当云端婚礼完全空白时才可以迁移，不会覆盖云端旧记录，也不会删除本机旧记录。确定继续吗？"))return;b.disabled=true;
+try{var snapshot=app.getLegacy();var importR=await db.rpc("wedding_import_if_empty",{p_space:c.spaceId,p_snapshot:snapshot});if(importR.error)throw importR.error;await load(false);tip("已安全迁移到云端；原手机本地记录仍保留")}catch(x){tip("未导入："+err(x))}finally{b.disabled=false}return}
+});
+window.addEventListener("online",function(){if(pending)void flush();else if(c.active)void load(true)});
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&c.active&&!pending)void load(true)});
+(async function(){
+try{if(!window.supabase||!window.supabase.createClient)throw Error("云端依赖加载失败");
+db=window.supabase.createClient(api,key,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
+db.auth.onAuthStateChange(function(evt){if(evt==="SIGNED_OUT"){session=null;c.active=false;app.replace(app.getLegacy());roleUI();draw()}});
+await bootSession()
+}catch(e){notice=err(e);draw()}
+})();
+})();
