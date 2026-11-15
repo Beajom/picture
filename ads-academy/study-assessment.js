@@ -71,7 +71,7 @@ function renderSummary(p){
  var all=Object.values(p.submissions||{}),approved=all.filter(function(x){return x.status==='passed'}).length,manually=all.filter(function(x){return x.status==='manual_reviewed'}).length,waiting=all.filter(function(x){return x.status==='submitted'}).length,changes=all.filter(function(x){return x.status==='revision'||x.status==='failed'}).length;
  return '<div class="study-review-strip"><div><b>'+approved+'</b><small>AI审核通过</small></div><div><b>'+manually+'</b><small>人工审核登记</small></div><div><b>'+waiting+'</b><small>等待正式复核</small></div><div><b>'+changes+'</b><small>待修改</small></div><div class="study-review-strip-text">规则初审只检查算术和材料完整性；AI审核需要登录和服务端密钥，人工审核需登记实际意见。旧版勾选不会自动算作审核通过。</div></div>';
 }
-function renderPanel(d,p){
+function renderPanel(d,p,fullUser){
  var s=read(p,d.n),values=s.values||{},fs=FIELDS[d.n]||null;
  var show=s.status==='submitted'||s.status==='passed'||s.status==='revision'||s.status==='failed';
  var rubric=window.AdsDayRubrics.forDay(d.n);
@@ -90,7 +90,7 @@ function renderPanel(d,p){
    '<textarea rows="2" data-sra-criterion-proof="'+item.id+'" data-day="'+d.n+'" placeholder="填写这一项的实际数据、案例或判断依据（至少18字）">'+esc(c.proof||'')+'</textarea></div>';
  }).join('')+'</div>';
  var asin=String(p.asin||'').trim().toUpperCase();
- var profile=(ctx?.user?.adsLab?.products||[]).find(function(x){return x.asin===asin});
+ var profile=(fullUser?.adsLab?.products||[]).find(function(x){return x.asin===asin});
  if(profile){
   out+='<div class="study-product-source"><b>已关联商品：'+esc(asin)+'</b> · '+esc(profile.name||profile.internal||'')+
    '<div class="study-muted">商品资料：'+esc(profile.color||'')+' '+esc(profile.size||'')+'，采购RMB '+esc(profile.procure||'待补充')+'，头程RMB '+esc(profile.freight||'待补充')+
@@ -181,9 +181,16 @@ function collected(day,context){
   if(FIELDS[day]&&FIELDS[day].some(function(x){return x[0]===key}))s.values[key]=el.value;
   else s[key]=el.value;
  });
+ document.querySelectorAll('[data-sra-criterion-check][data-day="'+day+'"],[data-sra-criterion-proof][data-day="'+day+'"]').forEach(function(el){
+  var id=el.getAttribute('data-sra-criterion-check')||el.getAttribute('data-sra-criterion-proof');
+  if(!s.criteria[id])s.criteria[id]={checked:false,proof:''};
+  if(el.hasAttribute('data-sra-criterion-check'))s.criteria[id].checked=!!el.checked;
+  else s.criteria[id].proof=el.value;
+ });
  return s;
 }
 function modified(s,p,day){
+ s.updatedAt=stamp();
  if(s.status==='passed'||s.status==='manual_reviewed'||s.status==='submitted'||s.status==='revision'||s.status==='failed'){
   s.status='draft';s.autoMessages=[];s.reviewedAt='';s.ai=null;p.done[day]=false;
  }
@@ -278,7 +285,7 @@ async function aiReview(day,d,p,options){
  aiBusy=true;options.refresh();
  try{
   var result=await window.AcademyReviewService.review(payload);
-  s.ai=result;s.status=result.verdict==='pass'?'passed':'revision';s.reviewedAt=stamp();
+  s.ai=result;s.status=result.verdict==='pass'?'passed':'revision';s.reviewedAt=stamp();s.updatedAt=stamp();
   p.done[day]=result.verdict==='pass';s.feedback=String(result.summary||'');
   history(s,'AI复核',result.score+'/100 · '+result.verdict+' · '+String(result.summary||'').slice(0,300));
   options.save();toast(result.verdict==='pass'?'AI评分 '+result.score+'/100，审核通过。':'AI已列出需要修改的问题，修正后可再次提交。');
@@ -292,7 +299,7 @@ function handle(action,z,options,days){
  var p=options.user.studyPlan,s=read(p,day);
  if(action==='reviewSubmit'){
   collected(day,options);var check=audit(day,s);s.autoMessages=check.messages;s.autoCheck=check.calc;s.status=check.passed?'submitted':'failed';s.submittedAt=stamp();
-  s.ai=null;p.done[day]=false;history(s,'规则初审',check.passed?'材料和公式完整性通过':check.messages.join('；').slice(0,350));
+  s.ai=null;p.done[day]=false;s.updatedAt=stamp();history(s,'规则初审',check.passed?'材料和公式完整性通过':check.messages.join('；').slice(0,350));
   options.save();options.refresh();toast(check.passed?'规则初审完成，请继续AI审核或老师复核；此时未算作正式通过。':'规则初审有待修正的内容，请查看下方反馈。');
  }else if(action==='reviewCopy'){collected(day,options);options.save();copyText(draftText(d,p))}
  else if(action==='reviewAI'){void aiReview(day,d,p,options)}
@@ -301,7 +308,7 @@ function handle(action,z,options,days){
   collected(day,options);
   if(s.status!=='submitted'&&s.status!=='passed'){toast('请先修改并重新提交作业、通过公式初审，再录入新的审核结论。');return true}
   if((s.feedback||'').trim().length<15){toast('请先粘贴真实审核意见（至少15字符），再记录审核结论。');return true}
-  s.status=action==='reviewApprove'?'manual_reviewed':'revision';s.reviewedAt=stamp();p.done[day]=action==='reviewApprove';history(s,action==='reviewApprove'?'手工登记复核意见':'要求重做',s.feedback);
+  s.status=action==='reviewApprove'?'manual_reviewed':'revision';s.reviewedAt=stamp();s.updatedAt=stamp();p.done[day]=action==='reviewApprove';history(s,action==='reviewApprove'?'手工登记复核意见':'要求重做',s.feedback);
   options.save();options.refresh();
   toast(action==='reviewApprove'?'已登记人工反馈（由用户自行确认），与系统AI审核区分显示。':'已标记需要修改，请根据审核意见重新提交。');
  }else if(action==='reviewRemove'){void remove(day,z.dataset.file)}
