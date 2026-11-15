@@ -297,14 +297,56 @@ function productForm(){
  '<div class="al-actions">'+btn('保存商品','saveProduct','primary')+btn('取消','newProduct','soft')+'</div></div>';
 }
 function products(){
- var p=dataUser(),list=p.products;
- return '<div class="al-grid two"><div>'+productForm()+'</div><div class="al-panel al-pad"><h2>ASIN 利润库 · '+list.length+' 个</h2>'+
- (list.length?list.map(function(x){var m=E.products(x);return '<article class="al-product"><div class="al-between"><div><strong>'+esc(x.asin)+'</strong><small class="al-block al-muted">'+esc(x.name||'未命名产品')+'</small></div>'+chip(m.valid?'已核算':'信息未完善',m.valid?'ok':'')+'</div>'+
- '<div class="al-minirow"><div><span>贡献利润</span><b>'+usd(m.contribution)+'</b></div><div><span>目标 CPA</span><b>'+usd(m.targetCPA)+'</b></div><div><span>目标 ACOS</span><b>'+pct(m.targetACOS)+'</b></div></div>'+
- '<div class="al-actions">'+btn('编辑','editProduct','soft','data-asin="'+esc(x.asin)+'"')+' '+btn('以此 ASIN 分析','useProduct','soft','data-asin="'+esc(x.asin)+'"')+' '+btn('删除','deleteProduct','danger','data-asin="'+esc(x.asin)+'"')+'</div></article>'}).join(''):empty('创建第一个商品，后续搜索词建议会使用对应的单件贡献利润和目标 CPA。'))+'</div></div>'+
- '<section class="al-panel al-pad"><h2>全局默认广告目标</h2><p class="al-muted">当报表没有关联 ASIN 时使用；这不是系统推荐的行业标准，请按自己的利润表确定。</p>'+
- '<div class="al-formgrid"><div class="al-field"><label>目标 CPA（USD）</label><input data-al-target="cpa" type="number" min="0" step="any" value="'+esc(p.targets.cpa)+'"></div>'+
- '<div class="al-field"><label>目标 ACOS（%）</label><input data-al-target="acos" type="number" min="0" step="any" value="'+esc(p.targets.acos)+'"></div></div></section>';
+ var data=dataUser(),list=data.products,families=window.AdsAsin.families(list);
+ var selected=state.productSearch.trim().toLowerCase();
+ var usable=selected?list.filter(function(p){return [p.asin,p.parentAsin,p.sku,p.internal,p.name,p.code,p.color,p.size].join(' ').toLowerCase().includes(selected)}):list;
+ var groups=window.AdsAsin.families(usable);
+ var cards=groups.map(function(g){
+  return '<details class="al-family"><summary><div><b>'+esc(g.code)+' 系列</b><span class="al-muted">'+esc(g.names.join(' / '))+'</span></div><div>'+chip(g.count+'个子ASIN')+' <span class="al-muted">父ASIN：'+esc(g.parents.join(', '))+'</span></div></summary>'+
+  '<div class="al-tablewrap"><table class="al-table"><thead><tr><th>子ASIN</th><th>SKU / 内部编码</th><th>颜色/尺码</th><th>单件总成本(RMB)</th><th>目标CPA</th><th>商品维护</th></tr></thead><tbody>'+
+  g.products.map(function(p){
+   var m=E.products(p),cost=num(p.procure)+num(p.freight)+num(p.otherRMB);
+   return '<tr><td><strong>'+esc(p.asin)+'</strong></td>'+
+    '<td class="al-key"><b>'+esc(p.internal||'')+'</b><small>'+esc(p.sku||'')+'</small></td>'+
+    '<td>'+esc(p.color||'')+' / '+esc(p.size||'')+'</td>'+
+    '<td>¥'+f(cost,2)+(p.costVerified===false?' '+chip('需核对','warn'):'')+'</td>'+
+    '<td>'+usd(m.targetCPA)+'</td>'+
+    '<td>'+btn('编辑费用','editProduct','soft','data-asin="'+esc(p.asin)+'"')+' '+btn('查看系列广告','useProduct','soft','data-asin="'+esc(p.asin)+'"')+'</td></tr>';
+  }).join('')+'</tbody></table></div></details>';
+ }).join('');
+ return '<div class="al-panel al-pad"><div class="al-between"><div><span class="al-eye">PRODUCT MASTER DATA</span><h2>ASIN 商品资料库 · '+list.length+'个子ASIN</h2><p class="al-muted">已识别 '+families.length+'个内部产品系列；保留父子ASIN、SKU、颜色、尺码、人民币成本。广告数据仅关联到产品系列，未提供子ASIN归因。</p></div>'+
+ btn('导入ASIN基础资料Excel','tab','primary','data-tab="import"')+' '+btn('查看产品与广告关联','tab','soft','data-tab="mapping"')+'</div>'+
+ '<div class="al-formgrid"><div class="al-field"><label>搜索 ASIN / SKU / 内部编码 / 颜色 / 尺码</label><input type="search" id="alProductSearch" value="'+esc(state.productSearch)+'" placeholder="例如3037、B08BWRKH7R、肤色"></div></div>'+
+ (list.length?cards||'<p class="al-muted">没有匹配该搜索条件的商品。</p>':empty('导入你的 ASIN基础资料.xlsx，将自动识别父子ASIN和费用。'))+'</div>'+
+ '<div class="al-grid two"><div>'+productForm()+'</div><div class="al-panel al-pad"><h2>单品费用说明</h2>'+
+ '<div class="al-process"><div><i>1</i>从ASIN原始表读取采购、头程及其他人民币成本，不重复计费</div>'+
+ '<div><i>2</i>补齐真实USD售价、汇率、FBA费用、佣金率和预期利润率</div>'+
+ '<div><i>3</i>自动计算该子ASIN的贡献利润、目标CPA、盈亏平衡ACOS</div>'+
+ '<div><i>4</i>产品组合广告费无法直接分摊到子ASIN，系统仅做系列关联，不自动分摊</div></div>'+
+ '<div class="al-note">例如“3037”广告组合的搜索词花费可能涵盖8个子ASIN。没有被推广商品报告或明确的目标ASIN字段，不能单独得出某个颜色/尺码的广告利润。</div></div></div>'+
+ '<section class="al-panel al-pad"><h2>全局默认广告目标</h2><p class="al-muted">仅用于具有明确同币种和同商品范围的数据。在系列广告中，不能拿任一变体的单件CPA自动判断整个系列。</p>'+
+ '<div class="al-formgrid"><div class="al-field"><label>目标CPA（USD）</label><input data-al-target="cpa" type="number" min="0" step="any" value="'+esc(data.targets.cpa)+'"></div>'+
+ '<div class="al-field"><label>目标ACOS（%）</label><input data-al-target="acos" type="number" min="0" step="any" value="'+esc(data.targets.acos)+'"></div></div></section>';
+}
+function mapping(){
+ var products=dataUser().products,families=window.AdsAsin.families(products),entries=window.AdsAsin.coverage(products,state.datasets);
+ var matched=entries.filter(function(x){return x.matched}),missing=entries.filter(function(x){return !x.matched});
+ var names={sp_search:'SP 搜索词',sp_placement:'SP 广告位',sb_search:'SB 搜索词',sb_placement:'SB 广告位'};
+ return '<section class="al-panel al-pad"><div class="al-between"><div><span class="al-eye">PRODUCT / AD FAMILY MAPPING</span><h2>ASIN 与广告组合关联核对</h2><p class="al-muted">仅依据「广告组合名称」开头的4位内部编码，与「ASIN资料库 → 内部编码」匹配，保留证据层级。</p></div>'+
+ btn('重新导入ASIN或广告报告','tab','primary','data-tab="import"')+'</div>'+
+ '<div class="al-grid four">'+kpi('子ASIN数',f(products.length,0),'来自ASIN资料库')+kpi('内部系列数',f(families.length,0),'不同内部编码')+
+ kpi('已关联组合',f(matched.length,0),'按导入报告逐个统计')+kpi('未匹配组合',f(missing.length,0),'不会猜测产品归属')+'</div>'+
+ '<div class="al-notice-danger"><b>归属精度：产品系列级，非子ASIN级。</b>你的 SP 搜索词与广告位表没有明确的被推广ASIN列，以下仅匹配广告组合与内部商品系列，不能推算各个子ASIN的广告花费或自然订单。不同报告类型/不同日期的金额不可直接相加。</div></section>'+
+ '<div class="al-panel al-pad"><h2>产品系列档案</h2>'+
+ (families.length?'<div class="al-grid two">'+families.map(function(g){return '<div class="al-source"><div class="al-between"><strong>'+esc(g.code)+' 系列</strong>'+chip(g.count+'个子ASIN','ok')+'</div><p class="al-muted">'+esc(g.names.join(' / '))+'</p><div class="al-muted">父ASIN：'+esc(g.parents.join('、'))+'</div></div>'}).join('')+'</div>':empty('请先上传ASIN基础资料Excel。'))+'</div>'+
+ '<div class="al-panel al-pad"><div class="al-between"><h2>广告组合匹配明细 · '+entries.length+'条</h2>'+btn('导出匹配核对表','exportMapping','soft')+'</div>'+
+ (entries.length?'<div class="al-tablewrap"><table class="al-table"><thead><tr><th>报表类型</th><th>广告组合</th><th>系列码</th><th>匹配状态</th><th>父ASIN</th><th>包含子ASIN</th><th>数据行数</th><th>花费(按报表)</th><th>报告期间</th></tr></thead><tbody>'+
+ entries.map(function(x){return '<tr><td>'+esc(names[x.dataset]||x.dataset)+'</td><td class="al-key"><b>'+esc(x.portfolio)+'</b><small>'+esc(x.filename||'')+'</small></td>'+
+ '<td>'+esc(x.code||'无编码')+'</td><td>'+chip(x.matched?'系列匹配':'未匹配',x.matched?'ok':'warn')+'</td><td>'+esc(x.parentAsins.join('、')||'—')+'</td>'+
+ '<td>'+x.children+'</td><td>'+f(x.rows,0)+'</td><td>'+usd(x.spend)+'</td><td>'+esc(x.earliest||'—')+' — '+esc(x.latest||'—')+'</td></tr>'}).join('')+'</tbody></table></div>':
+ empty('先导入真实广告搜索词/广告位报告，然后可以查看广告组合的产品系列匹配结果。'))+
+ (missing.length?'<div class="al-note">以下组合尚无匹配的ASIN内部编码：'+esc(Array.from(new Set(missing.map(function(x){return x.portfolio}))).join('、'))+'。不会自动把类似“3221”的编码归入“3321”。</div>':'')+
+ '</div>';
 }
 function actions(){
  var x=dataUser().actions;
@@ -484,6 +526,7 @@ function handleAction(z){
   var before=state.datasets.slice(),d=before.find(function(x){return x.id===id});
   state.datasets=before.filter(function(x){return x.id!==id});E.remove(id).then(function(){state.notice='已删除 '+(d?d.file:'数据');refresh()}).catch(function(e){state.datasets=before;notify('删除失败：'+e.message,true)});refresh();return}
  if(type==='exportManifest'){exportManifest();return}
+ if(type==='exportMapping'){var rows=window.AdsAsin.coverage(dataUser().products,state.datasets).map(function(x){return Object.assign({},x,{parentAsins:x.parentAsins.join(';'),matched:x.matched?'系列匹配':'未匹配'})});csv(rows,[['dataset','报表类型'],['filename','文件'],['portfolio','广告组合'],['code','内部系列码'],['matched','匹配结果'],['parentAsins','父ASIN'],['children','系列子ASIN数'],['rows','数据行'],['spend','广告花费'],['sales','广告归因销售'],['orders','订单'],['earliest','开始日期'],['latest','结束日期']]);return}
  if(type==='exportAnalysis'){analysisExport(z.dataset.group);return}
  if(type==='exportActions'){exportActions();return}
  if(type==='backupUser'){backupUser();return}
@@ -650,6 +693,7 @@ document.addEventListener('input',function(e){
  if(!context)return;var z=e.target;
  if(z.hasAttribute('data-al-product')){if(!state.productDraft)state.productDraft=productEmpty();state.productDraft[z.getAttribute('data-al-product')]=z.value;return}
  if(z.hasAttribute('data-al-action-field')&&z.tagName==='TEXTAREA'){var a=dataUser().actions.find(function(a){return a.id===z.dataset.id});if(a){a[z.getAttribute('data-al-action-field')]=z.value;context.save()}return}
+ if(z.id==='alProductSearch'){state.productSearch=z.value;clearTimeout(state.productSearchTimer);state.productSearchTimer=setTimeout(function(){refresh();var next=document.getElementById('alProductSearch');if(next){next.focus();try{next.setSelectionRange(z.selectionStart,z.selectionEnd)}catch(e){}}},250);return}
  if(z.getAttribute('data-al-input')==='q'){
   state.q=z.value;clearTimeout(state.searchTimer);state.searchTimer=setTimeout(function(){var pos=z.selectionStart;refresh();var el=document.getElementById('alSearch');if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}},280);
  }
