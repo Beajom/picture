@@ -289,7 +289,7 @@ var PRODUCT_FIELDS=[
 ];
 function productForm(){
  var p=state.productDraft||productEmpty(),m=E.products(p);
- return '<div class="al-panel al-pad"><div class="al-between"><h2>'+esc(state.editProduct?'编辑商品利润模型':'新增商品利润模型')+'</h2>'+btn('清空编辑','newProduct','soft')+'</div>'+
+ return '<div class="al-panel al-pad" id="alProductEditor"><div class="al-between"><h2>'+esc(state.editProduct?'编辑商品利润模型':'新增商品利润模型')+'</h2>'+btn('清空编辑','newProduct','soft')+'</div>'+
  '<p class="al-muted">ASIN基础资料可导入父子ASIN、SKU和三项人民币成本；销售价、FBA配送费、佣金率与汇率仍需按真实数据补齐。不能把整个系列的广告费用直接算到某个子ASIN。</p>'+
  '<div class="al-formgrid">'+PRODUCT_FIELDS.map(function(a){return '<div class="al-field"><label>'+esc(a[1])+'</label><input data-al-product="'+a[0]+'" type="'+a[2]+'" '+(a[2]==='number'?'min="0" step="any"':'maxlength="140"')+' placeholder="'+esc(a[3])+'" value="'+esc(p[a[0]]||'')+'"></div>'}).join('')+'</div>'+
  '<div class="al-preview"><div><small>广告前贡献利润</small><b>'+usd(m.contribution)+'</b></div><div><small>盈亏平衡 ACOS</small><b>'+pct(m.breakEvenACOS)+'</b></div><div><small>目标 CPA</small><b>'+usd(m.targetCPA)+'</b></div><div><small>目标 ACOS</small><b>'+pct(m.targetACOS)+'</b></div></div>'+
@@ -533,7 +533,7 @@ function handleAction(z){
  if(type==='copyReview'){copyReview();return}
  if(type==='newProduct'){state.productDraft=productEmpty();state.editProduct='';refresh();return}
  if(type==='saveProduct'){saveProduct();return}
- if(type==='editProduct'){var model=productByAsin(asin);state.productDraft=Object.assign({},model);state.editProduct=asin;refresh();return}
+ if(type==='editProduct'){var model=productByAsin(asin);if(!model)return;state.productDraft=Object.assign({},model);state.editProduct=asin;refresh();setTimeout(function(){document.getElementById('alProductEditor')?.scrollIntoView({behavior:'smooth',block:'start'})},0);return}
  if(type==='useProduct'){state.asin=asin;state.tab='overview';refresh();return}
  if(type==='deleteProduct'){if(!confirmAction('删除该商品的费用模型？已关联的原始报告不会被删除。'))return;dataUser().products=dataUser().products.filter(function(p){return p.asin!==asin});if(state.asin===asin)state.asin='all';dirty();return}
  if(type==='deleteAction'){if(!confirmAction('确认删除这条优化行动记录？'))return;dataUser().actions=dataUser().actions.filter(function(a){return a.id!==id});dirty();return}
