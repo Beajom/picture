@@ -6,13 +6,13 @@ var E=window.AdsEngine;
 var TABS=[
  ['overview','经营总览','layout-dashboard'],['import','报表导入','upload'],
  ['terms','搜索词决策','search'],['placements','广告位诊断','target'],
- ['campaigns','活动治理','layers'],['products','ASIN利润库','calculator'],
+ ['campaigns','活动治理','layers'],['products','ASIN利润库','calculator'],['mapping','产品与广告关联','network'],
  ['actions','优化任务与复盘','clipboard-list'],['practice','真实数据训练','graduation-cap'],['overlap','重叠投放检查','copy'],['ranks','自然排名跟踪','trending-up'],['connect','数据接入','plug']
 ];
 var COLUMNS=[
  ['key','搜索词/投放'],['impressions','曝光'],['clicks','点击'],['spend','花费'],['orders','订单'],['sales','销售额'],['ctr','CTR'],['cvr','CVR'],['cpc','CPC'],['cpa','CPA'],['acos','ACOS'],['type','决策分类'],['confidence','可信度']
 ];
-var state={ready:false,loading:false,datasets:[],error:'',notice:'',tab:'overview',kind:'',asin:'all',campaign:'',q:'',from:'',to:'',minClicks:0,importAsin:'',importBusy:false,uploadMode:'replace',currency:'',selectedFiles:[],importResult:null,productDraft:null,editProduct:'',detail:'',reviewWeek:'current',practiceIndex:0,practiceReveal:false};
+var state={ready:false,loading:false,datasets:[],error:'',notice:'',tab:'overview',kind:'',asin:'all',campaign:'',q:'',from:'',to:'',minClicks:0,importAsin:'',importBusy:false,uploadMode:'replace',currency:'',selectedFiles:[],importResult:null,productDraft:null,productSearch:'',editProduct:'',detail:'',reviewWeek:'current',practiceIndex:0,practiceReveal:false};
 var context=null;
 function esc(x){return String(x===undefined||x===null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','&quot;':'&quot;',"'":'&#39;'}[c]})}
 function num(x){return E.number(x)}
@@ -41,7 +41,7 @@ function uniqueRows(){
  var all=[];
  selected.slice().sort(function(a,b){return String(a.importedAt).localeCompare(String(b.importedAt))}).forEach(function(d){
   (d.rows||[]).forEach(function(r){if(state.currency&&((r.currency||'未注明')!==state.currency))return;
-   if(state.asin!=='all'&&(r._asin||d.asin||'')!==state.asin)return;
+   if(!productSelectionMatches(r,d))return;
    if(state.from&&r.date&&r.date<state.from)return;if(state.to&&r.date&&r.date>state.to)return;
    if(state.campaign&&!String(r.campaign||'').toLowerCase().includes(state.campaign.toLowerCase()))return;
    all.push(Object.assign({},r,{_asin:r._asin||d.asin||'',_kind:d.kind,_dataset:d.id}));
@@ -51,9 +51,13 @@ function uniqueRows(){
  return {rows:u.rows,duplicates:u.duplicates,original:all.length,datasets:selected.length};
 }
 function productByAsin(asin){return dataUser().products.find(function(p){return p.asin===asin})}
+function portfolioGroup(r){return window.AdsAsin.groupCode(r.portfolio||'')}
+function productSelectionMatches(r,d){var selected=state.asin;if(selected==='all')return true;var exact=r._asin||d.asin||'';if(exact===selected)return true;if(exact)return false;var code=portfolioGroup(r);if(!code)return false;if(selected.startsWith('code:'))return code===selected.slice(5);var p=productByAsin(selected);if(p)return p.code===code;if(selected.startsWith('parent:'))return dataUser().products.some(function(x){return x.parentAsin===selected.slice(7)&&x.code===code});return false}
+function selectionIsFamilyProxy(){if(state.asin==='all')return false;var ds=activeDatasets();return ds.some(function(d){return (d.rows||[]).some(function(r){return !r._asin&&!d.asin&&productSelectionMatches(r,d)})})}
 function targets(){
  var t=dataUser().targets,cpa=num(t.cpa),acos=num(t.acos)/100;
  if(state.currency&&state.currency!=='USD')return {cpa:null,acos:null,from:'报表币种非USD，需先建立同币种利润模型'};
+ if(state.asin!=='all'&&selectionIsFamilyProxy())return {cpa:null,acos:null,from:'该报表仅能关联到产品系列，无法按子ASIN分配广告花费'};
  if(state.asin!=='all'){
   var pr=productByAsin(state.asin);
   if(pr){var model=E.products(pr);if(model.valid)return {cpa:model.targetCPA,acos:model.targetACOS,from:'ASIN利润库：'+pr.asin,model:model}}
@@ -72,7 +76,7 @@ function kpi(label,value,sub,tone){return '<div class="al-kpi"><span>'+esc(label
 function filters(opts){
  opts=opts||{};var all=state.datasets,keys=kinds();
  return '<div class="al-filters"><div class="al-field"><label>报告类型（分别核算）</label><select data-al-input="kind">'+keys.map(function(k){return '<option value="'+k+'" '+(state.kind===k?'selected':'')+'>'+KN[k]+' · '+all.filter(function(x){return x.kind===k}).length+'份</option>'}).join('')+'</select></div>'+
- '<div class="al-field"><label>关联 ASIN</label><select data-al-input="asin"><option value="all">全部关联商品</option>'+dataUser().products.map(function(p){return '<option value="'+esc(p.asin)+'" '+(state.asin===p.asin?'selected':'')+'>'+esc(p.asin)+' / '+esc(p.name||'')+'</option>'}).join('')+'</select></div>'+
+ '<div class="al-field"><label>产品系列 / ASIN</label><select data-al-input="asin"><option value="all">全部产品系列</option>'+window.AdsAsin.families(dataUser().products).map(function(g){return '<option value="code:'+g.code+'" '+(state.asin==='code:'+g.code?'selected':'')+'>'+g.code+' 系列 · '+g.count+'个子ASIN</option>'}).join('')+dataUser().products.map(function(p){return '<option value="'+esc(p.asin)+'" '+(state.asin===p.asin?'selected':'')+'>'+esc(p.asin)+' · '+esc(p.color||'')+' '+esc(p.size||'')+'</option>'}).join('')+'</select></div>'+
  '<div class="al-field"><label>币种</label><select data-al-input="currency">'+Array.from(new Set(activeDatasets().flatMap(function(d){return (d.rows||[]).map(function(r){return r.currency||'未注明'})}))).map(function(c){return '<option value="'+esc(c)+'" '+(state.currency===c?'selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select></div>'+ 
  '<div class="al-field"><label>起始日期</label><input type="date" data-al-input="from" value="'+esc(state.from)+'"></div>'+
  '<div class="al-field"><label>结束日期</label><input type="date" data-al-input="to" value="'+esc(state.to)+'"></div>'+
@@ -167,7 +171,7 @@ function overview(){
  var summary='<div class="al-grid four">'+kinds().map(function(k){var ds=state.datasets.filter(function(d){return d.kind===k});return kpi(KN[k],ds.length+'份',ds.reduce(function(a,d){return a+d.rows.length},0)+'行数据')}).join('')+'</div>';
  var anyDemo=state.datasets.some(function(d){return /^DEMO_/.test(d.file||'')});
  var a=uniqueRows(),m=E.metric(a.rows),t=targets();
- return summary+(anyDemo?'<div class="al-notice-danger">当前包含虚拟演示数据；只有在当前报告类型没有真实数据时才用于分析，演示结果不可用来调整真实广告。</div>':'')+filters()+'<div class="al-grid four">'+
+ return summary+familySelectionWarning()+(anyDemo?'<div class="al-notice-danger">当前包含虚拟演示数据；只有在当前报告类型没有真实数据时才用于分析，演示结果不可用来调整真实广告。</div>':'')+filters()+'<div class="al-grid four">'+
  kpi('广告花费',money(m.spend),'所选报告类型及筛选范围')+kpi('归因销售额',money(m.sales),'按该报表自身口径')+
  kpi('ACOS',pct(m.acos),'花费 / 广告归因销售额')+kpi('平均 CPA',money(m.cpa),'花费 / 归因订单')+'</div>'+
  revenueSection(m)+
@@ -237,6 +241,10 @@ function importer(){
  (d.length?'<div class="al-tablewrap"><table class="al-table"><thead><tr><th>类型</th><th>报表 / 来源文件</th><th>行数</th><th>时间范围</th><th>归因</th><th>关联 ASIN</th><th>操作</th></tr></thead><tbody>'+
  d.map(function(x){var days=x.rows.map(function(r){return r.date}).filter(Boolean).sort();return '<tr><td>'+chip(KN[x.kind]||x.kind)+'</td><td><b>'+esc(x.sheet||'')+'</b><small class="al-muted al-block">'+esc(x.file)+'</small></td><td>'+f(x.rows.length,0)+'</td><td>'+esc(days[0]||'未知')+' 至 '+esc(days[days.length-1]||'未知')+'</td><td>'+esc(x.attr)+'</td><td>'+esc(x.asin||'未关联')+'</td><td>'+btn('删除','removeDataset','danger','data-id="'+esc(x.id)+'"')+'</td></tr>'}).join('')+'</tbody></table></div>':empty('这里会显示每个导入的真实报表及解析的行数。'))+'</section>';
 }
+function familySelectionWarning(){
+ if(!selectionIsFamilyProxy())return '';
+ return '<div class="al-notice-danger"><strong>请注意统计粒度：</strong>当前报表没有“被推广子ASIN / SKU”字段，只能通过广告组合名称识别产品系列。当前显示的是该系列下各变体共同覆盖的广告结果，不能用来直接判断某一个子ASIN的广告花费、CPA或盈利。</div>';
+}
 function analysis(type){
  var need=type==='terms'?'search':type==='placements'?'placement':'campaign',selected=state.kind;
  if(need!=='campaign'&&(!selected||!selected.endsWith(need))){
@@ -250,7 +258,7 @@ function analysis(type){
  var full=groups.length;
  groups=groups.slice(0,200);
  var meta=need==='search'?'搜索词分层与否定决策':need==='placement'?'广告位的成本与转化表现':'活动级预算与收益治理';
- return filters({search:need==='search'})+
+ return filters({search:need==='search'})+familySelectionWarning()+
  '<section class="al-panel al-pad"><div class="al-between"><div><span class="al-eye">DATA DIAGNOSIS</span><h2>'+esc(meta)+'</h2></div><div class="al-actions">'+chip(KN[selected]||'')+btn('导出分析CSV','exportAnalysis','soft','data-group="'+need+'"')+'</div></div>'+
  '<p class="al-muted">共 '+full+' 行分组结果（最多展示前200行），目标 CPA：'+money(t.cpa)+'，目标 ACOS：'+pct(t.acos)+'。建议是辅助判断，不会自动修改广告。</p>'+
  '<div class="al-tablewrap"><table class="al-table"><thead><tr><th>'+esc(need==='search'?'客户搜索词':need==='placement'?'广告位':'广告活动')+'</th><th>曝光</th><th>点击</th><th>花费</th><th>订单</th><th>销售额</th><th>CTR</th><th>CVR</th><th>CPC</th><th>CPA</th><th>ACOS</th><th>行动判断</th><th>操作</th></tr></thead><tbody>'+
@@ -435,7 +443,7 @@ function connect(){
 }
 function render(ctx){init(ctx);return '<div class="ads-lab">'+head()+(state.loading?'<div class="al-panel al-pad">正在读取本机广告数据…</div>':
  state.tab==='overview'?overview():state.tab==='import'?importer():state.tab==='terms'?analysis('terms'):state.tab==='placements'?analysis('placements'):
- state.tab==='campaigns'?analysis('campaigns'):state.tab==='products'?products():state.tab==='actions'?actions():state.tab==='practice'?practice():state.tab==='overlap'?overlap():state.tab==='ranks'?ranks():connect())+'</div>'}
+ state.tab==='campaigns'?analysis('campaigns'):state.tab==='mapping'?mapping():state.tab==='products'?products():state.tab==='actions'?actions():state.tab==='practice'?practice():state.tab==='overlap'?overlap():state.tab==='ranks'?ranks():connect())+'</div>'}
 function refresh(){if(context)context.refresh()}
 function selectedGroup(by,idx){var groups=groupData(by),q=state.q.toLowerCase();if(q)groups=groups.filter(function(g){return g.key.toLowerCase().includes(q)});return groups.slice(0,200)[idx]}
 function addAction(a){dataUser().actions.push(a);dirty();notify('已加入优化行动；记得安排复查日期。')}
