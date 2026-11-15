@@ -73,6 +73,7 @@ function renderSummary(p){
 function renderPanel(d,p){
  var s=read(p,d.n),values=s.values||{},fs=FIELDS[d.n]||null;
  var show=s.status==='submitted'||s.status==='passed'||s.status==='revision'||s.status==='failed';
+ var rubric=window.AdsDayRubrics.forDay(d.n);
  var out='<section class="study-assignment" id="study-assignment-'+d.n+'">'+
  '<div class="study-topline"><div><span class="study-eyebrow">DAY '+d.n+' · SUBMIT FOR REVIEW</span><h4>作业提交与审核</h4></div>'+badge(s)+'</div>'+
  '<p class="study-muted">课程任务：'+esc(d.task)+'。提交后先进行规则初审；涉及运营策略的实质判断需由 ChatGPT 或老师阅读证据后复核。</p>';
@@ -80,18 +81,33 @@ function renderPanel(d,p){
   out+='<div class="study-audit-numbers">'+fs.map(function(x){return '<label><span>'+esc(x[1])+'</span><input type="number" step="any" data-sra-field="'+x[0]+'" data-day="'+d.n+'" value="'+esc(values[x[0]]===undefined?'':values[x[0]])+'" placeholder="填写数字"></label>'}).join('')+'</div>';
   out+='<p class="study-tiny">请统一以美元核算。第2天默认1订单对应1件该SKU；多件订单应使用实际客单价及每单贡献利润。第3天TACOS须使用同期完整广告花费与总销售额。</p>';
  }
+ out+='<div class="study-rubric"><div class="study-topline"><h4>本日专属验收清单</h4><span class="study-tiny">每项说明实际证据后才能提交规则初审</span></div>'+
+ rubric.map(function(item){
+  var c=s.criteria[item.id]||{};
+  return '<div class="study-rubric-item"><label class="study-rubric-title"><input type="checkbox" data-sra-criterion-check="'+item.id+'" data-day="'+d.n+'" '+(c.checked?'checked':'')+'>'+
+   '<strong>'+esc(item.title)+'</strong></label><p>'+esc(item.hint)+'</p>'+
+   '<textarea rows="2" data-sra-criterion-proof="'+item.id+'" data-day="'+d.n+'" placeholder="填写这一项的实际数据、案例或判断依据（至少18字）">'+esc(c.proof||'')+'</textarea></div>';
+ }).join('')+'</div>';
+ var asin=String(p.asin||'').trim().toUpperCase();
+ var profile=(ctx?.user?.adsLab?.products||[]).find(function(x){return x.asin===asin});
+ if(profile){
+  out+='<div class="study-product-source"><b>已关联商品：'+esc(asin)+'</b> · '+esc(profile.name||profile.internal||'')+
+   '<div class="study-muted">商品资料：'+esc(profile.color||'')+' '+esc(profile.size||'')+'，采购RMB '+esc(profile.procure||'待补充')+'，头程RMB '+esc(profile.freight||'待补充')+
+   '，其他RMB '+esc(profile.otherRMB||'待补充')+'。仅作为背景，不会自动假定FBA和售价已知。</div></div>';
+ }
+ out+='<button type="button" class="study-action" data-route="adslab">↗ 打开广告数据工作台，查找本日证据</button>';
  var areas=[['evidence','证据与数据来源','写明报告名称、起止日期、商品/活动范围及观察到的关键数字…'],
  ['conclusion','我的结论与计算/判断过程','请说明为什么这么算、为什么选这个优化动作…'],
  ['risks','风险、限制与复查计划','样本是否足够？归因是否一致？调整后何时复查？']];
  out+='<div class="study-audit-text">'+areas.map(function(x){return '<label><span>'+x[1]+'</span><textarea data-sra-field="'+x[0]+'" data-day="'+d.n+'" rows="3" placeholder="'+esc(x[2])+'">'+esc(s[x[0]]||'')+'</textarea></label>'}).join('')+'</div>'+
- '<div class="study-audit-upload"><div class="study-topline"><div><strong>上传证据文件（可选）</strong><p>支持 PNG/JPG/PDF、Excel、CSV，最多4个文件，每个不超过15MB。</p></div></div>'+
+ '<div class="study-audit-upload"><div class="study-topline"><div><strong>上传证据文件（可选）</strong><p>支持图片、PDF、Excel、CSV，最多4个文件，每个不超过15MB。当前设备先保留本地副本；登录后可同步至私人云端附件库。</p></div></div>'+
  '<input type="file" data-sra-upload="'+d.n+'" accept=".png,.jpg,.jpeg,.webp,.pdf,.xlsx,.xls,.csv,.txt" multiple>'+
- (s.files&&s.files.length?'<div class="study-audit-filelist">'+s.files.map(function(f){return '<div class="study-audit-file"><span>'+esc(f.name)+' <small>('+Math.round(f.size/1024)+' KB)</small></span><div><button type="button" data-sp="reviewDownload" data-day="'+d.n+'" data-file="'+esc(f.id)+'">查看/下载</button><button type="button" data-sp="reviewRemove" data-day="'+d.n+'" data-file="'+esc(f.id)+'">移除</button></div></div>'}).join('')+'</div>':'<p class="study-tiny">暂无附件。文件保存在当前浏览器，不会自动同步到云端或发送给 ChatGPT；请保留原始报表。</p>')+
+ (s.files&&s.files.length?'<div class="study-audit-filelist">'+s.files.map(function(f){return '<div class="study-audit-file"><span>'+esc(f.name)+' <small>('+Math.round(f.size/1024)+' KB)</small></span><div><button type="button" data-sp="reviewDownload" data-day="'+d.n+'" data-file="'+esc(f.id)+'">查看/下载</button><button type="button" data-sp="reviewRemove" data-day="'+d.n+'" data-file="'+esc(f.id)+'">移除</button></div></div>'}).join('')+'</div>':'<p class="study-tiny">暂无附件。附件必须明确上传或同步；AI文字审核不会自动读取附件内容。</p>')+
  '</div>'+
  '<div class="study-row">'+
- '<button class="study-action primary" type="button" data-sp="reviewSubmit" data-day="'+d.n+'">提交作业 · 公式初审</button>'+
+ '<button class="study-action primary" type="button" data-sp="reviewSubmit" data-day="'+d.n+'">① 提交规则初审</button>'+
  '<button class="study-action" type="button" data-sp="reviewCopy" data-day="'+d.n+'">复制审核材料</button>'+
- '<a class="study-action study-review-link" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">打开 ChatGPT 审核</a>'+
+ '<button type="button" class="study-action" data-sp="reviewAI" data-day="'+d.n+'">'+(aiBusy?'AI审核中…':'② AI正式审核')+'</button>'+'<a class="study-action study-review-link" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">或使用 ChatGPT 人工交流审核</a>'+'<button type="button" class="study-action" data-sp="reviewSyncFiles" data-day="'+d.n+'">同步附件到私人云端</button>'+
  '</div>';
  if(show){
   out+='<div class="study-audit-result '+(s.status==='failed'||s.status==='revision'?'warn':'')+'"><b>'+esc(dayLabel(s))+'</b>'+
@@ -99,13 +115,23 @@ function renderPanel(d,p){
    (s.submittedAt?'<small>提交时间：'+niceDate(s.submittedAt)+'</small>':'')+
    '</div>';
  }
+ if(s.ai){
+  var a=s.ai,parts=a.dimensions||{};
+  out+='<div class="study-ai-score"><div class="study-topline"><h4>AI复核结果</h4><strong>'+esc(a.verdict==='pass'?'合格':'需修改')+' · '+esc(a.score)+'/100</strong></div>'+
+  '<div class="study-ai-dims">'+[['计算/推理',parts.reasoning],['数据证据',parts.data],['运营判断',parts.decision],['风险意识',parts.risk]].map(function(x){
+   return '<div><small>'+x[0]+'</small><b>'+esc(x[1])+'/25</b></div>';
+  }).join('')+'</div><p>'+esc(a.summary||'')+'</p>'+
+  (a.errors?.length?'<b>问题：</b><ul>'+a.errors.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>':'')+
+  (a.actions?.length?'<b>下一步：</b><ul>'+a.actions.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>':'')+
+  '<p class="study-tiny">AI仅阅读提交的文字、指标和检查项，不会自行读取本地附件或进入真实亚马逊账户。需专业人工核查时以实际证据为准。</p></div>';
+ }
  out+='<div class="study-review-feedback"><h4>记录老师 / ChatGPT 的真实审核意见</h4>'+
- '<p class="study-muted">在 ChatGPT 中粘贴上面复制的材料，并手动上传本地证据文件。收到实际反馈后填写这里，才能将任务记为审核通过。</p>'+
+ '<p class="study-muted">如AI服务未配置或你希望老师线下评阅，可复制审核材料到聊天，并另行上传实际证据。下面只记录你自行确认收到的审核结论，和网站真实AI审核分开计数。</p>'+
  '<textarea data-sra-field="feedback" data-day="'+d.n+'" rows="3" placeholder="粘贴审核意见：哪里正确、哪里有误、需要改什么…">'+esc(s.feedback||'')+'</textarea>'+
- '<div class="study-row"><button type="button" class="study-action completed" data-sp="reviewApprove" data-day="'+d.n+'">已收到审核 · 确认通过</button>'+
+ '<div class="study-row"><button type="button" class="study-action completed" data-sp="reviewApprove" data-day="'+d.n+'">登记人工审核通过（自行确认）</button>'+
  '<button type="button" class="study-action" data-sp="reviewReject" data-day="'+d.n+'">审核要求修改</button></div>'+
  (s.reviewedAt?'<p class="study-tiny">最近确认复核：'+niceDate(s.reviewedAt)+'</p>':'')+
- '</div></section>';
+ '</div>'+(s.history?.length?'<details class="study-review-history"><summary>查看历次提交与审核记录（'+s.history.length+'）</summary>'+s.history.slice(-12).reverse().map(function(x){return '<div>'+esc(x.at)+' · '+esc(x.action)+' · '+esc(x.summary||'')+'</div>'}).join('')+'</details>':'')+'</section>';
  return out;
 }
 function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast('审核材料已复制，请在ChatGPT粘贴，并上传截图或报表附件。')}).catch(function(){window.prompt('复制审核材料',t)})}else window.prompt('复制审核材料',t)}
