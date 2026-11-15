@@ -3,8 +3,8 @@
 "use strict";
 var app=window.WeddingApp,root=document.getElementById("cloudPanel");
 var db=null,session=null,spaces=[],mine=[],base=null,pending=null,busy=false,loading=false,channel=null,notice="",authMode="login";
-var api="https://whajxxonwtlfuvjyrooh.supabase.co";
-var key="sb_publishable_R3C66b8mtDzaKyKogBYQCw_KyUbw6G1";
+var api="https://waiyncvhkzdaeitlmxdk.supabase.co";
+var key="sb_publishable_k4uukhu-jjAdOwm__C8BKA_vjHC0vuE";
 var c=window.WeddingCloud={active:false,role:null,spaceId:null,members:[],onSave:onSave,refresh:load};
 if(!app||!root)return;
 var st=document.createElement("style");st.textContent=".cloud-card{border:1px solid #eaded7;background:#fffaf7;border-radius:15px;padding:14px;margin:12px 0}.cloud-card h3{margin:0 0 10px}.cloud-card p{font-size:12px;color:#8b7770;line-height:1.7}.cloud-stack{display:grid;gap:9px}.cloud-in{width:100%;padding:12px;border:1px solid #eaded7;background:#fff;border-radius:10px;font-size:15px}.cloud-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.cloud-actions>*{flex:1}.cloud-member{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #eee;padding:10px 0;gap:6px}.cloud-chip{font-size:12px;background:#f5ede7;border-radius:99px;padding:4px 8px}.cloud-error{color:#ad4242}";document.head.appendChild(st);
