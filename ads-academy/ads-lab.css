@@ -93,3 +93,18 @@
 .al-import-summary summary{cursor:pointer;font-weight:700}.al-import-summary li{padding:4px 0}
 .al-import-warnings{background:#fff8e9;border:1px solid #f0deab;padding:11px;border-radius:8px;margin-top:9px}
 .al-import-warnings p{color:#8a642d;font-size:11px;margin:6px 0;line-height:1.7;overflow-wrap:anywhere}
+
+/* ASIN master data and portfolio mapping layout */
+.al-family{border:1px solid #e3eaf5;border-radius:11px;background:#fff;margin:11px 0;overflow:hidden}
+.al-family summary{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:15px 17px;cursor:pointer;background:#f8faff;list-style:none;flex-wrap:wrap}
+.al-family summary::-webkit-details-marker{display:none}
+.al-family summary::before{content:'▸';font-size:12px;color:#5381c6;margin-right:2px}
+.al-family[open] summary::before{content:'▾'}
+.al-family summary>div:first-of-type{flex:1;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.al-family summary b{color:#264b7a;font-size:14px}
+.al-family summary .al-muted{font-size:11px}
+.al-family .al-tablewrap{border-radius:0;border:0;border-top:1px solid #e3eaf5;margin:0}
+.al-family .al-table{min-width:860px}
+.al-family .al-table td{vertical-align:middle}
+.al-family .al-btn{margin:2px}
+@media(max-width:640px){.al-family summary{align-items:flex-start}.al-family summary>div{width:100%}}
