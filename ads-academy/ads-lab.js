@@ -219,8 +219,8 @@ function importer(){
  var d=state.datasets;
  var oldNoDate=d.filter(function(x){return (x.rows||[]).length>0&&!(x.rows||[]).some(function(r){return !!r.date})});
  return (oldNoDate.length?'<div class="al-notice-danger"><strong>检测到 '+oldNoDate.length+' 份已导入报表没有解析出的日期。</strong>旧版不支持 Sep 05, 2026 等英文日期，现已修复。请重新选择原来的 Excel 文件，保持“更新同名文件与工作表的旧版本”，重新导入后将自动替换对应旧记录。原始文件有日期，不需要修改 Excel。</div>':'')+
- '<section class="al-grid two"><div class="al-panel al-pad"><span class="al-eye">LOCAL DATA IMPORT</span><h2>导入亚马逊真实广告报表</h2><p class="al-muted">支持 SP/SB 搜索词报告、SP/SB 广告位报告和 Soju 的两份 Excel 模板，自动跳过透视结果页，不重复计算。</p>'+
- '<div class="al-drop" id="alDrop" tabindex="0" aria-label="拖入Excel或CSV文件的上传区域"><div class="al-drop-icon">⇪</div><strong>上传 SP / SB 广告报告</strong><p class="al-muted">将 Excel / CSV 拖到这里，或点击下方“选择文件”。选择后会显示文件清单，不会因为切换页面而丢失。</p>'+
+ '<section class="al-grid two"><div class="al-panel al-pad"><span class="al-eye">LOCAL DATA IMPORT</span><h2>统一导入 ASIN 与广告数据</h2><p class="al-muted">一次选择 ASIN基础资料、SP搜索词和SP广告位三个Excel文件，自动识别不同表格及关联的产品系列。也兼容SB报表和Soju模板。不会上传到公共GitHub仓库。</p>'+
+ '<div class="al-drop" id="alDrop" tabindex="0" aria-label="拖入Excel或CSV文件的上传区域"><div class="al-drop-icon">⇪</div><strong>上传 ASIN资料 / SP / SB 广告报表</strong><p class="al-muted">将 Excel / CSV 拖到这里，或点击下方“选择文件”。选择后会显示文件清单，不会因为切换页面而丢失。</p>'+
  '<input id="alFiles" class="al-file-input" type="file" multiple accept=".xlsx,.xls,.csv,.tsv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">'+
  btn('① 选择文件','chooseFiles','primary')+
  (state.selectedFiles.length?'<div class="al-files-selected"><div class="al-between"><strong>已选择 '+state.selectedFiles.length+' 个文件</strong>'+btn('清空选择','clearFiles','soft')+'</div>'+
@@ -276,12 +276,12 @@ function detailView(by,groups){
  '<div class="al-note">推荐的下一步：核对搜索词相关性、历史归因、商品可售库存与利润，单次只改少量变量，并在操作记录中设置复查日期。</div></div>';
 }
 function productEmpty(){
- return {asin:'',name:'',price:'',fx:'',procure:'',freight:'',fba:'',commission:'',returns:'',discount:'',other:'',target:'',inventory:''};
+ return {asin:'',name:'',parentAsin:'',sku:'',internal:'',code:'',color:'',size:'',price:'',fx:'',procure:'',freight:'',otherRMB:'',fba:'',commission:'',returns:'',discount:'',other:'',target:'',inventory:''};
 }
 var PRODUCT_FIELDS=[
  ['asin','ASIN','text','B0XXXXXXXX'],['name','产品/变体名称','text','可选'],
  ['price','销售价格 USD','number','例如 16.99'],['fx','汇率 RMB/USD','number','例如 6.70'],
- ['procure','采购包装 RMB','number','实付成本'],['freight','头程 RMB/件','number','含分摊'],
+ ['procure','采购成本 RMB','number','实际采购成本'],['freight','头程 RMB/件','number','实际头程成本'],['otherRMB','其他成本 RMB','number','辅料、包装等人民币费用'],
  ['fba','FBA配送 USD','number','实际 Fee Preview'],['commission','佣金率 %','number','输入真实百分比'],
  ['other','其他单件费用 USD','number','仓储/促销等'],['returns','退货损耗预留 %','number','独立于佣金'],
  ['discount','折扣预留 %','number','实际折扣折损'],['target','目标广告后利润率 %','number','预期贡献利润'],
@@ -290,7 +290,7 @@ var PRODUCT_FIELDS=[
 function productForm(){
  var p=state.productDraft||productEmpty(),m=E.products(p);
  return '<div class="al-panel al-pad"><div class="al-between"><h2>'+esc(state.editProduct?'编辑商品利润模型':'新增商品利润模型')+'</h2>'+btn('清空编辑','newProduct','soft')+'</div>'+
- '<p class="al-muted">请从亚马逊 Fee Preview 和真实成本台账填写；不使用虚构的 FBA、佣金或运费作为真实定价依据。</p>'+
+ '<p class="al-muted">ASIN基础资料可导入父子ASIN、SKU和三项人民币成本；销售价、FBA配送费、佣金率与汇率仍需按真实数据补齐。不能把整个系列的广告费用直接算到某个子ASIN。</p>'+
  '<div class="al-formgrid">'+PRODUCT_FIELDS.map(function(a){return '<div class="al-field"><label>'+esc(a[1])+'</label><input data-al-product="'+a[0]+'" type="'+a[2]+'" '+(a[2]==='number'?'min="0" step="any"':'maxlength="140"')+' placeholder="'+esc(a[3])+'" value="'+esc(p[a[0]]||'')+'"></div>'}).join('')+'</div>'+
  '<div class="al-preview"><div><small>广告前贡献利润</small><b>'+usd(m.contribution)+'</b></div><div><small>盈亏平衡 ACOS</small><b>'+pct(m.breakEvenACOS)+'</b></div><div><small>目标 CPA</small><b>'+usd(m.targetCPA)+'</b></div><div><small>目标 ACOS</small><b>'+pct(m.targetACOS)+'</b></div></div>'+
  (m.valid&&m.targetCPA<=0?'<div class="al-note danger">目前售价/成本/利润目标下，目标CPA不大于0。不能按常规盈利型广告放量。</div>':'')+
@@ -520,7 +520,7 @@ function saveProduct(){
  var p=Object.assign({},state.productDraft||productEmpty());
  p.asin=String(p.asin||'').trim().toUpperCase();
  if(!/^[A-Z0-9]{10}$/.test(p.asin)){notify('请输入10位ASIN（英文字母或数字）。',true);return}
- var m=E.products(p);if(!m.valid){notify('至少需要填写售价和有效人民币兑美元汇率。',true);return}
+ var m=E.products(p);if(!m.valid&&!p.source){notify('手工新增商品需先填写真实售价和人民币兑美元汇率；通过ASIN资料导入的商品可暂时保留待核算状态。',true);return}
  var a=dataUser().products;
  if(state.editProduct){a=a.filter(function(x){return x.asin!==state.editProduct})}
  if(a.some(function(x){return x.asin===p.asin})){notify('商品库已存在该ASIN，请直接点击编辑。',true);return}
@@ -566,6 +566,8 @@ async function parseFile(file){
  var XLSX=await ensureExcelParser();
  try{
   var buf=await file.arrayBuffer(),book=XLSX.read(buf,{type:'array',cellDates:false,raw:false});
+  var asinMaster=window.AdsAsin.parse(book,XLSX);
+  if(asinMaster.recognized)return {datasets:[],products:asinMaster.products,warnings:asinMaster.warnings,recognized:asinMaster.sheets};
   return E.fromWorkbook(book,file.name);
  }catch(e){
   throw new Error('Excel读取失败：'+(e&&e.message||e)+'。请确认文件未损坏、未加密，或者尝试从亚马逊重新导出CSV。');
@@ -578,11 +580,12 @@ async function importFiles(){
  state.importAsin=document.getElementById('alImportAsin')?.value||'';
  state.uploadMode=document.getElementById('alImportMode')?.value||'replace';
  state.importBusy=true;state.notice='正在本地解析 '+files.length+' 个文件…';refresh();
- var errors=[],imported=0,importedRows=0,recognized=[];
+ var errors=[],imported=0,importedRows=0,importedProducts=0,recognized=[];
  try{
   for(var i=0;i<files.length;i++){
    try{
     var result=await parseFile(files[i]);errors.push.apply(errors,result.warnings||[]);recognized.push.apply(recognized,result.recognized||[]);
+    if(result.products&&result.products.length){var merged=window.AdsAsin.merge(dataUser().products,result.products);dataUser().products=merged.products;importedProducts+=result.products.length;context.save();}
     for(var n=0;n<result.datasets.length;n++){
       var d=result.datasets[n];
       d.asin=state.importAsin;d.rows.forEach(function(r){r._asin=d.asin||''});
@@ -606,10 +609,10 @@ async function importFiles(){
    }catch(e){errors.push(files[i].name+': '+(e.message||e))}
   }
  }finally{state.importBusy=false}
- state.importResult={summary:imported>0?'成功导入 '+imported+' 份有效报告，共 '+importedRows+' 行广告明细。':'已读取文件但未发现有效广告明细。',recognized:recognized,warnings:errors};
+ state.importResult={summary:(imported||importedProducts)?'成功导入 '+imported+' 份有效广告报告、'+importedRows+'行广告明细，及 '+importedProducts+' 个ASIN商品。':'已读取文件但未发现有效广告明细或ASIN商品。',recognized:recognized,warnings:errors};
  state.notice=state.importResult.summary+(errors.length?' 另有 '+errors.length+' 条提示。':'');
- state.error=imported===0&&errors.length?'导入结果需要检查，请查看下方“最近一次导入结果”。':'';
- if(imported>0)state.selectedFiles=[];
+ state.error=imported===0&&importedProducts===0&&errors.length?'导入结果需要检查，请查看下方“最近一次导入结果”。':'';
+ if(imported>0||importedProducts>0)state.selectedFiles=[];
  refresh();
 }
 document.addEventListener('click',function(e){var z=e.target.closest('[data-al]');if(z&&context){e.preventDefault();handleAction(z)}});
