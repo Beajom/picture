@@ -77,7 +77,7 @@ function renderPanel(d,p,fullUser){
  var rubric=window.AdsDayRubrics.forDay(d.n);
  var out='<section class="study-assignment" id="study-assignment-'+d.n+'">'+
  '<div class="study-topline"><div><span class="study-eyebrow">DAY '+d.n+' · SUBMIT FOR REVIEW</span><h4>作业提交与审核</h4></div>'+badge(s)+'</div>'+
- '<p class="study-muted">课程任务：'+esc(d.task)+'。提交后先进行规则初审；涉及运营策略的实质判断需由 ChatGPT 或老师阅读证据后复核。</p>';
+ '<p class="study-muted">课程任务：'+esc(d.task)+'。先完成专属验收清单与规则检查，再提交AI或实际老师复核。完整AI评阅需要登录及管理员配置安全API密钥。</p>'+ (d.n===1||d.n===2?'<button class="study-action" type="button" data-sp="reviewPrefill" data-day="'+d.n+'">从ASIN利润库带入已核实费用</button>':'');
  if(fs){
   out+='<div class="study-audit-numbers">'+fs.map(function(x){return '<label><span>'+esc(x[1])+'</span><input type="number" step="any" data-sra-field="'+x[0]+'" data-day="'+d.n+'" value="'+esc(values[x[0]]===undefined?'':values[x[0]])+'" placeholder="填写数字"></label>'}).join('')+'</div>';
   out+='<p class="study-tiny">请统一以美元核算。第2天默认1订单对应1件该SKU；多件订单应使用实际客单价及每单贡献利润。第3天TACOS须使用同期完整广告花费与总销售额。</p>';
@@ -271,6 +271,29 @@ async function download(id,name){
  if(!f){toast('本机和云端都找不到该附件，请重新上传。');return}
  var url=URL.createObjectURL(f),a=document.createElement('a');a.href=url;a.download=name;a.target='_blank';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},3000);
 }
+function prefillFromProduct(day,p,options){
+ var asin=String(p.asin||'').trim().toUpperCase(),product=(options.user.adsLab?.products||[]).find(function(x){return x.asin===asin});
+ if(!product){toast('请先在右侧填写已导入利润库的子ASIN，并补充商品费用模型。');return}
+ var price=num(product.price),fx=num(product.fx),proc=num(product.procure)||0,freight=num(product.freight)||0,otherRMB=num(product.otherRMB)||0;
+ if(!(price>0&&fx>0)){toast('该ASIN还缺真实美元售价或RMB/USD汇率，请先在商品利润库补齐。');return}
+ var fba=num(product.fba)||0,commission=num(product.commission)||0,returns=num(product.returns)||0,
+  discount=num(product.discount)||0,otherUSD=num(product.other)||0;
+ var s=read(p,day),fields={};
+ if(day===1){
+  fields={price:price.toFixed(2),procure:(proc/fx).toFixed(4),freight:(freight/fx).toFixed(4),
+   fees:(fba+price*commission/100).toFixed(4),
+   other:(otherRMB/fx+price*(returns+discount)/100+otherUSD).toFixed(4)};
+  fields.result=(price-Number(fields.procure)-Number(fields.freight)-Number(fields.fees)-Number(fields.other)).toFixed(2);
+ }else if(day===2){
+  var contribution=window.AdsEngine?.products(product)?.contribution;
+  if(!Number.isFinite(contribution)){toast('该商品利润模型不完整，无法计算贡献利润。');return}
+  var target=(num(product.target)||0)*price/100,cap=contribution-target;
+  fields={price:price.toFixed(2),contribution:contribution.toFixed(2),reserved:target.toFixed(2),
+   targetCPA:cap.toFixed(2),targetACOS:(cap/price*100).toFixed(2)};
+ }
+ s.values=Object.assign({},s.values,fields);modified(s,p,day);
+ options.save();options.refresh();toast('已按ASIN费用模型填入计算字段。请自行核查采购、FBA、汇率和费用口径。');
+}
 async function aiReview(day,d,p,options){
  if(aiBusy){toast('已有作业在审核，请稍后再次提交。');return}
  var s=collected(day,options),check=audit(day,s);
@@ -302,6 +325,7 @@ function handle(action,z,options,days){
   s.ai=null;p.done[day]=false;s.updatedAt=stamp();history(s,'规则初审',check.passed?'材料和公式完整性通过':check.messages.join('；').slice(0,350));
   options.save();options.refresh();toast(check.passed?'规则初审完成，请继续AI审核或老师复核；此时未算作正式通过。':'规则初审有待修正的内容，请查看下方反馈。');
  }else if(action==='reviewCopy'){collected(day,options);options.save();copyText(draftText(d,p))}
+ else if(action==='reviewPrefill'){prefillFromProduct(day,p,options)}
  else if(action==='reviewAI'){void aiReview(day,d,p,options)}
  else if(action==='reviewSyncFiles'){void syncFiles(day)}
  else if(action==='reviewApprove'||action==='reviewReject'){
