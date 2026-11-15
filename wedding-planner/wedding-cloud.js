@@ -92,6 +92,7 @@ notice="";draw()
 finally{loading=false}
 }
 async function openSpace(space){
+if(busy||pending)throw Error("还有尚未同步的修改，请先完成同步再切换婚礼");
 if(channel){await db.removeChannel(channel);channel=null}
 var m=mine.find(function(x){return x.space_id===space});if(!m)throw Error("未获得该婚礼的访问权限");
 c.spaceId=space;c.role=m.role;c.active=true;localStorage.setItem("wedding-current-space-v2",space);
@@ -113,7 +114,7 @@ if(b.dataset.openSpace){try{await openSpace(b.dataset.openSpace)}catch(x){tip(er
 if(b.dataset.removeUser){if(!confirm("移除后对方不能再访问共享数据，确定继续？"))return;var rem=await db.rpc("wedding_remove_member",{p_space:c.spaceId,p_user:b.dataset.removeUser});if(rem.error)tip(err(rem.error));else{await load(true);tip("成员已移除")}return}
 var action=b.dataset.cloud;
 if(action==="switch-auth"){authMode=authMode==="login"?"signup":"login";draw();return}
-if(action==="logout"){if(channel){await db.removeChannel(channel);channel=null}if(c.spaceId)localStorage.removeItem(getCacheKey());await db.auth.signOut();session=null;c.active=false;c.spaceId=null;base=null;pending=null;localStorage.removeItem("wedding-current-space-v2");await bootSession();return}
+if(action==="logout"){if(pending||busy){tip("还有未同步修改，请先联网保存再退出");return}if(channel){await db.removeChannel(channel);channel=null}if(c.spaceId)localStorage.removeItem(getCacheKey());await db.auth.signOut();session=null;c.active=false;c.spaceId=null;base=null;pending=null;localStorage.removeItem("wedding-current-space-v2");await bootSession();return}
 if(action==="refresh"){if(pending)await flush();else await load(false);tip(pending?"仍有未同步修改":"已重新读取云端数据");return}
 if(action==="invite-admin"||action==="invite-family"){try{var role=action==="invite-admin"?"admin":"family";var rr=await db.rpc("wedding_create_invite",{p_space:c.spaceId,p_role:role});if(rr.error)throw rr.error;var inviteUrl=location.origin+location.pathname+"?invite="+rr.data;document.getElementById("cloudInviteResult").innerHTML='<div class="cloud-card"><b>'+label(role)+'邀请链接</b><input class="cloud-in" id="inviteToCopy" value="'+esc(inviteUrl)+'" readonly><button class="btn secondary" data-cloud="copy-link">复制链接</button><p>请私下发送。对象邀请链接仅供信任的另一半使用，拥有它可取得管理员权限。</p></div>'}catch(x){tip("邀请码创建失败："+err(x))}return}
 if(action==="copy-link"){var input=document.getElementById("inviteToCopy");if(input){try{await navigator.clipboard.writeText(input.value);app.toast("链接已复制")}catch(x){input.select();document.execCommand("copy");app.toast("已尝试复制")}}return}
@@ -124,8 +125,14 @@ try{var snapshot=app.getLegacy();var importR=await db.rpc("wedding_import_if_emp
 window.addEventListener("online",function(){if(pending)void flush();else if(c.active)void load(true)});
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&c.active&&!pending)void load(true)});
 (async function(){
-try{if(!window.supabase||!window.supabase.createClient)throw Error("云端依赖加载失败");
-db=window.supabase.createClient(api,key,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
+try{
+ if(!window.supabase?.createClient){
+   for(const src of ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js","https://unpkg.com/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js"]){
+     try{await new Promise(function(resolve,reject){var el=document.createElement("script");el.src=src;el.onload=resolve;el.onerror=reject;document.head.append(el)});if(window.supabase?.createClient)break}catch(e){}
+   }
+ }
+ if(!window.supabase?.createClient)throw Error("云端依赖加载失败，请检查浏览器网络连接");
+ db=window.supabase.createClient(api,key,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
 db.auth.onAuthStateChange(function(evt){if(evt==="SIGNED_OUT"){session=null;c.active=false;app.replace(app.getLegacy());roleUI();draw()}});
 await bootSession()
 }catch(e){notice=err(e);draw()}
