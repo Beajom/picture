@@ -6,6 +6,9 @@ on:
       - "cloudflare-free/public/index.html"
       - "tradedesk/index.html"
       - "ads-academy/index.html"
+      - "ads-academy/workshop.html"
+      - "ads-academy/mindmap-261105.json"
+      - "ads-academy/workshop-guides.json"
       - ".github/workflows/frontend-js-check.yml"
   workflow_dispatch:
 
@@ -55,3 +58,24 @@ jobs:
           print("Academy script size:",b-a)
           PY
           node --check /tmp/ads-academy.js
+
+      - name: Check Workshop JavaScript and lesson completeness
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          s=Path("ads-academy/workshop.html").read_text(encoding="utf-8")
+          a=s.rfind("<script>")
+          b=s.rfind("</script>")
+          if a<0 or b<=a: raise SystemExit("No workshop JS script")
+          Path("/tmp/ads-workshop.js").write_text(s[a+8:b],encoding="utf-8")
+          x=json.loads(Path("ads-academy/mindmap-261105.json").read_text(encoding="utf-8"))
+          g=json.loads(Path("ads-academy/workshop-guides.json").read_text(encoding="utf-8"))
+          def count(n): return 1+sum(count(c) for c in n.get("c",[]))
+          assert count(x["root"])==1748
+          assert len(g["guides"])==32
+          assert len(g["extras"])==4
+          assert sum(len(d.get("c",[])) for d in x["root"]["c"])==50
+          print("Validated:", count(x["root"]), "nodes, 32 guides, 18 homework topics, 4 extra tasks")
+          PY
+          node --check /tmp/ads-workshop.js
