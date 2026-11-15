@@ -5,14 +5,14 @@ window.AdsStudyAssessment=(function(){
 'use strict';
 var DB_NAME='amazon-ads-academy-assignments-v1';
 var MAX_FILE=15*1024*1024,MAX_FILES=4;
-var pending=null,ctx=null;
+var pending=null,ctx=null,aiBusy=false;
 var FIELDS={
 1:[['price','单件售价（USD）'],['procure','采购/包装成本折算（USD）'],['freight','头程成本折算（USD）'],['fees','亚马逊佣金+FBA等单件费用（USD）'],['other','其他单件成本（USD）'],['result','我算的广告前单件贡献利润（USD）']],
 2:[['price','单件售价 / 客单价（USD）'],['contribution','广告前每单贡献利润（USD）'],['reserved','每单希望保留的利润（USD）'],['targetCPA','我算的目标 CPA（USD）'],['targetACOS','我算的目标 ACOS（%）']],
 3:[['spend','广告花费（USD）'],['adSales','广告归因销售额（USD）'],['totalSales','同期总销售额（USD）'],['acos','我算的 ACOS（%）'],['tacos','我算的 TACOS（%）']]
 };
 function esc(s){return String(s===undefined||s===null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function read(p,n){if(!p.submissions||typeof p.submissions!=='object')p.submissions={};if(!p.submissions[n])p.submissions[n]={status:'draft',values:{},evidence:'',conclusion:'',risks:'',files:[],feedback:''};return p.submissions[n]}
+function read(p,n){if(!p.submissions||typeof p.submissions!=='object')p.submissions={};if(!p.submissions[n])p.submissions[n]={status:'draft',values:{},criteria:{},history:[],evidence:'',conclusion:'',risks:'',files:[],feedback:''};var v=p.submissions[n];if(!v.criteria)v.criteria={};if(!Array.isArray(v.history))v.history=[];if(!Array.isArray(v.files))v.files=[];if(!v.values)v.values={};return v}
 function stamp(){return new Date().toISOString()}
 function niceDate(t){return t?String(t).slice(0,16).replace('T',' '):'—'}
 function num(v){if(v===null||v===undefined||String(v).trim()==='')return null;var n=Number(String(v).replace(/[,，$￥¥\s%]/g,''));return Number.isFinite(n)?n:null}
@@ -23,6 +23,7 @@ function audit(n,s){
  if(!(s.evidence||'').trim()||s.evidence.trim().length<12)messages.push('请写明具体数据来源、报告期间及证据（至少12个字符），不能只写“看过了”。');
  if(!(s.conclusion||'').trim()||s.conclusion.trim().length<12)messages.push('请写出自己的判断及理由（至少12个字符）。');
  if(!(s.risks||'').trim()||s.risks.trim().length<6)messages.push('请写出可能的风险、限制或下一次复查时间（至少6个字符）。');
+ var rubric=window.AdsDayRubrics.validate(n,s);messages.push.apply(messages,rubric.messages);
  if(FIELDS[n]){
   var data={},missing=[];
   FIELDS[n].forEach(function(x){data[x[0]]=num(s.values[x[0]]);if(data[x[0]]===null)missing.push(x[1])});
@@ -54,19 +55,20 @@ function audit(n,s){
  return {passed:messages.length===0,messages:messages,calc:calc};
 }
 function dayLabel(s){
- if(s.status==='passed')return '审核通过';
- if(s.status==='submitted')return '初审合格 · 待复核';
+ if(s.status==='passed')return 'AI审核通过';
+ if(s.status==='manual_reviewed')return '人工反馈已登记';
+ if(s.status==='submitted')return '规则初审完成 · 待正式复核';
  if(s.status==='revision')return '需修改重交';
  if(s.status==='failed')return '公式或材料待修正';
  return '尚未提交';
 }
 function badge(s){
- var kind=s.status==='passed'?'success':s.status==='submitted'?'wait':s.status==='failed'||s.status==='revision'?'warn':'';
+ var kind=s.status==='passed'||s.status==='manual_reviewed'?'success':s.status==='submitted'?'wait':s.status==='failed'||s.status==='revision'?'warn':'';
  return '<span class="study-review-badge '+kind+'">'+esc(dayLabel(s))+'</span>';
 }
 function renderSummary(p){
- var all=Object.values(p.submissions||{}),approved=all.filter(function(x){return x.status==='passed'}).length,waiting=all.filter(function(x){return x.status==='submitted'}).length,changes=all.filter(function(x){return x.status==='revision'||x.status==='failed'}).length;
- return '<div class="study-review-strip"><div><b>'+approved+'</b><small>复核通过</small></div><div><b>'+waiting+'</b><small>待复核</small></div><div><b>'+changes+'</b><small>待修改</small></div><div class="study-review-strip-text">提交作业后先核对计算公式，运营分析还需要真实审核反馈。未审核的旧版完成记录会保留但不算“审核通过”。</div></div>';
+ var all=Object.values(p.submissions||{}),approved=all.filter(function(x){return x.status==='passed'}).length,manually=all.filter(function(x){return x.status==='manual_reviewed'}).length,waiting=all.filter(function(x){return x.status==='submitted'}).length,changes=all.filter(function(x){return x.status==='revision'||x.status==='failed'}).length;
+ return '<div class="study-review-strip"><div><b>'+approved+'</b><small>AI审核通过</small></div><div><b>'+manually+'</b><small>人工审核登记</small></div><div><b>'+waiting+'</b><small>等待正式复核</small></div><div><b>'+changes+'</b><small>待修改</small></div><div class="study-review-strip-text">规则初审只检查算术和材料完整性；AI审核需要登录和服务端密钥，人工审核需登记实际意见。旧版勾选不会自动算作审核通过。</div></div>';
 }
 function renderPanel(d,p){
  var s=read(p,d.n),values=s.values||{},fs=FIELDS[d.n]||null;
