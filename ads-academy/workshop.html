@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light"><title>四天进阶实训营 · 亚马逊广告学习工作台</title>
+<meta name="description" content="2026年四天亚马逊广告推广课：32个课程专题、18项作业、4项新增实训与1748条知识导图">
+<style>
+:root{--bg:#f4f7fc;--ink:#18263c;--muted:#66788f;--line:#e1e8f1;--blue:#215fd7;--nav:#11213b;--green:#00875d;--gold:#b86a0c;--soft:#eaf2ff}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font:14px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,textarea{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}
+.layout{display:grid;grid-template-columns:244px minmax(0,1fr);min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;overflow:auto;background:linear-gradient(155deg,#142944,#0c1a32);color:#d3e2f7;padding:19px 13px}
+.brand{display:flex;gap:11px;align-items:center;border-bottom:1px solid #ffffff16;padding:6px 9px 22px}.brand .logo{background:#2769eb;border-radius:12px;width:43px;height:43px;display:grid;place-items:center;color:#fff;font-size:20px;font-weight:800}
+.brand b{display:block;font-size:16px;color:#fff}.brand small{color:#9fb4d0;font-size:11px}
+.navtitle{margin:20px 10px 10px;color:#92a9c7;letter-spacing:1px;font-size:11px;font-weight:700}
+.navlink{display:flex;align-items:center;gap:11px;width:100%;padding:12px;color:#bfd0e6;border-radius:10px;background:none;border:0;text-align:left}
+.navlink:hover,.navlink.active{background:#2a62bc44;color:#fff}.navlink.active{box-shadow:inset 3px 0 #79a5ff}
+.navlink span:last-child{margin-left:auto;font-size:11px;color:#88acdf}
+.sidefoot{border-top:1px solid #ffffff1c;margin-top:28px;padding:20px 12px;color:#abbcd6;font-size:12px}
+.track{background:#e1e9f5;border-radius:30px;height:8px;overflow:hidden}.bar{background:#2f73ec;height:100%;border-radius:30px}
+.sidebar .track{background:#2f405a}
+.content{min-width:0}.top{height:68px;background:white;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 32px;gap:16px;position:sticky;top:0;z-index:5}
+.crumb{color:#596c86;font-size:13px}.crumb strong{color:#223958}.topact{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:1px solid #d6e0ed;border-radius:9px;background:#fff;color:#224063;font-weight:650;white-space:nowrap}
+.btn:hover{background:#f6f9fe}.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.primary:hover{background:#194eae}
+.btn.sm{font-size:12px;padding:7px 10px}.page{width:min(1390px,100%);margin:auto;padding:34px 32px 62px}
+.headline{font-size:29px;letter-spacing:-.7px;margin:6px 0 7px}.lead{color:var(--muted);margin:0 0 24px;max-width:910px}.eyebrow{color:#2a64df;font-weight:800;font-size:11px;letter-spacing:1.2px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}.card{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 7px 25px #112a5207}
+.kpi{padding:17px 19px}.kpi b{font-size:25px;display:block;margin:7px 0 2px}.kpi span{font-size:11px;color:var(--muted)}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0}.tab{border:1px solid #d5e0ee;background:#fff;padding:9px 14px;border-radius:9px;color:#536781;font-weight:700}
+.tab.on{color:#fff;background:#2466dd;border-color:#2466dd}
+.study{display:grid;grid-template-columns:295px minmax(0,1fr);gap:18px;align-items:start}
+.panel{padding:18px}.taskmenu{max-height:calc(100vh - 125px);overflow:auto;position:sticky;top:87px}
+.search{width:100%;border:1px solid #d8e3f0;border-radius:9px;padding:11px 12px;outline:none;margin:8px 0 12px;background:#fbfdff}
+.search:focus{border-color:#7aa6ef;box-shadow:0 0 0 3px #e7f0ff}
+.segment{color:#70849d;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:15px 6px 7px}
+.topic{border:0;border-radius:9px;background:transparent;display:flex;gap:9px;align-items:center;text-align:left;color:#3b526d;width:100%;padding:10px 9px;font-weight:550}
+.topic:hover{background:#f2f6fc}.topic.on{background:#eaf2ff;color:#1453b5;font-weight:750}
+.topic .idx{font-size:11px;color:#9daec1;min-width:19px}.topic.done .idx{color:var(--green)}
+.topic span:last-child{flex:1}
+.paper{padding:29px 32px;min-height:680px}.meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.badge{padding:4px 9px;border-radius:6px;background:#eaf2ff;color:#1d57be;font-size:11px;font-weight:750}
+.badge.gold{background:#fff4de;color:#955c0e}.badge.green{background:#e7f8f2;color:#0a7352}
+.paper h2{font-size:25px;line-height:1.4;margin:14px 0 8px}.paper h3{font-size:16px;margin:0 0 14px}
+.paper p{line-height:1.85}.small{font-size:12px}.muted{color:var(--muted)}
+.divider{height:1px;background:#e6edf5;margin:24px 0}
+.block{border:1px solid #e1eaf6;border-radius:13px;padding:20px;margin-top:17px}
+.block.tint{background:#f5f9ff;border-color:#d8e8ff}.block h3{margin:0 0 9px}.block ul,.block ol{padding-left:22px;margin:8px 0 0}.block li{line-height:1.9;padding:3px 0}
+.alert{border-left:3px solid #d9a047;background:#fff9ed;padding:12px 14px;color:#77501e;font-size:12px;border-radius:0 9px 9px 0;margin-top:18px}
+.taskbox{background:#eff7ff;border:1px solid #cfdef5;border-radius:12px;padding:18px 20px}
+.taskbox b{display:block;color:#1b4d9c;margin-bottom:4px}
+.taskend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:21px}
+textarea{width:100%;min-height:115px;border-radius:10px;border:1px solid #d7e1ed;background:#fff;padding:12px 14px;resize:vertical;color:var(--ink)}
+details.branch{border-left:1px solid #dbe6f3;padding-left:13px;margin:7px 0 7px 9px}
+details.branch summary{cursor:pointer;padding:4px 0;font-size:12px;color:#354963}
+details.branch summary:hover{color:#1762cd}
+.leaf{margin:6px 0 8px 13px;font-size:12px;color:#647993}
+.branch-note{font-size:11px;color:#8493a7;margin:4px 0 8px 10px;white-space:pre-wrap}
+.original{max-height:560px;overflow:auto;border:1px solid #e1e8f1;border-radius:10px;background:#fbfcff;padding:12px 18px}
+.progressline{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+.subhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.count{font-size:12px;color:#8493ab}
+.ghost{background:none;border:none;color:var(--blue);font-weight:700;cursor:pointer}
+.overlay{position:fixed;inset:0;background:#12223b80;z-index:20;display:grid;place-items:center;padding:20px}
+.dialog{background:#fff;padding:26px;border-radius:17px;width:min(440px,100%);position:relative;box-shadow:0 24px 95px #111c3159}
+.dialog h2{margin:0 0 8px}.dialog label{display:block;font-size:12px;font-weight:700;margin-top:13px}
+.dialog input{margin-top:6px;width:100%;padding:11px;border-radius:8px;border:1px solid #cdd9e8}
+.dialog .x{position:absolute;top:13px;right:15px;background:none;border:0;font-size:24px}
+.bottom-links{display:flex;justify-content:space-between;gap:10px;margin-top:22px}.loading{padding:50px;color:#60778e;text-align:center}
+@media(max-width:1050px){.study{grid-template-columns:240px minmax(0,1fr)}.grid4{grid-template-columns:repeat(2,1fr)}.page{padding:22px}.top{padding:0 20px}.paper{padding:24px}}
+@media(max-width:760px){.layout{display:block}.sidebar{position:static;height:auto;padding:12px}.brand{padding:4px 4px 10px;border:0}.sidebar .navtitle,.sidebar .sidefoot{display:none}.sidebar .navlink{display:inline-flex;width:auto;padding:8px 10px}.sidebar .navlink span:last-child{display:none}.sidebar nav{display:flex;flex-wrap:wrap}.top{position:static;height:auto;min-height:57px;padding:11px 16px}.crumb{font-size:11px}.topact .btn{padding:7px}.page{padding:18px 12px}.headline{font-size:23px}.grid4{gap:8px}.kpi{padding:11px}.kpi b{font-size:19px}.study{display:block}.taskmenu{position:static;max-height:270px;overflow:auto;margin-bottom:14px}.paper{padding:19px}.paper h2{font-size:21px}.block{padding:14px}}
+</style></head><body>
+<div class="layout"><aside class="sidebar">
+<div class="brand"><span class="logo">A</span><div><b>广告学习工作台</b><small>FOUR-DAY MASTERCLASS</small></div></div>
+<div class="navtitle">学习中心</div><nav>
+<a class="navlink" href="./index.html#page=dashboard">▦　学习总览</a>
+<a class="navlink" href="./index.html#page=course">▤　系统课程</a>
+<a class="navlink active" href="./workshop.html">▣　四天实训营 <span>54</span></a>
+<a class="navlink" href="./index.html#page=mindmap">◎　知识导图</a>
+<a class="navlink" href="./index.html#page=cases">▧　随堂案例</a>
+<a class="navlink" href="./index.html#page=calculator">◫　广告计算器</a>
+</nav>
+<div class="sidefoot"><div class="progressline"><span>实训完成进度</span><b id="sideP">0%</b></div><div class="track"><div id="sideB" class="bar" style="width:0"></div></div><p id="sideCount">正在载入…</p><p>使用同一账号跨设备同步，与原系统课程记录分开保存。</p></div>
+</aside>
+<main class="content"><header class="top"><div class="crumb">工作台 / <strong>四天实训营</strong></div><div class="topact"><button class="btn sm" id="exportBtn">↓ 导出实训记录</button><button class="btn sm" id="loginBtn">☁ 登录并同步</button></div></header>
+<section class="page">
+<div class="eyebrow">2026 · APPLIED AMAZON ADS LEARNING</div><h1 class="headline">四天进阶课程与实操训练</h1>
+<p class="lead">把思维导图转成可逐项学习的实训教材。涵盖推广计划、流量与自然位、关键词匹配、CPC/CVR 市调、广告结构、多变体、广告位及不同广告类型的缩放量。讲师原导图和新增运营指导分别呈现，避免把经验模型误写成平台规则。</p>
+<div class="grid4"><div class="card kpi"><span>原导图完整知识节点</span><b id="statNodes">—</b><span>可逐层展开与检索</span></div>
+<div class="card kpi"><span>课程专题</span><b>32</b><span>Day1–Day4</span></div>
+<div class="card kpi"><span>练习与课后作业</span><b>22</b><span>18 项原作业 + 4 项新增</span></div>
+<div class="card kpi"><span>学习完成进度</span><b id="statProgress">0%</b><span id="statDone">0 / 54 项</span></div></div>
+<div class="tabs" id="days"></div>
+<div class="study">
+<aside class="card panel taskmenu"><div class="subhead"><b>专题导航</b><span class="count" id="topicCount"></span></div><input type="search" id="search" class="search" placeholder="搜索课程主题、词根或导图节点"><div id="topicNav"></div></aside>
+<section class="card paper" id="lesson"><div class="loading">正在加载完整导图和实训内容…</div></section>
+</div></section></main></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
+<script>
+"use strict";
+const SUPA_URL="https://whajxxonwtlfuvjyrooh.supabase.co";
+const SUPA_KEY="sb_publishable_R3C66b8mtDzaKyKogBYQCw_KyUbw6G1";
+const DBTABLE="academy_workshop_progress";
+const root=document.getElementById("lesson");
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let guideData=null,mapData=null,records=[],client=null,userAccount=null,cloudReady=false,cloudBusy=false,saveTimer=null,search="",filterDay=0,selected="";
+let state=readLocal();
+function readLocal(){try{let x=JSON.parse(localStorage.getItem("ads-academy-workshop-261105")||"{}");return Object.assign({done:[],notes:{},updatedAt:0},x)}catch(e){return {done:[],notes:{},updatedAt:0}}}
+function localSave(){state.updatedAt=Date.now();try{localStorage.setItem("ads-academy-workshop-261105",JSON.stringify(state))}catch(e){};refreshStats();if(userAccount&&cloudReady){clearTimeout(saveTimer);$("loginBtn").textContent="☁ 等待保存…";saveTimer=setTimeout(()=>void saveCloud(),900)}}
+function stable(k,i,day){return "d"+day+"-"+k+"-"+i}
+function nodeCount(node){return 1+(node.c||[]).reduce((n,c)=>n+nodeCount(c),0)}
+function listTree(node,level=0){
+ const label=esc(node.t||"");
+ const kids=node.c||[];
+ let notes=String(node.n||"").trim();
+ if(notes.startsWith("截图来源：")||notes.startsWith("截图来源:"))notes="";
+ if(!kids.length)return '<div class="leaf">• '+label+'</div>'+(notes?'<div class="branch-note">'+esc(notes.slice(0,1200))+'</div>':"");
+ return '<details class="branch" '+(level<1?'open':'')+'><summary>'+label+' <span class="count">('+kids.length+')</span></summary>'
+ +(notes?'<div class="branch-note">'+esc(notes.slice(0,1200))+'</div>':"")
+ +kids.map(x=>listTree(x,level+1)).join("")+'</details>';
+}
+function allNames(n,acc){acc.push(n.t||"");for(const k of n.c||[])allNames(k,acc);return acc}
+function setupRecords(){
+ const root=mapData.root;
+ for(let day=1;day<=4;day++){
+  const c=root.c.find(x=>x.t==="Day"+day+" 课程内容");
+  for(let i=0;i<(c?.c||[]).length;i++){
+   let n=c.c[i];records.push({id:stable("c",i,day),day,type:"course",title:n.t,node:n,count:nodeCount(n),search:allNames(n,[]).join(" ").toLowerCase()});
+  }
+  const h=root.c.find(x=>x.t==="Day"+day+" 课后任务");
+  for(let i=0;i<(h?.c||[]).length;i++){
+   let n=h.c[i];records.push({id:stable("h",i,day),day,type:"homework",title:n.t,node:n,count:nodeCount(n),search:allNames(n,[]).join(" ").toLowerCase()});
+  }
+  if(day===4)for(let i=0;i<guideData.extras.length;i++){
+   let x=guideData.extras[i];records.push({id:stable("e",i,day),day,type:"extra",title:x.title,node:{t:x.title,c:[],n:""},count:0,search:x.title.toLowerCase()});
+  }
+ }
+ if(records.length!==54)throw Error("实训条目数异常："+records.length);
+}
+const HOMEWORK={
+ "竞对流量情况调研":["选择头部、中游、新品各一个 ASIN","收集自然位、广告位和相关搜索词","写出自己的差异化流量机会"],
+ "产品流量词库":["合并 ASIN 反查、搜索词报告和 SQP","标注品类词、属性词、场景词","按高度相关、待验证、否词候选分类"],
+ "竞对ASIN库（不着急）":["记录三个以上同类或可替代 ASIN","标注价格、评价、功能差异","维护竞品库更新日期和相似性证据"],
+ "流量词表分析":["计算头部搜索词集中度","对准词、泛词给出单独投放策略","筛出优先验证的 10 个关键词"],
+ "推广计划梳理":["核算可承受 CPA 和 TACOS","写出每个 ASIN 的广告目标","设定两周内复盘节点和触发动作"],
+ "多变体推广规划":["逐个子体记录价格、利润、库存、自然位","划分主推、次主推和辅推职责","画出搜索词与广告活动的归属图"],
+ "预算规划":["核算单件贡献毛利","按试验、盈利、补位分配预算","列出预算不足时优先保留的层级"],
+ "全词表":["全量汇总并去重关键词","标注相关性、搜索量、词根和数据来源","分类准词、泛词、否词候选和已转化词"],
+ "词根表（有余力）":["按类目、功能、场景、属性拆分词根","对比词根下的点击与订单","标记高浪费词根，避免误杀长尾"],
+ "推广洞察表制作及分析":["导出搜索词和广告位报告","整理按词汇总的 CPC/CTR/CVR/ACOS","写出每个重点词的放量、收缩或观察动作"],
+ "CPC,CVR,CTR市调":["取得当前市场竞价样本","计算 CPA≈CPC/CVR","比较自己的 CTR/CVR 与市场代理估算"],
+ "排查投放竞价层级":["列出自动、广泛、词组、精准和商品投放","标注每层出价及预算","识别高价低效层与预算瓶颈"],
+ "排查各搜索词下的投放词层级":["反查一个搜索词触发的所有活动","检查匹配范围和否词冲突","按实际订单和成本判定是否重复"],
+ "广告活动层级缩放量":["判断活动预算是否充足","明确同目的活动是否合并","写出暂停/扩量后的监测指标"],
+ "投放词层级排查":["按匹配方式计算 CTR、CVR、CPA","比较同类投放词的竞价","标记需要新增精准或否定的查询"],
+ "搜索词层级排查":["汇总相同搜索词各活动流量","对比不同层级花费与订单","选出可提高效率的层级"],
+ "搜索词排查ASIN缩放量方案":["核查搜索词与子体匹配度","决定由哪个 ASIN 承接查询","给出库存、价格和预算限制"],
+ "活动层面是否方便管理-标签统一命名":["统一广告命名字段与标签","让每个活动显示主目的和投放层级","输出下周复盘时可用的筛选规则"]
+};
+const CHAPTER_NAMES={"01":"利润目标","02":"流量结构","03":"自然排名与CPR","04":"关键词与竞品","05":"COSMO与场景","06":"匹配与否词","07":"数据报表","08":"新品测试","09":"广告结构与缩放量","10":"多变体","11":"广告位","12":"SB/SBV/SD"};
+function select(id){
+ selected=id;location.hash="t="+encodeURIComponent(id);render();try{window.scrollTo({top:215,behavior:"smooth"})}catch(e){}
+}
+function renderDays(){
+ $("days").innerHTML=[1,2,3,4].map(day=>{
+  let list=records.filter(r=>r.day===day),n=list.filter(r=>state.done.includes(r.id)).length;
+  return '<button class="tab '+(filterDay===day?'on':'')+'" data-day="'+day+'">Day '+day+' · '+n+'/'+list.length+'</button>';
+ }).join("")+'<button class="tab '+(filterDay===0?'on':'')+'" data-day="0">全部主题</button>';
+}
+function refreshStats(){
+ let n=state.done.length,p=Math.round(n/54*100);
+ $("statProgress").textContent=p+"%";$("statDone").textContent=n+" / 54 项";
+ $("sideP").textContent=p+"%";$("sideB").style.width=p+"%";$("sideCount").textContent="完成 "+n+" / 54 个专题/任务";
+}
+function renderNav(){
+ const list=records.filter(r=>(filterDay===0||r.day===filterDay)&&(!search||r.search.includes(search)||r.title.toLowerCase().includes(search)));
+ $("topicCount").textContent=list.length+" 项";
+ let out="",group="";
+ for(const r of list){
+  let g="DAY "+r.day+" · "+(r.type==="course"?"专题学习":r.type==="homework"?"课后任务":"新增训练");
+  if(g!==group){group=g;out+='<div class="segment">'+g+'</div>'}
+  out+='<button class="topic '+(r.id===selected?'on ':'')+(state.done.includes(r.id)?"done":"")+'" data-topic="'+r.id+'"><span class="idx">'+(state.done.includes(r.id)?"✓":r.type==="course"?"◦":"□")+'</span><span>'+esc(r.title)+'</span></button>';
+ }
+ $("topicNav").innerHTML=out||'<p class="muted small">未找到匹配内容。试试更短的关键词。</p>';
+}
+function readStatus(){return userAccount?"☁ "+(cloudBusy?"正在同步…":"已登录·云端同步"):"☁ 登录并同步"}
+function renderLesson(){
+ const r=records.find(x=>x.id===selected)||records[0];
+ if(!r){root.innerHTML='<p>暂无内容</p>';return}
+ const gd=guideData.guides[r.title];
+ const ex=r.type==="extra"?guideData.extras[Number(r.id.split("-").pop())]:null;
+ const tasks=gd?gd.steps:ex?ex.steps:HOMEWORK[r.title]||allNames(r.node,[]).slice(1,6);
+ const judging=gd?.diagnostics||[];
+ const deliver=gd?.assignment||ex?.assignment||"请提交一份与该任务对应的分析表、过程截图和下一步行动记录。";
+ const caveat=gd?.caution||"历史课程中的做法是经验参考，必须结合当前平台规则和实际样本验证。";
+ const related=gd?.chapter||ex?.chapter||"15";
+ const sourceBadge=r.type==="course"?"课程原导图":"课后原导图";
+ const taskBadge=r.type==="extra"?"新增练习（非原导图）":sourceBadge;
+ const original=(r.type==="extra"?"<p class='muted small'>此专题为整理时新增的实操练习，原导图无对应节点。</p>":listTree(r.node));
+ root.innerHTML='<div class="meta"><span class="badge">'+esc("Day "+r.day)+'</span><span class="badge '+(r.type==="extra"?"gold":r.type==="homework"?"green":"")+'">'+esc(taskBadge)+'</span><span class="count">'+(r.count?r.count+" 个原导图节点":"新增实训")+'</span></div>'
+ +'<h2>'+esc(r.title)+'</h2>'
+ +'<p class="muted">本节将原始思维导图的知识结构与重新编写的运营教学步骤结合。先理解目标和判断依据，再完成实操并留痕。</p>'
+ +(gd?'<section class="block tint"><h3>一、学习目标与核心原理</h3><p>'+esc(gd.principle)+'</p></section>':"")
+ +'<section class="block"><h3>'+(gd?'二、具体学习和操作步骤':'一、操作任务清单')+'</h3><ol>'+tasks.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ol></section>'
+ +(judging.length?'<section class="block"><h3>三、如何判断结果</h3><ul>'+judging.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></section>':"")
+ +'<section class="block tint"><h3>'+(gd?'四、':'二、')+'练习作业与交付成果</h3><div class="taskbox"><b>实际要做什么？</b>'+esc(deliver)+'</div></section>'
+ +'<div class="alert"><b>运营提醒：</b>'+esc(caveat)+'</div>'
+ +'<div class="divider"></div>'
+ +'<div class="subhead"><h3 style="margin:0">原导图分支 · 完整节点</h3><span class="count">点击箭头逐级展开</span></div>'
+ +'<p class="muted small">以下是上传导图中的知识点层次，保留具体字母架构、竞价倍数和历史判断；上方教学步骤为重新编写的应用指导。两者不要混同。</p>'
+ +'<div class="original">'+original+'</div>'
+ +'<div class="divider"></div>'
+ +'<div class="subhead"><h3 style="margin:0">我的练习记录</h3><span class="count">'+(userAccount?"登录后自动云端同步":"先保存本机，登录后可同步")+'</span></div>'
+ +'<textarea id="noteInput" placeholder="写下自己的ASIN、关键词、观察数据、下一步动作和复盘日期。">'+esc(state.notes[r.id]||"")+'</textarea>'
+ +'<div class="taskend"><button class="btn primary" id="markDone">'+(state.done.includes(r.id)?"✓ 已掌握 · 点击撤销":"标记本节已完成")+'</button>'
+ +'<a class="btn" href="./index.html#page=course">查看系统课程 · '+esc(CHAPTER_NAMES[related]||"完整课程")+'</a>'
+ +'<span class="count">完成后自动记入你的学习进度</span></div>'
+ +'<div class="bottom-links"><button class="ghost" id="prevBtn">← 上一课</button><button class="ghost" id="nextBtn">下一课 →</button></div>';
+}
+function render(){renderDays();renderNav();renderLesson();refreshStats();$("loginBtn").textContent=readStatus()}
+function nextTopic(n){const i=records.findIndex(x=>x.id===selected),j=(i+n+records.length)%records.length;select(records[j].id)}
+function initCloud(){
+ if(!window.supabase?.createClient){$("loginBtn").textContent="云端库加载失败";return}
+ client=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+ client.auth.onAuthStateChange((ev,session)=>{
+  if(session?.user&&(ev==="INITIAL_SESSION"||ev==="SIGNED_IN")){if(userAccount?.id!==session.user.id)setTimeout(()=>void loadCloud(session.user),0)}
+  else if(ev==="SIGNED_OUT"){userAccount=null;cloudReady=false;$("loginBtn").textContent=readStatus()}
+ });
+}
+async function loadCloud(account){
+ if(!client)return;userAccount=account;cloudReady=false;$("loginBtn").textContent="☁ 加载云端记录…";
+ try{
+  const result=await client.from(DBTABLE).select("state").eq("user_id",account.id).maybeSingle();
+  if(result.error)throw result.error;
+  const remote=result.data?.state;
+  if(remote&&typeof remote==="object"){
+   const localTs=Number(state.updatedAt||0),remoteTs=Number(remote.updatedAt||0);
+   if(remoteTs>=localTs){state=Object.assign({done:[],notes:{},updatedAt:0},remote);localStorage.setItem("ads-academy-workshop-261105",JSON.stringify(state))}
+  }
+  cloudReady=true;render();
+  if(!remote||Number(state.updatedAt)>Number(remote.updatedAt||0))await saveCloud();
+ }catch(e){cloudReady=false;alert("云端记录读取失败： "+(e.message||e))}finally{$("loginBtn").textContent=readStatus()}
+}
+async function saveCloud(){
+ if(!userAccount||!client||!cloudReady)return;clearTimeout(saveTimer);cloudBusy=true;$("loginBtn").textContent=readStatus();
+ try{
+  const data=await client.from(DBTABLE).upsert({user_id:userAccount.id,state:JSON.parse(JSON.stringify(state)),updated_at:new Date().toISOString()},{onConflict:"user_id"});
+  if(data.error)throw data.error;
+ }catch(e){alert("云端同步失败，请重试："+(e.message||e))}
+ finally{cloudBusy=false;$("loginBtn").textContent=readStatus()}
+}
+function authModal(){
+ if($("auth"))return;
+ let box=document.createElement("div");box.className="overlay";box.id="auth";
+ box.innerHTML='<div class="dialog"><button class="x" id="closeAuth">×</button><h2>☁ 跨设备学习同步</h2>'
+ +(userAccount?'<p>已登录：'+esc(userAccount.email||"已验证账号")+'</p><p class="muted small">使用相同账号登录其他电脑可读取本实训营的学习进度和笔记。</p><div class="taskend"><button class="btn primary" id="syncBtn">立即同步</button><button class="btn" id="logoutBtn">退出登录</button></div>'
+ :'<p class="muted small">与原学习工作台使用同一个 Supabase 账号。</p><form id="loginForm"><label>邮箱<input name="email" type="email" required autocomplete="email"></label><label>密码<input name="pwd" type="password" required autocomplete="current-password"></label><button class="btn primary" style="width:100%;margin-top:17px">登录并同步</button></form>')
+ +'<p id="authMsg" class="muted small" style="margin-top:14px">学习数据按账号隔离。</p></div>';
+ box.addEventListener("click",e=>{if(e.target===box)box.remove()});
+ document.body.appendChild(box);
+}
+document.addEventListener("click",e=>{
+ const button=e.target.closest("button");if(!button)return;
+ if(button.dataset.day!==undefined){filterDay=Number(button.dataset.day);render();return}
+ if(button.dataset.topic){select(button.dataset.topic);return}
+ if(button.id==="markDone"){const ix=state.done.indexOf(selected);if(ix>=0)state.done.splice(ix,1);else state.done.push(selected);localSave();render();return}
+ if(button.id==="prevBtn"){nextTopic(-1);return}if(button.id==="nextBtn"){nextTopic(1);return}
+ if(button.id==="loginBtn"){authModal();return}if(button.id==="closeAuth"){$("auth")?.remove();return}
+ if(button.id==="syncBtn"){void saveCloud();$("auth")?.remove();return}
+ if(button.id==="logoutBtn"){void(async()=>{await saveCloud();await client?.auth.signOut();userAccount=null;cloudReady=false;state={done:[],notes:{},updatedAt:0};localStorage.removeItem("ads-academy-workshop-261105");$("auth")?.remove();render()})();return}
+ if(button.id==="exportBtn"){const blob=new Blob([JSON.stringify({app:"ads-academy-workshop",date:new Date().toISOString(),state},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="亚马逊四天实训营_学习记录.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),2500);return}
+});
+document.addEventListener("input",e=>{
+ if(e.target.id==="search"){search=e.target.value.toLowerCase().trim();renderNav()}
+ if(e.target.id==="noteInput"){state.notes[selected]=e.target.value;localSave()}
+});
+document.addEventListener("submit",async e=>{
+ if(e.target.id!=="loginForm")return;e.preventDefault();
+ if(!client){$("authMsg").textContent="连接暂时不可用";return}
+ const form=e.target,button=form.querySelector("button"),hint=$("authMsg");button.disabled=true;hint.textContent="正在验证账号…";
+ const {error}=await client.auth.signInWithPassword({email:form.elements.email.value.trim(),password:form.elements.pwd.value});
+ if(error){hint.textContent="登录失败："+error.message;button.disabled=false;return}
+ $("auth")?.remove();
+});
+async function init(){
+ try{
+  const response=await Promise.all([fetch("./mindmap-261105.json",{cache:"no-store"}),fetch("./workshop-guides.json",{cache:"no-store"})]);
+  if(response.some(r=>!r.ok))throw Error("课程文件未加载成功，请刷新重试");
+  [mapData,guideData]=await Promise.all(response.map(r=>r.json()));
+  if(nodeCount(mapData.root)!==1748)throw Error("知识节点数量不匹配");
+  setupRecords();
+  const initial=decodeURIComponent((location.hash.match(/t=([^&]+)/)||[])[1]||"");
+  selected=records.some(x=>x.id===initial)?initial:records[0].id;
+  $("statNodes").textContent="1,748";
+  filterDay=0;render();initCloud();
+ }catch(e){root.innerHTML='<div class="alert">内容加载失败：'+esc(e.message||e)+'。可尝试 Ctrl+F5 重新加载。</div>'}
+}
+init();
+</script></body></html>
