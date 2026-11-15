@@ -12,7 +12,7 @@ var TABS=[
 var COLUMNS=[
  ['key','搜索词/投放'],['impressions','曝光'],['clicks','点击'],['spend','花费'],['orders','订单'],['sales','销售额'],['ctr','CTR'],['cvr','CVR'],['cpc','CPC'],['cpa','CPA'],['acos','ACOS'],['type','决策分类'],['confidence','可信度']
 ];
-var state={ready:false,loading:false,datasets:[],error:'',notice:'',tab:'overview',kind:'',asin:'all',campaign:'',q:'',from:'',to:'',minClicks:0,importAsin:'',importBusy:false,uploadMode:'replace',currency:'',productDraft:null,editProduct:'',detail:'',reviewWeek:'current',practiceIndex:0,practiceReveal:false};
+var state={ready:false,loading:false,datasets:[],error:'',notice:'',tab:'overview',kind:'',asin:'all',campaign:'',q:'',from:'',to:'',minClicks:0,importAsin:'',importBusy:false,uploadMode:'replace',currency:'',selectedFiles:[],importResult:null,productDraft:null,editProduct:'',detail:'',reviewWeek:'current',practiceIndex:0,practiceReveal:false};
 var context=null;
 function esc(x){return String(x===undefined||x===null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','&quot;':'&quot;',"'":'&#39;'}[c]})}
 function num(x){return E.number(x)}
@@ -198,15 +198,35 @@ function revenueSection(m){
  (!match?'<div class="al-note">营业额日期和广告报表筛选日期尚未完全一致，暂不显示比率；请设置相同的起止日期。</div>':'')+
  '<div class="al-note">只有填写“同期完整广告花费”，才展示完整 TACOS。不可把相同广告的搜索词花费和广告位花费相加；混合币种须先换算，归因销售额和自然销售额也不可重复统计。</div></div>';
 }
+function humanSize(n){
+ var b=Number(n)||0;return b>=1024*1024?(b/(1024*1024)).toFixed(1)+' MB':b>=1024?(b/1024).toFixed(0)+' KB':b+' B';
+}
+function selectFiles(items){
+ var files=Array.from(items||[]).filter(function(f){return f&&typeof f.name==='string'});
+ if(!files.length){notify('没有收到文件，请点击“选择文件”并选中Excel或CSV。',true);return}
+ var rejected=files.filter(function(f){return !/\.(xlsx|xls|csv|tsv)$/i.test(f.name)||f.size>30*1024*1024});
+ state.selectedFiles=files.filter(function(f){return /\.(xlsx|xls|csv|tsv)$/i.test(f.name)&&f.size<=30*1024*1024}).slice(0,20);
+ state.importResult=null;state.error='';
+ state.notice=state.selectedFiles.length?'已选择 '+state.selectedFiles.length+' 个文件，可以点击“开始解析并保存”。':'没有符合格式和大小要求的文件。';
+ if(rejected.length)state.notice+=' 跳过 '+rejected.length+' 个不支持或大于30MB的文件。';
+ refresh();
+}
 function importer(){
  var d=state.datasets;
  return '<section class="al-grid two"><div class="al-panel al-pad"><span class="al-eye">LOCAL DATA IMPORT</span><h2>导入亚马逊真实广告报表</h2><p class="al-muted">支持 SP/SB 搜索词报告、SP/SB 广告位报告和 Soju 的两份 Excel 模板，自动跳过透视结果页，不重复计算。</p>'+
- '<div class="al-drop"><div class="al-drop-icon">⇪</div><strong>选择 CSV / XLSX / XLS 文件</strong><p class="al-muted">可一次选择多个文件，每份文件只解析本地浏览器，不传到 GitHub 或第三方分析服务器。</p>'+
- '<input id="alFiles" type="file" multiple accept=".xlsx,.xls,.csv,.tsv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>'+
+ '<div class="al-drop" id="alDrop" tabindex="0" aria-label="拖入Excel或CSV文件的上传区域"><div class="al-drop-icon">⇪</div><strong>上传 SP / SB 广告报告</strong><p class="al-muted">将 Excel / CSV 拖到这里，或点击下方“选择文件”。选择后会显示文件清单，不会因为切换页面而丢失。</p>'+
+ '<input id="alFiles" class="al-file-input" type="file" multiple accept=".xlsx,.xls,.csv,.tsv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">'+
+ btn('① 选择文件','chooseFiles','primary')+
+ (state.selectedFiles.length?'<div class="al-files-selected"><div class="al-between"><strong>已选择 '+state.selectedFiles.length+' 个文件</strong>'+btn('清空选择','clearFiles','soft')+'</div>'+
+ state.selectedFiles.slice(0,18).map(function(f){return '<div class="al-upload-file"><span class="al-file-icon">XLS</span><span title="'+esc(f.name)+'">'+esc(f.name)+'</span><small>'+humanSize(f.size)+'</small></div>'}).join('')+'</div>':
+ '<div class="al-file-hint">尚未选择文件 · 支持同时导入多个报告（单文件不超过 30 MB）</div>')+'</div>'+
  '<div class="al-field"><label>手动关联 ASIN（可选）</label><select id="alImportAsin"><option value="">不关联 / 原始报表缺少 ASIN</option>'+
  dataUser().products.map(function(p){return '<option value="'+esc(p.asin)+'" '+(state.importAsin===p.asin?'selected':'')+'>'+esc(p.asin)+' / '+esc(p.name||'')+'</option>'}).join('')+'</select></div>'+
  '<div class="al-field"><label>上传相同报告类型时</label><select id="alImportMode"><option value="replace" '+(state.uploadMode==='replace'?'selected':'')+'>更新同名文件与工作表的旧版本（推荐）</option><option value="append" '+(state.uploadMode==='append'?'selected':'')+'>追加新期间报表（可能需要去重）</option></select></div>'+
- btn(state.importBusy?'正在解析…':'开始解析并保存','importFiles','primary',state.importBusy?'disabled':'')+
+ btn(state.importBusy?'正在解析，请勿关闭页面…':'② 开始解析并保存（'+state.selectedFiles.length+' 个文件）','importFiles','primary',state.importBusy?'disabled':'')+
+ (state.importResult?'<div class="al-import-summary"><strong>最近一次导入结果</strong><p>'+esc(state.importResult.summary)+'</p>'+
+ (state.importResult.recognized.length?'<details><summary>查看识别的工作表</summary><ul>'+state.importResult.recognized.map(function(v){return '<li>'+esc(v)+'</li>'}).join('')+'</ul></details>':'')+
+ (state.importResult.warnings.length?'<div class="al-import-warnings">'+state.importResult.warnings.map(function(v){return '<p>⚠ '+esc(v)+'</p>'}).join('')+'</div>':'')+'</div>':'')+
  '<p class="al-muted al-mt">导入后原始行保存在此浏览器 IndexedDB；跨设备不会自动同步广告原始报表。可以导出诊断结果和手动重新导入。</p></div>'+
  '<div class="al-panel al-pad"><h2>数据检查与模板说明</h2>'+
  '<div class="al-process"><div><i>✓</i>自动检查报告标题、列名和数值</div><div><i>✓</i>识别 SP / SB、搜索词 / 广告位</div><div><i>✓</i>保留 SP 7天、SB 14天独立归因口径</div><div><i>✓</i>缺少日期或混合币种会显示警告</div><div><i>✓</i>清空的透视表只显示“无明细”</div></div>'+
@@ -446,6 +466,8 @@ function handleAction(z){
  if(type==='detail'){var group=z.dataset.group,g=selectedGroup(group,Number(z.dataset.idx));state.detail=g?g.key:'';refresh();return}
  if(type==='closeDetail'){state.detail='';refresh();return}
  if(type==='addAction'){actionFromGroup(z.dataset.group,Number(z.dataset.idx));return}
+ if(type==='chooseFiles'){document.getElementById('alFiles')?.click();return}
+ if(type==='clearFiles'){state.selectedFiles=[];state.importResult=null;state.notice='已清空待上传文件';refresh();return}
  if(type==='importFiles'){void importFiles();return}
  if(type==='demo'){void installDemo();return}
  if(type==='removeDataset'){if(!confirmAction('确认永久删除该浏览器存储的广告报表吗？'))return;
@@ -509,16 +531,16 @@ async function parseFile(file){
 }
 async function importFiles(){
  if(state.importBusy)return;
- var el=document.getElementById('alFiles'),files=Array.from(el&&el.files||[]);
- if(!files.length){notify('请先选择要导入的报表文件。',true);return}
+ var files=state.selectedFiles.slice();
+ if(!files.length){notify('还没有选择Excel/CSV文件。请先点击上方蓝色“① 选择文件”或拖入文件。',true);return}
  state.importAsin=document.getElementById('alImportAsin')?.value||'';
  state.uploadMode=document.getElementById('alImportMode')?.value||'replace';
  state.importBusy=true;state.notice='正在本地解析 '+files.length+' 个文件…';refresh();
- var errors=[],imported=0;
+ var errors=[],imported=0,importedRows=0,recognized=[];
  try{
   for(var i=0;i<files.length;i++){
    try{
-    var result=await parseFile(files[i]);errors.push.apply(errors,result.warnings||[]);
+    var result=await parseFile(files[i]);errors.push.apply(errors,result.warnings||[]);recognized.push.apply(recognized,result.recognized||[]);
     for(var n=0;n<result.datasets.length;n++){
       var d=result.datasets[n];
       d.asin=state.importAsin;d.rows.forEach(function(r){r._asin=d.asin||''});
@@ -537,18 +559,36 @@ async function importFiles(){
       }
       state.datasets=state.datasets.filter(function(x){return !old.some(function(a){return a.id===x.id})});
       state.datasets.push(d);state.kind=d.kind;state.currency=d.currencies&&d.currencies[0]||state.currency;
-      imported++;
+      imported++;importedRows+=d.rows.length;
     }
    }catch(e){errors.push(files[i].name+': '+(e.message||e))}
   }
  }finally{state.importBusy=false}
- state.notice='解析完成：'+imported+'份有效报告。'+(errors.length?'注意：'+errors.slice(0,5).join('；'):'');
- state.error=imported===0?'没有有效的广告明细可以分析。':'';
+ state.importResult={summary:imported>0?'成功导入 '+imported+' 份有效报告，共 '+importedRows+' 行广告明细。':'已读取文件但未发现有效广告明细。',recognized:recognized,warnings:errors};
+ state.notice=state.importResult.summary+(errors.length?' 另有 '+errors.length+' 条提示。':'');
+ state.error=imported===0&&errors.length?'导入结果需要检查，请查看下方“最近一次导入结果”。':'';
+ if(imported>0)state.selectedFiles=[];
  refresh();
 }
 document.addEventListener('click',function(e){var z=e.target.closest('[data-al]');if(z&&context){e.preventDefault();handleAction(z)}});
+document.addEventListener('dragover',function(e){
+ var zone=e.target&&e.target.closest&&e.target.closest('#alDrop');if(!zone)return;
+ e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';zone.classList.add('al-drag-active');
+});
+document.addEventListener('dragleave',function(e){
+ var zone=e.target&&e.target.closest&&e.target.closest('#alDrop');
+ if(zone)zone.classList.remove('al-drag-active');
+});
+document.addEventListener('drop',function(e){
+ var zone=e.target&&e.target.closest&&e.target.closest('#alDrop');if(!zone)return;
+ e.preventDefault();zone.classList.remove('al-drag-active');
+ if(e.dataTransfer&&e.dataTransfer.files)selectFiles(e.dataTransfer.files);
+});
 document.addEventListener('change',function(e){
  if(!context)return;var z=e.target;
+ if(z&&z.id==='alFiles'){selectFiles(z.files);return}
+ if(z&&z.id==='alImportAsin'){state.importAsin=z.value;return}
+ if(z&&z.id==='alImportMode'){state.uploadMode=z.value;return}
  if(z.hasAttribute('data-al-input')){
   var field=z.getAttribute('data-al-input');state[field]=z.value;
   if(field==='kind'){state.detail='';state.practiceIndex=0;state.practiceReveal=false}
