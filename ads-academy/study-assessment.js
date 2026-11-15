@@ -8,7 +8,7 @@ var MAX_FILE=15*1024*1024,MAX_FILES=4;
 var pending=null,ctx=null;
 var FIELDS={
 1:[['price','单件售价（USD）'],['procure','采购/包装成本折算（USD）'],['freight','头程成本折算（USD）'],['fees','亚马逊佣金+FBA等单件费用（USD）'],['other','其他单件成本（USD）'],['result','我算的广告前单件贡献利润（USD）']],
-2:[['spend','广告花费（USD）'],['sales','广告归因销售额（USD）'],['orders','广告归因订单数'],['acos','我算的 ACOS（%）'],['cpa','我算的 CPA（USD）']],
+2:[['price','单件售价 / 客单价（USD）'],['contribution','广告前每单贡献利润（USD）'],['reserved','每单希望保留的利润（USD）'],['targetCPA','我算的目标 CPA（USD）'],['targetACOS','我算的目标 ACOS（%）']],
 3:[['spend','广告花费（USD）'],['adSales','广告归因销售额（USD）'],['totalSales','同期总销售额（USD）'],['acos','我算的 ACOS（%）'],['tacos','我算的 TACOS（%）']]
 };
 function esc(s){return String(s===undefined||s===null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
@@ -33,12 +33,14 @@ function audit(n,s){
     calc.profit=data.price-data.procure-data.freight-data.fees-data.other;
     if(!near(data.result,calc.profit,0.055))messages.push('广告前贡献利润计算有误。正确口径：售价 − 采购/包装 − 头程 − 佣金/FBA − 其他成本；按输入数据应为 $'+format(calc.profit)+'。');
    }
-  }else if(n===2){
-   if(data.spend<0||data.sales<=0||data.orders<=0)messages.push('本题需要广告归因销售额和订单数大于0的报告数据，花费不能为负数。');
+   }else if(n===2){
+   if(data.price<=0||data.reserved<0)messages.push('售价必须大于0，每单希望保留的利润不能为负。');
    else{
-    calc.acos=data.spend/data.sales*100;calc.cpa=data.spend/data.orders;
-    if(!near(data.acos,calc.acos,.3))messages.push('ACOS 计算不符：广告花费 ÷ 广告归因销售额 ×100，应为 '+format(calc.acos)+'%。');
-    if(!near(data.cpa,calc.cpa,.055))messages.push('CPA 计算不符：广告花费 ÷ 广告归因订单数，应为 $'+format(calc.cpa)+'。');
+    calc.cpa=data.contribution-data.reserved;
+    calc.acos=calc.cpa/data.price*100;
+    if(calc.cpa<0)messages.push('可投入广告费为负数，说明当前定价与利润目标不支持盈利型广告。');
+    if(!near(data.targetCPA,calc.cpa,.055))messages.push('目标 CPA = 广告前每单贡献利润 − 每单希望保留的利润，应为 $'+format(calc.cpa)+'。');
+    if(!near(data.targetACOS,calc.acos,.3))messages.push('目标 ACOS = 目标 CPA ÷ 单件售价/客单价 ×100，应为 '+format(calc.acos)+'%。');
    }
   }else if(n===3){
    if(data.spend<0||data.adSales<=0||data.totalSales<=0)messages.push('本题要求广告归因销售额和同期总销售额大于0，花费不能为负数。');
@@ -74,7 +76,7 @@ function renderPanel(d,p){
  '<p class="study-muted">课程任务：'+esc(d.task)+'。提交后先进行规则初审；涉及运营策略的实质判断需由 ChatGPT 或老师阅读证据后复核。</p>';
  if(fs){
   out+='<div class="study-audit-numbers">'+fs.map(function(x){return '<label><span>'+esc(x[1])+'</span><input type="number" step="any" data-sra-field="'+x[0]+'" data-day="'+d.n+'" value="'+esc(values[x[0]]===undefined?'':values[x[0]])+'" placeholder="填写数字"></label>'}).join('')+'</div>';
-  out+='<p class="study-tiny">请先把相关费用统一换算成美元；第3天的TACOS应使用完整广告花费，与总销售额保持同一期间和店铺范围。</p>';
+  out+='<p class="study-tiny">请统一以美元核算。第2天默认1订单对应1件该SKU；多件订单应使用实际客单价及每单贡献利润。第3天TACOS须使用同期完整广告花费与总销售额。</p>';
  }
  var areas=[['evidence','证据与数据来源','写明报告名称、起止日期、商品/活动范围及观察到的关键数字…'],
  ['conclusion','我的结论与计算/判断过程','请说明为什么这么算、为什么选这个优化动作…'],
