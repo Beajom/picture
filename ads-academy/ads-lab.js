@@ -94,6 +94,26 @@ function spark(rows){
  '<polyline fill="none" stroke="#0eab84" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="'+points('sales')+'"/></svg>'+
  '<div class="al-chartticks"><span>'+esc(labels[0])+'</span><span>'+esc(labels[1])+'</span><span>'+esc(labels[2])+'</span></div></div>';
 }
+function specialMetrics(m){
+ var src=activeDatasets(),has=function(re){return src.some(function(d){return (d.headers||[]).some(function(h){return re.test(String(h))})})};
+ if(!src.length)return '';
+ if(state.kind.startsWith('sb')){
+  var click=has(/点击）|点击\)/), ntb=has(/品牌新买家/), video=has(/完整视频观看次数|5 秒观看次数/),brand=has(/品牌搜索量/);
+  if(!click&&!ntb&&!video&&!brand)return '';
+  return '<section class="al-panel al-pad"><div class="al-between"><h2>SB 专项指标</h2>'+chip('点击归因、品牌新买家与视频')+'</div>'+
+   '<p class="al-muted">按照上传的 SB 报表字段独立展示；点击归因销售额已经包含在相应总归因口径中，不能重复相加。</p>'+
+   '<div class="al-grid four">'+
+   (click?kpi('14天点击归因销售额',usd(m.clickSales),'不与总销售额相加')+kpi('14天点击归因订单',f(m.clickOrders,0),'仅点击归因拆分'):'')+
+   (ntb?kpi('品牌新买家订单',f(m.newBrandOrders,0),'14天报告指标')+kpi('品牌新买家销售额',usd(m.newBrandSales),'14天报告指标'):'')+
+   (video?kpi('完整视频观看次数',f(m.videoComplete,0),'视频投放时有意义')+kpi('5秒观看次数',f(m.videoFive,0),'视频投放时有意义'):'')+
+   (brand?kpi('品牌搜索次数',f(m.brandSearch,0),'基于报表列定义'):'')+
+   '</div></section>';
+ }
+ if(has(/广告SKU销售额|广告sku销售额/i))return '<section class="al-panel al-pad"><div class="al-between"><h2>SP 归因拆分</h2>'+chip('广告商品 / 其他SKU')+'</div>'+
+ '<p class="al-muted">区分实际广告商品产生的销售与同店其他SKU归因销售，不将拆分指标额外加到总销售额。</p>'+
+ '<div class="al-grid four">'+kpi('广告商品销售额',usd(m.skuSales),'SP 7天归因')+kpi('其他SKU销售额',usd(m.otherSkuSales),'SP 7天归因')+'</div></section>';
+ return '';
+}
 function comparisonCard(d){
  var m=datasetSummary(d),days=Array.from(new Set(d.rows.map(function(x){return x.date}).filter(Boolean))).sort();
  return '<div class="al-source"><div class="al-between"><strong>'+esc(d.sheet||d.file)+'</strong>'+chip(KN[d.kind]||d.kind)+'</div>'+
@@ -115,6 +135,7 @@ function overview(){
  '<div><i>3</i><span>已标记可复盘任务：<b>'+dataUser().actions.length+'</b> 条</span></div></div>'+
  btn('维护 ASIN 利润模型','tab','primary','data-tab="products"')+' '+btn('查看搜索词决策','tab','soft','data-tab="terms"')+
  '<div class="al-muted al-mt">只对选择的同一报告类型计算，避免重复统计。若报告没有 ASIN 字段，应在导入时手动关联商品。</div></section></div>'+
+ specialMetrics(m)+
  '<section class="al-panel al-pad"><div class="al-between"><h2>已导入的报告来源</h2>'+btn('管理报表','tab','soft','data-tab="import"')+'</div><div class="al-grid two">'+state.datasets.slice(-8).map(comparisonCard).join('')+'</div></section>'+
  (a.duplicates?'<div class="al-note">发现'+a.duplicates+'条可能重复的报表维度记录，当前在所选视图中仅保留最新一条；请核对是否为重复下载或不同口径的原始报告。</div>':'')+impactNote();
 }
@@ -246,7 +267,7 @@ function practice(){
  '<h3 style="margin:16px 0">'+esc(g.key)+'</h3>'+
  '<div class="al-grid four">'+kpi('点击',f(g.clicks,0),'')+kpi('广告花费',usd(g.spend),'')+kpi('订单',f(g.orders,0),'')+kpi('CPA',usd(g.cpa),'')+'</div>'+
  '<p class="al-muted">你会选择“放量、核查缩量、继续验证，还是暂不判断”？先写出依据，再揭晓参考判断。</p>'+
- '<textarea class="al-practice-answer" id="alPracticeReason" placeholder="我的判断、证据、计划动作、复查时间……"></textarea>'+
+ '<textarea class="al-practice-answer" id="alPracticeReason" placeholder="我的判断、证据、计划动作、复查时间……">'+esc((dataUser().practice.slice().reverse().find(function(x){return x.key===g.key&&x.kind===state.kind})||{}).reason||'')+'</textarea>'+
  '<div class="al-actions">'+btn('显示参考分析','showAnswer','primary')+' '+btn('换一道真实数据题','nextPractice','soft')+' '+btn('打开相关课程','courseLink','soft','data-course="'+(by==='placement'?'11':'07')+'"')+'</div>'+
  (answer?'<div class="al-explain"><b>参考分类：'+esc(answer.type)+'</b><p>'+esc(answer.evidence)+'</p><small>判断可信度：'+esc(answer.confidence)+' · 必须结合实际广告设置与归因核验</small></div>':'')+'</section>'+
  '<section class="al-panel al-pad"><h2>实操考核方式</h2><div class="al-process"><div><i>1</i>识别问题属于曝光、点击、转化或利润</div><div><i>2</i>记录报告期间、样本量与归因口径</div><div><i>3</i>根据目标 CPA 选择优先动作</div><div><i>4</i>设置复查日期，并解释可能的副作用</div></div>'+
@@ -336,7 +357,8 @@ async function importRanks(){
  }catch(e){notify('排名导入失败：'+e.message,true)}
 }
 function connect(){
- return '<div class="al-grid two"><section class="al-panel al-pad"><h2>数据连接与同步状态</h2>'+
+ return '<div class="al-note danger"><b>云端安全检查提醒：</b>现有Bsera项目中有13张旧PPC表尚未开启RLS，这些表不用于本页面存储原始广告报告。请先由管理员核查权限与现有系统依赖，再启用按账号隔离的访问策略。<a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener noreferrer">查看Supabase RLS指南</a></div>'+ 
+ '<div class="al-grid two"><section class="al-panel al-pad"><h2>数据连接与同步状态</h2>'+
  '<div class="al-connect"><strong>本地 SP/SB 报表解析</strong>'+chip('已支持','ok')+'<p>支持 CSV / Excel 原始报告。本地 IndexedDB 保存，不上传原始广告报表。</p></div>'+
  '<div class="al-connect"><strong>学习记录 / ASIN成本 / 行动计划</strong>'+chip('现有账户登录同步','ok')+'<p>沿用原网站的登录同步逻辑；可导出 JSON 备份。跨设备使用建议先备份再切换。</p></div>'+
  '<div class="al-connect"><strong>领星 API 自动拉取</strong>'+chip('尚未连接')+'<p>需要真实的领星授权、店铺/广告账户标识以及安全的服务端代理。不能把 API 密钥写进 GitHub 公共仓库。</p></div>'+
@@ -413,7 +435,7 @@ function handleAction(z){
  if(type==='exportRanksTemplate'){download('AmazonAds_自然排名导入模板.csv','\ufeff日期,ASIN,关键词,自然排名,广告排名\r\n','','text/csv;charset=utf-8');return}
  if(type==='exportRanks'){csv(dataUser().ranks,[['date','日期'],['asin','ASIN'],['keyword','关键词'],['natural','自然排名'],['ad','广告排名'],['source','数据来源'],['note','备注']]);return}
  if(type==='manualAction'){addAction({id:'act_'+Date.now(),label:'自定义优化任务',kind:'手动创建',created:stamp(),evidence:'填写需要验证的假设与依据',status:'待验证',recheck:'',notes:''});return}
- if(type==='showAnswer'){state.practiceReveal=true;refresh();return}
+ if(type==='showAnswer'){var targetGroup=state.kind.endsWith('placement')?'placement':'search',grp=groupData(targetGroup).filter(function(g){return g.clicks>=5||g.orders>=1}).sort(function(a,b){return b.spend-a.spend});var g=grp[state.practiceIndex%Math.max(1,grp.length)];var reason=document.getElementById('alPracticeReason')?.value?.trim()||'';if(g){dataUser().practice.push({kind:state.kind,key:g.key,reason:reason,at:new Date().toISOString(),targetCPA:targets().cpa,decision:g.type});if(dataUser().practice.length>200)dataUser().practice.splice(0,dataUser().practice.length-200);context.save();}state.practiceReveal=true;refresh();return}
  if(type==='nextPractice'){state.practiceIndex++;state.practiceReveal=false;refresh();return}
  if(type==='courseLink'){context.gotoChapter(z.dataset.course);return}
  if(type==='goStudy'){context.gotoStudy();return}
