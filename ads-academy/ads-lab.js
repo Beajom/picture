@@ -24,7 +24,7 @@ function stamp(){return new Date().toISOString().slice(0,10)}
 function dataUser(){var u=context.user;if(!u.adsLab||typeof u.adsLab!=='object')u.adsLab={};var p=u.adsLab;if(!Array.isArray(p.products))p.products=[];if(!Array.isArray(p.actions))p.actions=[];if(!Array.isArray(p.practice))p.practice=[];if(!Array.isArray(p.ranks))p.ranks=[];if(!p.revenue||typeof p.revenue!=='object')p.revenue={amount:'',totalAds:'',from:'',to:'',currency:'USD'};if(!p.targets||typeof p.targets!=='object')p.targets={cpa:'',acos:'',currency:'USD'};return p}
 function notify(s,isError){state.notice=s;state.error=isError?s:'';context&&context.refresh()}
 function dirty(){context.save();context.refresh()}
-function init(ctx){context=ctx;dataUser();if(state.ready||state.loading)return;state.loading=true;E.load().then(function(items){state.datasets=Array.isArray(items)?items:[];state.ready=true;state.loading=false;autoKind();if(context)context.refresh()}).catch(function(e){state.ready=true;state.loading=false;state.error='当前浏览器无法持久保存报表：'+(e.message||e)+'；可继续使用临时分析，但刷新后可能丢失。';if(context)context.refresh()})}
+function init(ctx){context=ctx;dataUser();if(!state.urlRead){state.urlRead=true;try{var urlTab=new URLSearchParams(location.hash.replace(/^#/,'' )).get('tab');if(TABS.some(function(v){return v[0]===urlTab}))state.tab=urlTab}catch(e){}}if(state.ready||state.loading)return;state.loading=true;E.load().then(function(items){state.datasets=Array.isArray(items)?items:[];state.ready=true;state.loading=false;autoKind();if(context)context.refresh()}).catch(function(e){state.ready=true;state.loading=false;state.error='当前浏览器无法持久保存报表：'+(e.message||e)+'；可继续使用临时分析，但刷新后可能丢失。';if(context)context.refresh()})}
 function autoKind(){if(!state.kind&&state.datasets.length)state.kind=state.datasets[0].kind;var d=state.datasets.find(function(x){return x.kind===state.kind});if(d&&!state.currency)state.currency=d.currencies&&d.currencies[0]||'USD'}
 function kinds(){
  var kinds=['sp_search','sp_placement','sb_search','sb_placement'];
@@ -457,7 +457,7 @@ function copyReview(){
  else window.prompt('复制复盘',s);
 }
 function confirmAction(message){return window.confirm(message)}
-function tab(id){state.tab=id;state.detail='';refresh()}
+function tab(id){state.tab=id;state.detail='';try{if(location.hash.includes('page=adslab'))history.replaceState(null,'','#page=adslab&tab='+encodeURIComponent(id))}catch(e){}refresh()}
 function handleAction(z){
  var type=z.dataset.al,id=z.dataset.id,asin=z.dataset.asin;
  if(type==='tab'){tab(z.dataset.tab);return}
