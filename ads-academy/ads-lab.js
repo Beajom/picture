@@ -7,12 +7,12 @@ var TABS=[
  ['overview','经营总览','layout-dashboard'],['import','报表导入','upload'],
  ['terms','搜索词决策','search'],['placements','广告位诊断','target'],
  ['campaigns','活动治理','layers'],['products','ASIN利润库','calculator'],
- ['actions','优化任务与复盘','clipboard-list'],['practice','真实数据训练','graduation-cap'],['connect','数据接入','plug']
+ ['actions','优化任务与复盘','clipboard-list'],['practice','真实数据训练','graduation-cap'],['overlap','重叠投放检查','copy'],['ranks','自然排名跟踪','trending-up'],['connect','数据接入','plug']
 ];
 var COLUMNS=[
  ['key','搜索词/投放'],['impressions','曝光'],['clicks','点击'],['spend','花费'],['orders','订单'],['sales','销售额'],['ctr','CTR'],['cvr','CVR'],['cpc','CPC'],['cpa','CPA'],['acos','ACOS'],['type','决策分类'],['confidence','可信度']
 ];
-var state={ready:false,loading:false,datasets:[],error:'',notice:'',tab:'overview',kind:'',asin:'all',campaign:'',q:'',from:'',to:'',minClicks:0,importAsin:'',importBusy:false,uploadMode:'replace',productDraft:null,editProduct:'',detail:'',reviewWeek:'current',practiceIndex:0,practiceReveal:false};
+var state={ready:false,loading:false,datasets:[],error:'',notice:'',tab:'overview',kind:'',asin:'all',campaign:'',q:'',from:'',to:'',minClicks:0,importAsin:'',importBusy:false,uploadMode:'replace',currency:'',productDraft:null,editProduct:'',detail:'',reviewWeek:'current',practiceIndex:0,practiceReveal:false};
 var context=null;
 function esc(x){return String(x===undefined||x===null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','&quot;':'&quot;',"'":'&#39;'}[c]})}
 function num(x){return E.number(x)}
@@ -20,11 +20,11 @@ function f(x,n){return x===null||x===undefined||!Number.isFinite(x)?'—':Number
 function pct(x){return x===null||x===undefined||!Number.isFinite(x)?'—':f(x*100,1)+'%'}
 function usd(x){return x===null||x===undefined||!Number.isFinite(x)?'—':'$'+f(x,2)}
 function stamp(){return new Date().toISOString().slice(0,10)}
-function dataUser(){var u=context.user;if(!u.adsLab||typeof u.adsLab!=='object')u.adsLab={};var p=u.adsLab;if(!Array.isArray(p.products))p.products=[];if(!Array.isArray(p.actions))p.actions=[];if(!Array.isArray(p.practice))p.practice=[];if(!p.targets||typeof p.targets!=='object')p.targets={cpa:'',acos:'',currency:'USD'};return p}
+function dataUser(){var u=context.user;if(!u.adsLab||typeof u.adsLab!=='object')u.adsLab={};var p=u.adsLab;if(!Array.isArray(p.products))p.products=[];if(!Array.isArray(p.actions))p.actions=[];if(!Array.isArray(p.practice))p.practice=[];if(!Array.isArray(p.ranks))p.ranks=[];if(!p.revenue||typeof p.revenue!=='object')p.revenue={amount:'',from:'',to:'',currency:'USD'};if(!p.targets||typeof p.targets!=='object')p.targets={cpa:'',acos:'',currency:'USD'};return p}
 function notify(s,isError){state.notice=s;state.error=isError?s:'';context&&context.refresh()}
 function dirty(){context.save();context.refresh()}
 function init(ctx){context=ctx;dataUser();if(state.ready||state.loading)return;state.loading=true;E.load().then(function(items){state.datasets=Array.isArray(items)?items:[];state.ready=true;state.loading=false;autoKind();if(context)context.refresh()}).catch(function(e){state.ready=true;state.loading=false;state.error='当前浏览器无法持久保存报表：'+(e.message||e)+'；可继续使用临时分析，但刷新后可能丢失。';if(context)context.refresh()})}
-function autoKind(){if(!state.kind&&state.datasets.length)state.kind=state.datasets[0].kind}
+function autoKind(){if(!state.kind&&state.datasets.length)state.kind=state.datasets[0].kind;var d=state.datasets.find(function(x){return x.kind===state.kind});if(d&&!state.currency)state.currency=d.currencies&&d.currencies[0]||'USD'}
 function kinds(){
  var kinds=['sp_search','sp_placement','sb_search','sb_placement'];
  return kinds;
@@ -36,9 +36,11 @@ function datasetSummary(d){return E.metric(d.rows||[])}
 function activeDatasets(){return state.datasets.filter(function(d){return d.kind===state.kind})}
 function uniqueRows(){
  var selected=activeDatasets();
+ var currencies=Array.from(new Set(selected.flatMap(function(d){return (d.rows||[]).map(function(r){return r.currency||'未注明'})})));if(currencies.length&&!currencies.includes(state.currency))state.currency=currencies[0];
  var all=[];
  selected.slice().sort(function(a,b){return String(a.importedAt).localeCompare(String(b.importedAt))}).forEach(function(d){
-  (d.rows||[]).forEach(function(r){if(state.asin!=='all'&&(r._asin||d.asin||'')!==state.asin)return;
+  (d.rows||[]).forEach(function(r){if(state.currency&&((r.currency||'未注明')!==state.currency))return;
+   if(state.asin!=='all'&&(r._asin||d.asin||'')!==state.asin)return;
    if(state.from&&r.date&&r.date<state.from)return;if(state.to&&r.date&&r.date>state.to)return;
    if(state.campaign&&!String(r.campaign||'').toLowerCase().includes(state.campaign.toLowerCase()))return;
    all.push(Object.assign({},r,{_asin:r._asin||d.asin||'',_kind:d.kind,_dataset:d.id}));
@@ -69,9 +71,11 @@ function filters(opts){
  opts=opts||{};var all=state.datasets,keys=kinds();
  return '<div class="al-filters"><div class="al-field"><label>报告类型（分别核算）</label><select data-al-input="kind">'+keys.map(function(k){return '<option value="'+k+'" '+(state.kind===k?'selected':'')+'>'+KN[k]+' · '+all.filter(function(x){return x.kind===k}).length+'份</option>'}).join('')+'</select></div>'+
  '<div class="al-field"><label>关联 ASIN</label><select data-al-input="asin"><option value="all">全部关联商品</option>'+dataUser().products.map(function(p){return '<option value="'+esc(p.asin)+'" '+(state.asin===p.asin?'selected':'')+'>'+esc(p.asin)+' / '+esc(p.name||'')+'</option>'}).join('')+'</select></div>'+
+ '<div class="al-field"><label>币种</label><select data-al-input="currency">'+Array.from(new Set(activeDatasets().flatMap(function(d){return (d.rows||[]).map(function(r){return r.currency||'未注明'})}))).map(function(c){return '<option value="'+esc(c)+'" '+(state.currency===c?'selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select></div>'+ 
  '<div class="al-field"><label>起始日期</label><input type="date" data-al-input="from" value="'+esc(state.from)+'"></div>'+
  '<div class="al-field"><label>结束日期</label><input type="date" data-al-input="to" value="'+esc(state.to)+'"></div>'+
  (opts.search?'<div class="al-field al-grow"><label>搜索活动或关键词</label><input id="alSearch" data-al-input="q" type="search" placeholder="筛选搜索词…" value="'+esc(state.q)+'"></div>':'')+
+ '<div class="al-field al-grow"><label>广告活动筛选</label><input data-al-input="campaign" type="search" placeholder="输入活动名称" value="'+esc(state.campaign)+'"></div>'+ 
  '<div class="al-filter-actions">'+btn('重置筛选','resetFilters','soft')+'</div></div>';
 }
 function impactNote(){
@@ -103,6 +107,7 @@ function overview(){
  return summary+filters()+'<div class="al-grid four">'+
  kpi('广告花费',usd(m.spend),'所选报告类型及筛选范围')+kpi('归因销售额',usd(m.sales),'按该报表自身口径')+
  kpi('ACOS',pct(m.acos),'花费 / 广告归因销售额')+kpi('平均 CPA',usd(m.cpa),'花费 / 归因订单')+'</div>'+
+ revenueSection(m)+
  '<div class="al-grid two"><section class="al-panel al-pad"><div class="al-between"><h2>每日广告趋势</h2>'+chip('所选报告：'+(KN[state.kind]||'未选择'))+'</div>'+spark(a.rows)+'</section>'+
  '<section class="al-panel al-pad"><h2>利润与可行动性</h2><div class="al-process">'+
  '<div><i>1</i><span>可承受 CPA：<b>'+usd(t.cpa)+'</b>（'+esc(t.from)+'）</span></div>'+
@@ -112,6 +117,19 @@ function overview(){
  '<div class="al-muted al-mt">只对选择的同一报告类型计算，避免重复统计。若报告没有 ASIN 字段，应在导入时手动关联商品。</div></section></div>'+
  '<section class="al-panel al-pad"><div class="al-between"><h2>已导入的报告来源</h2>'+btn('管理报表','tab','soft','data-tab="import"')+'</div><div class="al-grid two">'+state.datasets.slice(-8).map(comparisonCard).join('')+'</div></section>'+
  (a.duplicates?'<div class="al-note">发现'+a.duplicates+'条可能重复的报表维度记录，当前在所选视图中仅保留最新一条；请核对是否为重复下载或不同口径的原始报告。</div>':'')+impactNote();
+}
+function revenueSection(m){
+ var r=dataUser().revenue||{},amount=num(r.amount),good=amount>0&&(!r.currency||r.currency===state.currency),actual=good?m.spend/amount:null;
+ var match=(r.from||'')===(state.from||'')&&(r.to||'')===(state.to||'');
+ return '<div class="al-panel al-pad"><div class="al-between"><div><span class="al-eye">FULL SALES PERFORMANCE</span><h2>总销售额 / TACOS 口径</h2></div>'+chip('人工录入营业额')+'</div>'+
+ '<p class="al-muted">SP/SB 搜索词与广告位报表不含完整店铺自然销售额。要测 TACOS，请输入与所选广告报告相同期间、相同币种、相同店铺/商品范围的总销售额。若多个广告类型均有花费，需合计各类型不重复的实际花费才是完整 TACOS。</p>'+
+ '<div class="al-formgrid"><div class="al-field"><label>所选范围总销售额（'+esc(state.currency||'币种')+'）</label><input data-al-revenue="amount" type="number" min="0" step="any" value="'+esc(r.amount||'')+'" placeholder="从业务报告填写"></div>'+
+ '<div class="al-field"><label>总销售额币种</label><select data-al-revenue="currency"><option value="USD" '+(r.currency==='USD'?'selected':'')+'>USD</option><option value="GBP" '+(r.currency==='GBP'?'selected':'')+'>GBP</option><option value="EUR" '+(r.currency==='EUR'?'selected':'')+'>EUR</option><option value="JPY" '+(r.currency==='JPY'?'selected':'')+'>JPY</option><option value="CNY" '+(r.currency==='CNY'?'selected':'')+'>CNY</option></select></div>'+
+ '<div class="al-field"><label>营业额起始日</label><input data-al-revenue="from" type="date" value="'+esc(r.from||'')+'"></div>'+
+ '<div class="al-field"><label>营业额结束日</label><input data-al-revenue="to" type="date" value="'+esc(r.to||'')+'"></div></div>'+
+ '<div class="al-between"><div><span class="al-muted">当前所选报告花费 / 已填总销售额：</span><strong style="font-size:21px;color:#225ca9">'+(match&&good?pct(actual):'—')+'</strong></div>'+btn('保存营业额','saveRevenue','primary')+'</div>'+
+ (!match?'<div class="al-note">日期筛选与营业额日期不一致或未完整指定：不显示TACOS。请先设置相同的起止日期。</div>':'')+
+ '<div class="al-note">这里显示的是所选报告花费占总销售额比例；只有确认它覆盖该期间全部广告花费后，才能称为全账户 TACOS。否则只是局部广告费用率。</div></div>';
 }
 function importer(){
  var d=state.datasets;
@@ -232,6 +250,88 @@ function practice(){
  '<div class="al-note">“显示参考分析”只提供基于指标规则的初步判断，不代表真实产品相关性或自然排名已经核实。实操结果需要运营者最终判断。</div>'+
  btn('加入28天学习计划','goStudy','soft')+'</section></div>';
 }
+function overlap(){
+ if(!state.datasets.some(function(d){return d.kind.endsWith('search')}))return empty('导入SP或SB搜索词原始报告后，才可检查相同搜索词在多个活动中重复出现的情况。');
+ var searchKind=state.kind.endsWith('search')?state.kind:state.kind.replace('placement','search'),orig=state.kind;
+ state.kind=searchKind;var rows=uniqueRows().rows;state.kind=orig;
+ var by=new Map();
+ rows.forEach(function(r){var k=(r.term||'').trim().toLowerCase();if(!k)return;
+ if(!by.has(k))by.set(k,{term:r.term,terms:[],campaigns:new Set(),spend:0,clicks:0,orders:0,sales:0});
+ var o=by.get(k);o.campaigns.add(r.campaign||'未标明');o.spend+=r.spend;o.clicks+=r.clicks;o.orders+=r.orders;o.sales+=r.sales;
+ });
+ var items=Array.from(by.values()).filter(function(x){return x.campaigns.size>1}).sort(function(a,b){return b.spend-a.spend});
+ return '<section class="al-panel al-pad"><span class="al-eye">DUPLICATE TARGETING REVIEW</span><h2>搜索词重叠投放检查 · '+items.length+'个待核对词</h2>'+
+ '<p class="al-muted">这里发现的是多个活动共享同一“实际客户搜索词”，不代表必然发生内部竞价或浪费。请结合匹配方式、分工、转化和归因做判断。</p>'+
+ (items.length?'<div class="al-tablewrap"><table class="al-table"><thead><tr><th>搜索词</th><th>覆盖活动数</th><th>活动列表</th><th>累计花费</th><th>订单</th><th>ACOS</th><th>建议操作</th></tr></thead><tbody>'+
+ items.slice(0,120).map(function(x){return '<tr><td class="al-key"><b>'+esc(x.term)+'</b></td><td>'+x.campaigns.size+'</td><td class="al-key">'+esc(Array.from(x.campaigns).join(' / '))+'</td><td>'+usd(x.spend)+'</td><td>'+f(x.orders,0)+'</td><td>'+pct(x.sales>0?x.spend/x.sales:null)+'</td><td>核对主推/探索角色和CPA，不要直接互相否定</td></tr>'}).join('')+'</tbody></table></div>':empty('当前未发现多个活动使用同一客户搜索词的记录，或报表未覆盖足够的活动。'))+
+ '<div class="al-note">不同广告位、不同时间段、SP和SB之间可能出现重复归因，不能把这张检测结果当成实际自我竞价损失金额。</div></section>';
+}
+function rankRecord(r){
+ var asin=String(r.asin||'').trim().toUpperCase(),keyword=String(r.keyword||'').trim(),date=String(r.date||stamp()),natural=num(r.natural),ad=num(r.ad);
+ if(!/^[A-Z0-9]{10}$/.test(asin)||!keyword||!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;
+ if(natural<0||ad<0||natural>10000||ad>10000)return false;
+ var key=asin+'|'+keyword.toLowerCase()+'|'+date,rs=dataUser().ranks;
+ var x={asin:asin,keyword:keyword,date:date,natural:natural||null,ad:ad||null,source:r.source||'手动 / CSV',note:r.note||''};
+ var i=rs.findIndex(function(a){return [a.asin,a.keyword.toLowerCase(),a.date].join('|')===key});
+ if(i>=0)rs[i]=x;else rs.push(x);
+ if(rs.length>2500)rs.splice(0,rs.length-2500);
+ return true;
+}
+function rankHistory(){
+ var list=dataUser().ranks,series=new Map();
+ list.forEach(function(x){
+  var k=x.asin+'|'+x.keyword.toLowerCase();
+  if(!series.has(k))series.set(k,[]);
+  series.get(k).push(x);
+ });
+ var rows=[];
+ series.forEach(function(arr){arr.sort(function(a,b){return b.date.localeCompare(a.date)});
+  var a=arr[0],b=arr[1],delta=a.natural!=null&&b&&b.natural!=null?b.natural-a.natural:null;
+  rows.push(Object.assign({},a,{previous:b?b.natural:null,delta:delta,observations:arr.length}));
+ });
+ return rows.sort(function(a,b){return b.date.localeCompare(a.date)}).slice(0,200);
+}
+function ranks(){
+ var list=rankHistory();
+ return '<section class="al-grid two"><div class="al-panel al-pad"><span class="al-eye">ORGANIC RANKING MONITOR</span><h2>自然排名与广告位追踪</h2>'+
+ '<p class="al-muted">手动录入或批量导入标准CSV，记录每个ASIN每个词的自然排名与广告排名。数值越小，表示搜索结果位置越靠前；没有排名不要填0。</p>'+
+ '<div class="al-formgrid"><div class="al-field"><label>ASIN</label><input id="alRankAsin" placeholder="10位ASIN" maxlength="10"></div>'+
+ '<div class="al-field"><label>日期</label><input id="alRankDate" type="date" value="'+stamp()+'"></div>'+
+ '<div class="al-field"><label>客户搜索词</label><input id="alRankKeyword" placeholder="核心关键词"></div>'+
+ '<div class="al-field"><label>自然排名</label><input id="alRankNatural" type="number" min="1" step="1" placeholder="1为前位"></div>'+
+ '<div class="al-field"><label>广告排名（可选）</label><input id="alRankAd" type="number" min="1" step="1"></div>'+
+ '<div class="al-field"><label>数据来源</label><input id="alRankSource" value="手动检查 / SIF导出"></div></div>'+
+ btn('保存排名记录','saveRank','primary')+
+ '<div class="al-note">网站不能直接查询 SIF 实时排名，也无法保证每个用户看到的排名一致；应在同一站点、同一关键词、尽量一致的设备或查询环境下比较。</div></div>'+
+ '<div class="al-panel al-pad"><h2>批量导入排名 CSV / XLSX</h2><p class="al-muted">模板列：日期, ASIN, 关键词, 自然排名, 广告排名。支持导入统一格式数据；其他 SIF 导出格式需先映射列名。</p>'+
+ '<input type="file" id="alRankFile" accept=".csv,.tsv,.xlsx,.xls" style="font-size:11px;max-width:100%">'+
+ '<div class="al-actions" style="margin-top:15px">'+btn('批量导入','importRanks','primary')+' '+btn('下载标准模板','exportRanksTemplate','soft')+' '+btn('导出排名历史','exportRanks','soft')+'</div>'+
+ '<div class="al-preview" style="margin-top:22px"><div><small>历史记录</small><b>'+dataUser().ranks.length+'</b></div><div><small>跟踪关键词</small><b>'+list.length+'</b></div></div>'+
+ '<p class="al-muted">最多保留最近2500条排名快照。位置变化只是观测，不应直接归因于某一次广告调整。</p></div></section>'+
+ '<section class="al-panel al-pad"><h2>关键词最近自然排名走势</h2>'+
+ (list.length?'<div class="al-tablewrap"><table class="al-table"><thead><tr><th>ASIN</th><th>关键词</th><th>日期</th><th>当前自然位</th><th>上次自然位</th><th>位置变化</th><th>广告位</th><th>记录数</th></tr></thead><tbody>'+
+ list.map(function(x){return '<tr><td>'+esc(x.asin)+'</td><td class="al-key"><b>'+esc(x.keyword)+'</b></td><td>'+esc(x.date)+'</td><td>'+f(x.natural,0)+'</td><td>'+f(x.previous,0)+'</td>'+
+ '<td>'+((x.delta===null)?'—':(x.delta>0?'↑ 提升 '+x.delta:x.delta<0?'↓ 下降 '+Math.abs(x.delta):'不变'))+'</td><td>'+f(x.ad,0)+'</td><td>'+x.observations+'</td></tr>'}).join('')+'</tbody></table></div>':empty('添加一条关键词排名记录后，将在这里比较最新两次排名。'))+'</section>';
+}
+async function importRanks(){
+ var input=document.getElementById('alRankFile'),file=input&&input.files[0];
+ if(!file){notify('请先选择排名CSV或XLSX文件',true);return}
+ try{
+  var grid;
+  if(window.XLSX){var wb=window.XLSX.read(await file.arrayBuffer(),{type:'array'});grid=window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false})}
+  else{
+   if(!/\.csv$/i.test(file.name))throw Error('Excel解析组件尚未加载，先用CSV');
+   var text=await file.text();grid=text.split(/\r?\n/).map(function(x){return x.split(',').map(function(v){return v.trim().replace(/^"|"$/g,'')})});
+  }
+  var hdr=(grid[0]||[]).map(function(x){return String(x).replace(/\s/g,'').toLowerCase()});
+  function idx(alts){return hdr.findIndex(function(h){return alts.some(function(s){return h===s.toLowerCase()})})}
+  var ix={date:idx(['日期','date']),asin:idx(['asin','商品asin']),keyword:idx(['关键词','搜索词','keyword','客户搜索词']),natural:idx(['自然排名','自然位','organicrank','naturalrank']),ad:idx(['广告排名','广告位','广告位置','adrank'])};
+  if(ix.date<0||ix.asin<0||ix.keyword<0||ix.natural<0)throw Error('缺少日期、ASIN、关键词或自然排名列，请使用标准模板');
+  var count=0;
+  grid.slice(1,2502).forEach(function(row){if(rankRecord({date:E.date(row[ix.date]),asin:row[ix.asin],keyword:row[ix.keyword],natural:row[ix.natural],ad:ix.ad<0?'':row[ix.ad],source:file.name}))count++});
+  dirty();notify('已导入 '+count+' 条有效排名记录。');
+ }catch(e){notify('排名导入失败：'+e.message,true)}
+}
 function connect(){
  return '<div class="al-grid two"><section class="al-panel al-pad"><h2>数据连接与同步状态</h2>'+
  '<div class="al-connect"><strong>本地 SP/SB 报表解析</strong>'+chip('已支持','ok')+'<p>支持 CSV / Excel 原始报告。本地 IndexedDB 保存，不上传原始广告报表。</p></div>'+
@@ -245,7 +345,7 @@ function connect(){
 }
 function render(ctx){init(ctx);return '<div class="ads-lab">'+head()+(state.loading?'<div class="al-panel al-pad">正在读取本机广告数据…</div>':
  state.tab==='overview'?overview():state.tab==='import'?importer():state.tab==='terms'?analysis('terms'):state.tab==='placements'?analysis('placements'):
- state.tab==='campaigns'?analysis('campaigns'):state.tab==='products'?products():state.tab==='actions'?actions():state.tab==='practice'?practice():connect())+'</div>'}
+ state.tab==='campaigns'?analysis('campaigns'):state.tab==='products'?products():state.tab==='actions'?actions():state.tab==='practice'?practice():state.tab==='overlap'?overlap():state.tab==='ranks'?ranks():connect())+'</div>'}
 function refresh(){if(context)context.refresh()}
 function selectedGroup(by,idx){var groups=groupData(by),q=state.q.toLowerCase();if(q)groups=groups.filter(function(g){return g.key.toLowerCase().includes(q)});return groups.slice(0,200)[idx]}
 function addAction(a){dataUser().actions.push(a);dirty();notify('已加入优化行动；记得安排复查日期。')}
@@ -293,6 +393,22 @@ function handleAction(z){
  if(type==='useProduct'){state.asin=asin;state.tab='overview';refresh();return}
  if(type==='deleteProduct'){if(!confirmAction('删除该商品的费用模型？已关联的原始报告不会被删除。'))return;dataUser().products=dataUser().products.filter(function(p){return p.asin!==asin});if(state.asin===asin)state.asin='all';dirty();return}
  if(type==='deleteAction'){if(!confirmAction('确认删除这条优化行动记录？'))return;dataUser().actions=dataUser().actions.filter(function(a){return a.id!==id});dirty();return}
+ if(type==='saveRevenue'){
+ var r=dataUser().revenue;
+ if(!(num(r.amount)>0)){notify('营业额必须大于0',true);return}
+ if(!r.from||!r.to||r.from>r.to){notify('请选择正确的营业额日期范围',true);return}
+ dirty();notify('已保存营业额；请核对广告报告筛选日期与币种。');return;
+ }
+ if(type==='saveRank'){
+ var r={asin:document.getElementById('alRankAsin')?.value,date:document.getElementById('alRankDate')?.value,
+  keyword:document.getElementById('alRankKeyword')?.value,natural:document.getElementById('alRankNatural')?.value,
+  ad:document.getElementById('alRankAd')?.value,source:document.getElementById('alRankSource')?.value};
+ if(!rankRecord(r)){notify('排名记录不完整：请填写10位ASIN、关键词、日期和有效排名',true);return}
+ dirty();notify('排名记录已保存');return;
+ }
+ if(type==='importRanks'){void importRanks();return}
+ if(type==='exportRanksTemplate'){download('AmazonAds_自然排名导入模板.csv','\ufeff日期,ASIN,关键词,自然排名,广告排名\r\n','','text/csv;charset=utf-8');return}
+ if(type==='exportRanks'){csv(dataUser().ranks,[['date','日期'],['asin','ASIN'],['keyword','关键词'],['natural','自然排名'],['ad','广告排名'],['source','数据来源'],['note','备注']]);return}
  if(type==='manualAction'){addAction({id:'act_'+Date.now(),label:'自定义优化任务',kind:'手动创建',created:stamp(),evidence:'填写需要验证的假设与依据',status:'待验证',recheck:'',notes:''});return}
  if(type==='showAnswer'){state.practiceReveal=true;refresh();return}
  if(type==='nextPractice'){state.practiceIndex++;state.practiceReveal=false;refresh();return}
@@ -360,6 +476,7 @@ document.addEventListener('change',function(e){
   refresh();return;
  }
  if(z.hasAttribute('data-al-target')){dataUser().targets[z.getAttribute('data-al-target')]=z.value;dirty();return}
+ if(z.hasAttribute('data-al-revenue')){dataUser().revenue[z.getAttribute('data-al-revenue')]=z.value;context.save();return}
  if(z.hasAttribute('data-al-action-field')){
   var field=z.getAttribute('data-al-action-field'),a=dataUser().actions.find(function(a){return a.id===z.dataset.id});
   if(a){a[field]=z.value;context.save();}return;
