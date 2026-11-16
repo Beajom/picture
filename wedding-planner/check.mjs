@@ -74,6 +74,27 @@ assert.ok(vm.runInContext("renderExpenseCategoryChart()",chartContext).includes(
 assert.equal(vm.runInContext("expenseCategoryStats(state.expenses).total",chartContext),9379);
 console.log("婚礼花费分类环形图、分类金额、定金口径及榜单位置检查通过");
 
+
+// Refined wedding hero: engagement has a separate title/date, no old pill or edit controls.
+assert.ok(html.includes('class="hero-anniversary"'),"keepsake information block");
+assert.ok(html.includes('id="heroEngagementCount"'),"engagement countdown title");
+assert.ok(html.includes('id="heroEngagementDate"'),"separate engagement date");
+assert.ok(!html.includes('class="hero-moment engagement"'),"old cramped engagement pill removed");
+assert.ok(!html.includes('data-action="go-dates"'),"home hero remains button-free");
+const mainCode=html.match(/<script>([\s\S]*?)<\/script>/)?.[1]||"";
+assert.ok(mainCode.includes("engagementDays>0?"),"future engagement message exists");
+assert.ok(mainCode.includes("engagementDays===0?"),"today engagement message exists");
+assert.ok(mainCode.includes("已订婚 "), "past engagement message exists");
+assert.ok(html.includes('id="startupSplash"'),"startup overlay exists");
+assert.ok(html.includes('class="startup-emblem"'),"wedding opening emblem exists");
+assert.ok(html.includes('prefers-reduced-motion:reduce'),"reduced-motion preference honored");
+const splashScript=html.match(/<script id="weddingStartupBootstrap">([\s\S]*?)<\/script>/)?.[1];
+assert.ok(splashScript,"startup bootstrap script exists");
+new vm.Script(splashScript,{filename:"wedding-planner/startup"});
+assert.ok(splashScript.includes("setTimeout(release,4000)"),"offline fallback avoids indefinite splash");
+assert.ok(shared.includes("finally{window.WeddingSplash?.done?.()}"),"cloud boot releases splash after initial sync");
+console.log("订婚纪念卡片、启动动画、初始化云端等待及超时回退检查通过");
+
 console.log("最终版 UI、订婚日期和跨设备设置同步静态检查通过");
 
 console.log("新增：智能分类、默认已付款、历史记录一键付清及华为划词兼容检查通过");
