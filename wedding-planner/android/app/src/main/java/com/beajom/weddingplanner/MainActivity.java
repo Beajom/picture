@@ -101,12 +101,13 @@ public class MainActivity extends Activity {
 
   private class BackupBridge {
     @JavascriptInterface public void save(String name,String mime,String base64) {
-      if(web==null||web.getUrl()==null||!web.getUrl().startsWith("https://beajom.github.io/picture/wedding-planner/"))return;
+      if(web==null)return;
       if(base64==null||base64.length()>14000000)return;
       try {
         byte[] data=Base64.decode(base64,Base64.DEFAULT);
         if(data.length>10000000)return;
         runOnUiThread(()->{
+          if(web==null||web.getUrl()==null||!web.getUrl().startsWith("https://beajom.github.io/picture/wedding-planner/"))return;
           backupBytes=data;
           Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
           intent.addCategory(Intent.CATEGORY_OPENABLE);
