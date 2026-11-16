@@ -1,0 +1,12 @@
+<resources>
+  <color name="wedding_cream">#F9F0E9</color>
+  <color name="wedding_rose">#C7958B</color>
+  <style name="Theme.WeddingPlanner" parent="android:style/Theme.Material.Light.NoActionBar">
+    <item name="android:statusBarColor">@color/wedding_cream</item>
+    <item name="android:navigationBarColor">@color/wedding_cream</item>
+    <item name="android:windowLightStatusBar">true</item>
+    <item name="android:windowLightNavigationBar">true</item>
+    <item name="android:windowBackground">@color/wedding_cream</item>
+    <item name="android:colorAccent">@color/wedding_rose</item>
+  </style>
+</resources>
