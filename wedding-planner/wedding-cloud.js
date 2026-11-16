@@ -33,9 +33,9 @@ function updateHomeShareStatus(){
   desc.textContent=(spaces.find(function(v){return v.id===c.spaceId})?.title||"我们的婚礼")+" · "+(info?.itemCount??0)+" 条云端记录";
   btn.textContent="共享设置 ›";
  }else{
-  label.textContent="家庭共享 · 尚未连接";
-  desc.textContent=session?"请选择一个共享婚礼空间":"登录后可与对象、家人实时同步";
-  btn.textContent="进入共享 ›";
+  label.textContent=session?"家庭共享 · 尚未进入婚礼":"未连接云端 · 电脑手机不会同步";
+  desc.textContent=session?"请选择和手机相同的婚礼空间":"当前只显示本机数据，请使用和手机相同的账号登录";
+  btn.textContent=session?"选择共享婚礼 ›":"立即登录并同步 ›";
  }
 }
 function draw(){
@@ -48,7 +48,7 @@ root.innerHTML='<div class="cloud-card"><h3>家庭共享 · '+(authMode==="login
 if(!c.active){
 var link=new URLSearchParams(location.search).get("invite")||"";
 var current=mine.length?'<div class="cloud-card"><h3>已有共享婚礼</h3><p>如果出现多个同名空间，请选择已保存记录的版本。切换不会删除另一份数据。</p>'+mine.map(function(m){return '<button class="btn secondary full" data-open-space="'+esc(m.space_id)+'">'+esc(spaceTitle(m))+' · '+label(m.role)+'</button>'}).join("")+'</div>':"";
-root.innerHTML='<div class="cloud-card"><span class="cloud-chip">已登录 '+esc(session.user.email||"账号")+'</span> <button class="btn secondary small" data-cloud="logout">退出</button></div>'+current+'<div class="cloud-card"><h3>创建我们的婚礼</h3><form id="cloudCreate" class="cloud-stack"><input class="cloud-in" name="title" placeholder="婚礼名称" maxlength="80" required><input class="cloud-in" name="nickname" placeholder="我在家庭中的称呼" maxlength="60" required><button class="btn full" type="submit">创建共享婚礼</button></form></div><div class="cloud-card"><h3>凭邀请码加入</h3><form id="cloudJoin" class="cloud-stack"><input class="cloud-in" name="invite" placeholder="粘贴邀请码或邀请链接" value="'+esc(link)+'" required><input class="cloud-in" name="nickname" placeholder="我的称呼" maxlength="60" required><button class="btn secondary full" type="submit">加入婚礼</button></form></div>'+status;bindForms();return
+root.innerHTML='<div class="cloud-card"><span class="cloud-chip">已登录 '+esc(session.user.email||"账号")+'</span> <button class="btn secondary small" data-cloud="logout">退出</button><p>注意：电脑和手机需要使用同一个账号登录，进入同一婚礼空间才能共享数据。</p></div>'+current+'<div class="cloud-card"><h3>创建我们的婚礼</h3><form id="cloudCreate" class="cloud-stack"><input class="cloud-in" name="title" placeholder="婚礼名称" maxlength="80" required><input class="cloud-in" name="nickname" placeholder="我在家庭中的称呼" maxlength="60" required><button class="btn full" type="submit">创建共享婚礼</button></form></div><div class="cloud-card"><h3>凭邀请码加入</h3><form id="cloudJoin" class="cloud-stack"><input class="cloud-in" name="invite" placeholder="粘贴邀请码或邀请链接" value="'+esc(link)+'" required><input class="cloud-in" name="nickname" placeholder="我的称呼" maxlength="60" required><button class="btn secondary full" type="submit">加入婚礼</button></form></div>'+status;bindForms();return
 }
 var admin=c.role==="admin",old=app.getLegacy(),count=old.expenses.length+old.tasks.length+old.guests.length,actualCount=actualLocalCount(old);
 var currentSpace=mine.find(function(m){return m.space_id===c.spaceId});
@@ -155,8 +155,14 @@ async function bootSession(){
 var a=await db.auth.getSession();if(a.error)throw a.error;session=a.data.session||null;
 if(!session){c.active=false;c.spaceId=null;c.role=null;c.members=[];base=null;pending=null;app.replace(app.getLegacy());roleUI();draw();return}
 await memberships();
+var requested=new URLSearchParams(location.search).get("space");
 var remembered=localStorage.getItem("wedding-current-space-v2");
-var m=mine.find(function(x){return x.space_id===remembered})||mine[0];
+var m=mine.find(function(x){return x.space_id===requested})||mine.find(function(x){return x.space_id===remembered})||mine[0];
+var mostComplete=mine.find(function(x){return x.itemCount>0||x.hasSettings});
+if(!requested&&m&&(m.itemCount||0)===0&&!m.hasSettings&&mostComplete){
+ m=mostComplete;
+ notice="已自动切换到有记录的婚礼空间，避免误打开同名空白空间。";
+}
 if(m)await openSpace(m.space_id);else draw()
 }
 root.addEventListener("click",async function(e){
