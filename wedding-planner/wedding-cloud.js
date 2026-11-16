@@ -27,6 +27,35 @@ function authErrorMessage(e,mode){
 }
 function tip(s){notice=s;app.toast(s);draw()}
 function getCacheKey(){return "wedding-cloud-v2:"+c.spaceId}
+const INVITE_KEY="wedding-pending-invite-v2";
+function extractInviteToken(raw){
+ const input=String(raw||"").trim();
+ if(/^[0-9a-f]{32}$/i.test(input))return input.toLowerCase();
+ let decoded=input;try{decoded=decodeURIComponent(input)}catch(e){}
+ const matched=decoded.match(/[?&]invite=([0-9a-f]{32})(?:[&#\s"'，。]|$)/i);
+ if(matched)return matched[1].toLowerCase();
+ if(/^https?:\/\//i.test(decoded)){
+  try{const token=new URL(decoded).searchParams.get("invite")||"";
+    if(/^[0-9a-f]{32}$/i.test(token))return token.toLowerCase();
+  }catch(e){}
+ }
+ return "";
+}
+function getPendingInvite(){
+ try{const record=JSON.parse(localStorage.getItem(INVITE_KEY)||"null");
+  if(record?.token&&Date.now()-record.savedAt<7*86400000&&/^[0-9a-f]{32}$/i.test(record.token))return record.token;
+  localStorage.removeItem(INVITE_KEY);
+ }catch(e){}
+ return "";
+}
+function setPendingInvite(token){
+ if(!/^[0-9a-f]{32}$/i.test(token))return;
+ try{localStorage.setItem(INVITE_KEY,JSON.stringify({token:token.toLowerCase(),savedAt:Date.now()}))}catch(e){}
+}
+function clearPendingInvite(){try{localStorage.removeItem(INVITE_KEY)}catch(e){}}
+const incomingInvite=extractInviteToken(new URLSearchParams(location.search).get("invite")||"");
+if(incomingInvite)setPendingInvite(incomingInvite);
+
 function actualLocalCount(s){
   return (s.expenses||[]).length+(s.guests||[]).length+
     (s.tasks||[]).filter(function(t){return !t.template||t.completed||t.date||t.notes}).length+
@@ -59,9 +88,9 @@ if(!session){
 root.innerHTML='<div class="cloud-card"><h3>家庭共享账号</h3><p>锦莉首次使用，请先点击<strong>「注册新账号」</strong>；已经注册过才选择「登录已有账号」。每人使用自己的邮箱，不要共用密码。</p><div class="cloud-actions" style="margin-bottom:14px"><button class="btn '+(authMode==="signup"?"":"secondary")+'" type="button" data-cloud="choose-signup">① 注册新账号</button><button class="btn '+(authMode==="login"?"":"secondary")+'" type="button" data-cloud="choose-login">② 登录已有账号</button></div><form id="cloudAuth" class="cloud-stack"><label style="font-size:13px">邮箱地址</label><input class="cloud-in" name="email" type="email" placeholder="输入自己可以收邮件的邮箱" autocomplete="email" required><label style="font-size:13px">设置密码（至少8位）</label><input class="cloud-in" name="password" type="password" minlength="8" autocomplete="'+(authMode==="login"?"current-password":"new-password")+'" placeholder="至少8位，请自己保存" required><button class="btn full" type="submit">'+(authMode==="login"?"登录已有账号":"确认注册新账号")+'</button></form><p>'+(authMode==="signup"?"注册后若提示确认邮件，请到邮箱完成验证，再使用「登录已有账号」。":"如果还没有注册过，直接点击上面的「注册新账号」，不要用未注册邮箱尝试登录。")+'</p>'+status+'</div>';bindForms();return
 }
 if(!c.active){
-var link=new URLSearchParams(location.search).get("invite")||"";
+var link=getPendingInvite();
 var current=mine.length?'<div class="cloud-card"><h3>已有共享婚礼</h3><p>如果出现多个同名空间，请选择已保存记录的版本。切换不会删除另一份数据。</p>'+mine.map(function(m){return '<button class="btn secondary full" data-open-space="'+esc(m.space_id)+'">'+esc(spaceTitle(m))+' · '+label(m.role)+'</button>'}).join("")+'</div>':"";
-root.innerHTML='<div class="cloud-card"><span class="cloud-chip">已登录 '+esc(session.user.email||"账号")+'</span> <button class="btn secondary small" data-cloud="logout">退出</button><p>注意：电脑和手机需要使用同一个账号登录，进入同一婚礼空间才能共享数据。</p></div>'+current+'<div class="cloud-card"><h3>创建我们的婚礼</h3><form id="cloudCreate" class="cloud-stack"><input class="cloud-in" name="title" placeholder="婚礼名称" maxlength="80" required><input class="cloud-in" name="nickname" placeholder="我在家庭中的称呼" maxlength="60" required><button class="btn full" type="submit">创建共享婚礼</button></form></div><div class="cloud-card"><h3>凭邀请码加入</h3><form id="cloudJoin" class="cloud-stack"><input class="cloud-in" name="invite" placeholder="粘贴邀请码或邀请链接" value="'+esc(link)+'" required><input class="cloud-in" name="nickname" placeholder="我的称呼" maxlength="60" required><button class="btn secondary full" type="submit">加入婚礼</button></form></div>'+status;bindForms();return
+root.innerHTML='<div class="cloud-card"><span class="cloud-chip">已登录 '+esc(session.user.email||"账号")+'</span> <button class="btn secondary small" data-cloud="logout">退出</button><p>注意：电脑和手机需要使用同一个账号登录，进入同一婚礼空间才能共享数据。</p></div>'+current+'<div class="cloud-card"><h3>创建我们的婚礼</h3><form id="cloudCreate" class="cloud-stack"><input class="cloud-in" name="title" placeholder="婚礼名称" maxlength="80" required><input class="cloud-in" name="nickname" placeholder="我在家庭中的称呼" maxlength="60" required><button class="btn full" type="submit">创建共享婚礼</button></form></div><div class="cloud-card"><h3>加入现有婚礼</h3><p>锦莉请使用崇飞在<strong>有40条记录的婚礼空间</strong>中点击「邀请对象」生成的完整邀请链接。普通 APP 网址或注册链接不是邀请码。</p>'+(link?'<p style="color:#517f67"><strong>✓ 已识别邀请代码，直接填写称呼即可加入。</strong></p>':'<p class="cloud-error"><strong>尚未识别到有效邀请码。</strong> 请把崇飞发送的「邀请对象」完整链接粘贴到下方。</p>')+'<form id="cloudJoin" class="cloud-stack"><input class="cloud-in" name="invite" placeholder="粘贴完整邀请链接或32位邀请码" value="'+esc(link)+'" required><input class="cloud-in" name="nickname" placeholder="我的称呼，例如：锦莉（新娘）" maxlength="60" required><button class="btn secondary full" type="submit">加入崇飞的婚礼</button></form></div>'+status;bindForms();return
 }
 var admin=c.role==="admin",old=app.getLegacy(),count=old.expenses.length+old.tasks.length+old.guests.length,actualCount=actualLocalCount(old);
 var currentSpace=mine.find(function(m){return m.space_id===c.spaceId});
@@ -86,7 +115,32 @@ var a=document.getElementById("cloudCreate");if(a)a.onsubmit=async function(e){
   await memberships();await openSpace(r.data);tip("婚礼共享空间已创建");
  }catch(x){tip("创建失败："+err(x))}finally{btn.disabled=false}
 };
-var b=document.getElementById("cloudJoin");if(b)b.onsubmit=async function(e){e.preventDefault();var invite=b.elements.invite.value.trim();try{if(invite.includes("invite="))invite=new URL(invite).searchParams.get("invite")||invite;var r=await db.rpc("wedding_join_space",{p_token:invite,p_name:b.elements.nickname.value.trim()});if(r.error)throw r.error;history.replaceState(null,"",location.pathname);await memberships();await openSpace(r.data);tip("成功加入家庭共享")}catch(x){tip("加入失败："+err(x))}}
+var b=document.getElementById("cloudJoin");if(b)b.onsubmit=async function(e){
+ e.preventDefault();
+ const token=extractInviteToken(b.elements.invite.value);
+ if(!token){tip("没有识别到邀请代码。请让崇飞在有40条记录的婚礼中进入「我的 → 邀请对象」，把完整的邀请链接发给锦莉。普通 APP 网址无法加入。");return}
+ const name=b.elements.nickname.value.trim();
+ if(!name){tip("请填写你在家庭中的称呼");return}
+ const btn=b.querySelector('button[type="submit"]');
+ if(btn.disabled)return;
+ btn.disabled=true;setPendingInvite(token);
+ try{
+  const response=await db.rpc("wedding_join_space",{p_token:token,p_name:name});
+  if(response.error)throw response.error;
+  clearPendingInvite();
+  history.replaceState(null,"",location.pathname);
+  await memberships();await openSpace(response.data);
+  tip("成功加入！现在和崇飞共享同一份婚礼数据。");
+ }catch(x){
+  const msg=String(x?.message||"");
+  if(/invalid or expired invitation/i.test(msg)){
+   clearPendingInvite();
+   tip("邀请码未匹配成功。请崇飞在有40条记录的婚礼里重新点击「邀请对象」生成新链接，再复制完整链接发给锦莉。");
+  }else if(/login required|jwt/i.test(msg)){
+   tip("请先用锦莉自己的账号登录，再重新打开邀请链接。");
+  }else{tip("加入失败："+err(x))}
+ }finally{btn.disabled=false}
+}
 }
 function roleUI(){
 var family=c.active&&c.role==="family";
