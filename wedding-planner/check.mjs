@@ -6,7 +6,7 @@ const shared=fs.readFileSync("wedding-planner/wedding-cloud.js","utf8");
 assert.ok(html.includes('id="cloudPanel"'),"shared panel");
 assert.ok(html.includes("wedding-cloud.js"),"cloud script load");
 assert.ok(html.includes("window.WeddingApp="),"app bridge");
-assert.ok(shared.includes("wedding_import_if_empty"),"safe import");
+assert.ok(shared.includes("wedding_merge_local_backup"),"safe import");
 assert.ok(shared.includes("onSave"),"sync hook");
 assert.ok(shared.includes("wedding_create_invite"),"invites");
 const inline=html.match(/<script>([\s\S]*?)<\/script>/);
@@ -33,5 +33,22 @@ assert.ok(html.includes("editing?'未付款':'已付款'"),"new expenses default
 assert.ok(html.includes("id=\"markExpensePaid\""),"existing expenses can be marked paid");
 assert.ok(!html.includes("商家 / 收款人"),"merchant/payee field removed");
 assert.ok(html.includes("-webkit-user-select:none"),"non-interactive text selection prevented");
+
+assert.ok(!html.includes('id="homeShareLabel"'),"cloud banner removed from home");
+assert.ok(html.includes('id="heroEngagement"'),"engagement is displayed on home");
+assert.ok(html.includes('id="settingEngagementDate"'),"engagement date input in My");
+assert.ok(html.includes('id="cloudAdvancedPanel"'),"cloud advanced pane exists in My");
+assert.ok(html.includes('id="dataAdvanced"'),"advanced data controls are collapsed");
+assert.ok(shared.includes('advancedRoot.innerHTML=switcher+migration'),"cloud advanced tools relocated");
+assert.ok(shared.includes('engagementDate:""'),"cloud settings include engagement date");
+const dateUtility=html.match(/const daysUntilDate=d=>\{[\s\S]*?\n\};/);
+assert.ok(dateUtility,"date calculation utility exists");
+ctx.today=()=>"2026-11-16";
+vm.runInContext(dateUtility[0],ctx);
+for(const [d,want] of [["2027-02-21",97],["2026-11-16",0],["2026-11-15",-1],["2026-11-17",1],["2026-02-30",null],["",null]]){
+ assert.equal(vm.runInContext("daysUntilDate("+JSON.stringify(d)+")",ctx),want);
+}
+console.log("最终版 UI、订婚日期和跨设备设置同步静态检查通过");
+
 console.log("新增：智能分类、默认已付款、历史记录一键付清及华为划词兼容检查通过");
 console.log("婚礼管家语法、分次付款计算、共享按钮与迁移功能基本静态检查通过");
