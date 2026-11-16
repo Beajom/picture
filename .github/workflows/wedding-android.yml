@@ -33,7 +33,10 @@ jobs:
       - name: Use runner Android SDK
         run: |
           test -d "$ANDROID_HOME"
-          sdkmanager --version
+          SDK_BIN="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -x "$SDK_BIN"
+          echo "$(dirname "$SDK_BIN")" >> "$GITHUB_PATH"
+          "$SDK_BIN" --version
       - name: Install Android API 35
         run: |
           yes | sdkmanager --licenses >/dev/null || true
