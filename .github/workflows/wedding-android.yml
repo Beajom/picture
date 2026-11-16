@@ -6,6 +6,11 @@ on:
     paths:
       - "wedding-planner/android/**"
       - ".github/workflows/wedding-android.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "wedding-planner/android/**"
+      - ".github/workflows/wedding-android.yml"
   workflow_dispatch:
 
 permissions:
@@ -52,6 +57,7 @@ jobs:
           if-no-files-found: error
           retention-days: 90
       - name: Publish direct download via GitHub Release
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: wedding-planner-android-v1-preview
