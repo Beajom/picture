@@ -20,7 +20,7 @@ assert.equal(vm.runInContext("totalPaid()",ctx),900);
 assert.equal(vm.runInContext("totalDue()",ctx),1100);
 assert.equal(vm.runInContext("progress()",ctx),50);
 assert.equal(vm.runInContext("payStatus(state.expenses[0])",ctx),"partial");
-const cats=html.match(/const CAT_RULES=[\\s\\S]*?(?=const paid=e=>)/)?.[0];
+const cats=html.match(/const CAT_RULES=[\s\S]*?(?=const paid=e=>)/)?.[0];
 assert.ok(cats,"smart classifier exists");
 vm.runInContext(cats,ctx);
 const cases=[
