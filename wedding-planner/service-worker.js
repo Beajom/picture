@@ -23,7 +23,7 @@ self.addEventListener('fetch',event=>{
    const cache=await caches.open(CACHE);
    const cached=await cache.match('./index.html');
    const network=fetch(req).then(async response=>{
-    if(response.ok)await cache.put('./index.html',response.clone());
+    if(response.ok)await cache.put('./index.html',response.clone()).catch(()=>{});
     return response;
    }).catch(()=>null);
    if(cached){event.waitUntil(network);return cached}
