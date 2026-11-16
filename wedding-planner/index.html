@@ -33,9 +33,39 @@
 .settings-footer{text-align:center;margin:24px 0}
 .settings-main .settingrow input{color:#58453d;min-width:0}
 .cloud-advanced-panel:empty{display:none}.cloud-advanced-panel:not(:empty){padding:0 13px 10px}.cloud-advanced-panel .cloud-card{margin:8px 0}.cloud-advanced-panel+.advanced-content{border-top:1px solid #f1e7e1}
+
+/* Spend analytics: mobile-first donut + category comparison */
+.spend-head{margin-top:27px}
+.spend-panel{padding:20px 18px}
+.spend-overview{display:grid;grid-template-columns:minmax(165px,210px) minmax(0,1fr);gap:28px;align-items:center}
+.spend-donut-wrap{display:flex;align-items:center;justify-content:center}
+.spend-donut{width:min(100%,190px);aspect-ratio:1;border-radius:50%;background:var(--spend-fill,#eee6e0);display:flex;align-items:center;justify-content:center;position:relative}
+.spend-donut:before{content:"";position:absolute;inset:20%;border-radius:50%;background:#fff}
+.spend-donut-inner{z-index:1;text-align:center;display:flex;flex-direction:column;gap:5px;max-width:80%;padding:6px}
+.spend-donut-label{font-size:11px;color:#a79186}
+.spend-donut-number{font-size:clamp(15px,2.6vw,22px);color:#47372f;font-weight:750;overflow-wrap:anywhere;line-height:1.3}
+.spend-donut-caption{font-size:10px;color:#ae9b92}
+.spend-breakdown{display:flex;flex-direction:column;gap:11px;min-width:0}
+.spend-row{min-width:0}
+.spend-row-header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:13px;margin-bottom:6px}
+.spend-row-name{display:flex;align-items:baseline;gap:7px;min-width:0;white-space:nowrap}
+.spend-dot{display:inline-block;width:8px;height:8px;flex-shrink:0;border-radius:50%}
+.spend-row-title{overflow:hidden;text-overflow:ellipsis}
+.spend-row-amount{font-weight:700;white-space:nowrap}
+.spend-bar{height:7px;border-radius:999px;background:#f1ece8;overflow:hidden}
+.spend-bar>span{height:100%;border-radius:999px;display:block;min-width:0}
+.spend-row-sub{font-size:11px;color:#a3948a;text-align:right;margin-top:3px;font-variant-numeric:tabular-nums}
+.spend-note{font-size:11px;color:#a3948a;margin:16px 0 0;line-height:1.6;padding-top:12px;border-top:1px solid #f3ece7}
+.spend-empty{font-size:12px;color:#a6948b;text-align:center;margin:7px 0;line-height:1.65}
+@media(max-width:520px){
+ .spend-panel{padding:17px 14px}
+ .spend-overview{grid-template-columns:1fr;gap:20px}
+ .spend-donut{width:168px}
+ .spend-donut-number{font-size:19px}
+}
 </style></head><body><div class="app"><header class="top"><div class="brand">囍 · 婚礼管家<small>OUR WEDDING PLANNER</small></div></header>
 <section id="home" class="screen active"><div class="hero"><div class="sub">TOGETHER, FOREVER ♡</div><h1 id="heroCount">记录我们的幸福时刻</h1><div class="hero-moments"><div class="hero-moment" id="heroDate">婚礼日期待设置</div><div class="hero-moment engagement" id="heroEngagement" hidden></div></div></div><div class="section-head"><h2>婚礼预算一览</h2><span class="muted">实时统计 · 人民币</span></div><div id="homeStats" class="stats"></div><div class="panel block"><div class="progressrow"><strong>筹备完成进度</strong><span id="homeProgressText">0%</span></div><div class="bar"><i id="homeProgressBar"></i></div><div class="progressdetail"><span id="taskCompleted">0 项已完成</span><span id="taskRemaining">0 项待完成</span></div></div><div class="section-head"><h2>近期需要准备</h2><button class="link" data-action="go-tasks">查看全部 ›</button></div><div id="homeTasks" class="checks"></div><div class="section-head"><h2>最新花费</h2><button class="link" data-action="go-expenses">查看账本 ›</button></div><div id="homeExpenses" class="list"></div></section>
-<section id="expenses" class="screen"><div class="titleline"><h1>花费账本</h1><button class="btn small" data-action="add-expense">＋ 记一笔</button></div><div id="expensesSummary" class="summary-inline"></div><div class="section-head"><h2>分类统计</h2><span class="muted">以已付款金额统计</span></div><div id="categoryChart" class="panel"></div><div class="section-head"><h2>全部项目</h2><span id="expenseCount" class="count-bubble"></span></div><div class="filters"><input type="search" id="expenseSearch" placeholder="搜索费用项目" aria-label="搜索花费"/><select id="expenseFilter" aria-label="按分类筛选"><option value="">全部分类</option></select><select id="payStatusFilter" aria-label="按付款状态筛选"><option value="">全部状态</option><option value="unpaid">未付款</option><option value="partial">部分付款</option><option value="paid">已付清</option></select></div><div id="expenseList" class="list"></div></section>
+<section id="expenses" class="screen"><div class="titleline"><h1>花费账本</h1><button class="btn small" data-action="add-expense">＋ 记一笔</button></div><div id="expensesSummary" class="summary-inline"></div><div class="section-head"><h2>全部项目</h2><span id="expenseCount" class="count-bubble"></span></div><div class="filters"><input type="search" id="expenseSearch" placeholder="搜索费用项目" aria-label="搜索花费"/><select id="expenseFilter" aria-label="按分类筛选"><option value="">全部分类</option></select><select id="payStatusFilter" aria-label="按付款状态筛选"><option value="">全部状态</option><option value="unpaid">未付款</option><option value="partial">部分付款</option><option value="paid">已付清</option></select></div><div id="expenseList" class="list"></div><div class="section-head spend-head"><h2>费用分类分析</h2><span class="muted">按实际已付款统计</span></div><div id="categoryChart" class="panel spend-panel" aria-live="polite"></div></section>
 <section id="tasks" class="screen"><div class="titleline"><h1>筹备清单</h1><button class="btn small" data-action="add-task">＋ 添加事项</button></div><p class="section-hint">从确定婚期到婚礼当天，每件小事都有安排。</p><div class="panel"><div class="progressrow"><strong>已完成 <span id="taskRatio"></span></strong><span id="tasksProgressText">0%</span></div><div class="bar"><i id="tasksProgressBar"></i></div></div><div class="section-head"><h2>待办事项</h2><button class="link" data-action="reset-template">补充模板</button></div><div class="tabs" id="taskTabs"><button class="tab active" data-stage="all">全部</button><button class="tab" data-stage="todo">待完成</button><button class="tab" data-stage="done">已完成</button><button class="tab" data-stage="late">已逾期</button></div><div id="taskList" class="checks"></div></section>
 <section id="guests" class="screen"><div class="titleline"><h1>宾客与桌数</h1><button class="btn small" data-action="add-guest">＋ 添加宾客</button></div><div id="guestStats" class="stats"></div><div class="panel mt"><div class="settingrow"><div><label>每桌安排人数</label><div class="hint">用于估算宴席桌数</div></div><input id="seatsPerTable" type="number" min="1" max="30" step="1" value="10"/></div></div><div class="section-head"><h2>宾客名单</h2><span class="muted">按人数计算</span></div><div id="guestList" class="list"></div></section>
 <section id="settings" class="screen">
@@ -107,7 +137,48 @@ else{
  engagementNode.textContent=engagementDays>0?`距离订婚还有 ${engagementDays} 天 · ${fmtDate(engaged)}`:engagementDays===0?'今天订婚啦 ♡':`订婚已 ${-engagementDays} 天 · ${fmtDate(engaged)}`;
 }$('#homeStats').innerHTML=stat('婚礼总预算',state.settings.budget===null?'待设置':money(state.settings.budget),'计划总预算')+stat('已支付花费',money(totalPaid()),'已实际付出的金额','red')+stat('还需支付',money(totalDue()),'已知总价尚未支付')+stat('预算剩余',state.settings.budget===null?'待设置':money(num(state.settings.budget-totalPaid())),'总预算 − 已付款','green');$('#homeProgressText').textContent=progress()+'%';$('#homeProgressBar').style.width=progress()+'%';$('#taskCompleted').textContent=state.tasks.filter(t=>t.completed).length+' 项已完成';$('#taskRemaining').textContent=state.tasks.filter(t=>!t.completed).length+' 项待完成';let tasks=[...state.tasks].filter(t=>!t.completed).sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999')).slice(0,4);$('#homeTasks').innerHTML=tasks.length?tasks.map(taskHtml).join(''):noItems('没有待办事项','所有筹备事项都完成啦');let es=[...state.expenses].sort((a,b)=>(b.created||'').localeCompare(a.created||'')).slice(0,4);$('#homeExpenses').innerHTML=es.length?es.map(expenseHtml).join(''):noItems('还没有费用记录','点击下方「记一笔」开始记录');}
 const expenseHtml=e=>`<div class="item expense-tap" role="button" tabindex="0" data-action="view-expense" data-id="${esc(e.id)}" aria-label="查看或修改${esc(e.title)}，已支付${money(paid(e))}"><div class="glyph">${icon(e.category)}</div><div class="details"><strong>${esc(e.title)}</strong><small>${esc(e.category)} · <span class="pill ${payStatus(e)==='paid'?'green':payStatus(e)==='partial'?'orange':'gray'}">${statusLabel(e)}</span></small></div><div class="right"><strong>${money(paid(e))}</strong><small>${expenseTotal(e)===null?'总价待定':'总价 '+money(expenseTotal(e))}</small></div><span class="more" aria-hidden="true">›</span></div>`;
-function renderExpenses(){let b=state.settings.budget;$('#expensesSummary').innerHTML=`<div class="nums"><div><span class="legend">总预算</span><b>${b===null?'待设定':money(b)}</b></div><div><span class="legend">已付款</span><b style="color:#bc7573">${money(totalPaid())}</b></div><div><span class="legend">待付款</span><b>${money(totalDue())}</b></div></div><div class="tip">费用项目预算合计 ${money(totalPlan())} · 待付款仅统计已确认总价的项目</div>`;let data=categories().map(c=>({c,v:num(state.expenses.filter(e=>e.category===c).reduce((s,e)=>s+paid(e),0))})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);let top=Math.max(1,...data.map(x=>x.v));$('#categoryChart').innerHTML=data.length?data.map(x=>`<div class="chart-row"><div class="desc"><span>${icon(x.c)} ${esc(x.c)}</span><strong>${money(x.v)}</strong></div><div class="bar"><i style="width:${Math.round(x.v/top*100)}%"></i></div></div>`).join(''):noItems('暂无分类统计','记录付款后，这里会自动生成图表');let selected=$('#expenseFilter').value;$('#expenseFilter').innerHTML='<option value="">全部分类</option>'+categories().map(c=>`<option value="${esc(c)}" ${selected===c?'selected':''}>${esc(c)}</option>`).join('');let query=$('#expenseSearch').value.trim().toLowerCase(),cat=$('#expenseFilter').value,status=$('#payStatusFilter').value;let es=[...state.expenses].filter(e=>(!cat||e.category===cat)&&(!status||payStatus(e)===status)&&(!query||`${e.title} ${e.notes||''}`.toLowerCase().includes(query))).sort((a,b)=>(b.created||'').localeCompare(a.created||''));$('#expenseCount').textContent=`${es.length} 项`;$('#expenseList').innerHTML=es.length?es.map(expenseHtml).join(''):noItems('暂无符合的花费项目','点击「记一笔」开始添加');}
+const EXPENSE_CHART_COLORS=['#b98480','#d4a783','#7c9a8f','#a4a1bd','#bd929a','#c2b477','#8b9eb2','#ad8c70','#a4aa99','#c98d7f','#8e85a2','#b29c84','#789f99','#d0ac9d','#a88ab7','#9f9b91'];
+function spendCategoryColor(c){
+ const index=categories().indexOf(c);
+ if(index>=0)return EXPENSE_CHART_COLORS[index%EXPENSE_CHART_COLORS.length];
+ let hash=0;for(const ch of String(c||''))hash=(hash*31+ch.charCodeAt(0))|0;
+ return EXPENSE_CHART_COLORS[Math.abs(hash)%EXPENSE_CHART_COLORS.length];
+}
+function expenseCategoryStats(expenses){
+ const totals=new Map();
+ for(const e of expenses){
+  const v=Math.max(0,num(paid(e)));
+  if(v===0)continue;
+  const c=e.category||'其他';
+  totals.set(c,num((totals.get(c)||0)+v));
+ }
+ const groups=[...totals].map(([c,v])=>({c,v,color:spendCategoryColor(c)})).sort((a,b)=>b.v-a.v);
+ const total=num(groups.reduce((sum,item)=>sum+item.v,0));
+ return {groups,total};
+}
+function renderExpenseCategoryChart(){
+ const {groups,total}=expenseCategoryStats(state.expenses);
+ let angle=0;
+ const stops=[];
+ groups.forEach((item,i)=>{
+  const end=i===groups.length-1?360:angle+item.v/total*360;
+  stops.push(item.color+' '+angle.toFixed(3)+'deg '+end.toFixed(3)+'deg');
+  angle=end;
+ });
+ const fill=stops.length?'conic-gradient('+stops.join(',')+')':'#eee7e2';
+ const rows=groups.slice();
+ for(const c of ['婚宴酒席','婚纱摄影']){
+  if(!rows.some(item=>item.c===c))rows.push({c,v:0,color:spendCategoryColor(c)});
+ }
+ rows.sort((a,b)=>b.v-a.v||a.c.localeCompare(b.c,'zh-CN'));
+ const rowHtml=rows.map(item=>{
+  const pct=total?item.v/total*100:0;
+  const fillWidth=total?item.v/total*100:0;
+  return `<div class="spend-row"><div class="spend-row-header"><span class="spend-row-name"><i class="spend-dot" style="background:${item.color}"></i><span class="spend-row-title">${icon(item.c)} ${esc(item.c)}</span></span><strong class="spend-row-amount">${money(item.v)}</strong></div><div class="spend-bar"><span style="width:${fillWidth.toFixed(2)}%;background:${item.color}"></span></div><div class="spend-row-sub">占已付花费 ${pct.toFixed(1)}%</div></div>`;
+ }).join('');
+ return `<div class="spend-overview"><div class="spend-donut-wrap"><div class="spend-donut" role="img" aria-label="已付款总额 ${money(total)}，按费用分类显示占比" style="--spend-fill:${fill}"><div class="spend-donut-inner"><span class="spend-donut-label">实际已付款</span><strong class="spend-donut-number">${money(total)}</strong><span class="spend-donut-caption">${groups.length} 个有支出的分类</span></div></div></div><div class="spend-breakdown">${rowHtml||'<p class="spend-empty">添加费用付款后，自动显示分类金额</p>'}</div></div><p class="spend-note">只统计已支付金额，定金按实际已付部分计算；未付款不计入。所有类别合计，不受上方搜索和筛选影响。</p>`;
+}
+function renderExpenses(){let b=state.settings.budget;$('#expensesSummary').innerHTML=`<div class="nums"><div><span class="legend">总预算</span><b>${b===null?'待设定':money(b)}</b></div><div><span class="legend">已付款</span><b style="color:#bc7573">${money(totalPaid())}</b></div><div><span class="legend">待付款</span><b>${money(totalDue())}</b></div></div><div class="tip">费用项目预算合计 ${money(totalPlan())} · 待付款仅统计已确认总价的项目</div>`;$('#categoryChart').innerHTML=renderExpenseCategoryChart();let selected=$('#expenseFilter').value;$('#expenseFilter').innerHTML='<option value="">全部分类</option>'+categories().map(c=>`<option value="${esc(c)}" ${selected===c?'selected':''}>${esc(c)}</option>`).join('');let query=$('#expenseSearch').value.trim().toLowerCase(),cat=$('#expenseFilter').value,status=$('#payStatusFilter').value;let es=[...state.expenses].filter(e=>(!cat||e.category===cat)&&(!status||payStatus(e)===status)&&(!query||`${e.title} ${e.notes||''}`.toLowerCase().includes(query))).sort((a,b)=>(b.created||'').localeCompare(a.created||''));$('#expenseCount').textContent=`${es.length} 项`;$('#expenseList').innerHTML=es.length?es.map(expenseHtml).join(''):noItems('暂无符合的花费项目','点击「记一笔」开始添加');}
 const taskHtml=t=>`<div class="check-item ${t.completed?'done':''}"><input type="checkbox" data-task-check="${t.id}" ${t.completed?'checked':''}/><div class="details"><strong>${esc(t.title)}</strong><small>${esc(t.stage||'其他')} · ${esc(t.owner||'双方')}${t.date?' · '+fmt(t.date):''}${!t.completed&&t.date&&t.date<today()?' · ⚠ 已逾期':''}${t.priority==='high'?' · 重要':''}</small></div><button type="button" class="edit" title="编辑任务" data-action="edit-task" data-id="${t.id}">✎</button></div>`;
 function renderTasks(){let done=state.tasks.filter(t=>t.completed).length;$('#taskRatio').textContent=`${done} / ${state.tasks.length}`;$('#tasksProgressText').textContent=progress()+'%';$('#tasksProgressBar').style.width=progress()+'%';$$('#taskTabs button').forEach(b=>b.classList.toggle('active',b.dataset.stage===taskFilter));let ts=state.tasks.filter(t=>taskFilter==='all'||taskFilter==='todo'&&!t.completed||taskFilter==='done'&&t.completed||taskFilter==='late'&&!t.completed&&t.date&&t.date<today()).sort((a,b)=>a.completed-b.completed||(a.date||'9999').localeCompare(b.date||'9999')+(a.priority==='high'?-1:0));let grouped={};ts.forEach(t=>(grouped[t.stage||'其他']??=[]).push(t));$('#taskList').innerHTML=ts.length?Object.entries(grouped).sort(([a],[b])=>STAGES.indexOf(a)-STAGES.indexOf(b)).map(([k,v])=>`<div class="section-head"><h2>${esc(k)}</h2><span class="muted">${v.length}项</span></div>${v.map(taskHtml).join('')}`).join(''):noItems('没有符合条件的事项','点击「添加事项」新增婚礼筹备任务');}
 function renderGuests(){let numPeople=state.guests.reduce((s,g)=>s+Math.max(1,+g.count||1),0),confirmed=state.guests.filter(g=>g.confirmed).reduce((s,g)=>s+Math.max(1,+g.count||1),0),seats=Math.max(1,Number(state.settings.seats)||10);$('#guestStats').innerHTML=stat('登记人数',numPeople+' 人','含随行人数')+stat('确认出席',confirmed+' 人','已经确认出席')+stat('预计桌数',Math.ceil(numPeople/seats)+' 桌',`按每桌 ${seats} 人计算`)+stat('待确认',numPeople-confirmed+' 人','尚未确认出席');$('#seatsPerTable').value=seats;$('#guestList').innerHTML=state.guests.length?state.guests.map(g=>`<div class="item"><div class="glyph">👤</div><div class="details"><strong>${esc(g.name)}</strong><small>${esc(g.relation||'其他')} · ${g.count} 人 · <span class="pill ${g.confirmed?'green':'gray'}">${g.confirmed?'已确认':'待确认'}</span></small></div><button class="btn secondary small" data-action="edit-guest" data-id="${g.id}">编辑</button></div>`).join(''):noItems('尚未添加宾客','记录宾客与随行人数，自动估算桌数');}
