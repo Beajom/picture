@@ -18,6 +18,7 @@ function authErrorMessage(e,mode){
  if(code==="email_not_confirmed"||msg.includes("email not confirmed"))return "邮箱尚未验证，请打开注册邮件完成验证后再登录。";
  if(code==="user_already_exists"||code==="email_exists"||msg.includes("already registered"))return "这个邮箱可能已经注册，请切换「登录已有账号」。";
  if(code==="over_email_send_rate_limit"||msg.includes("email rate limit"))return "验证邮件发送过于频繁，请稍后再试，不要连续点击。";
+ if(code==="email_address_not_authorized"||msg.includes("email address not authorized"))return "此邮箱暂不允许接收云端验证邮件。管理员需要为婚礼管家配置自定义 SMTP 邮件发送服务，不能靠反复注册解决。";
  if(code==="weak_password"||msg.includes("password should be")||msg.includes("password is too weak"))return "密码强度不够，请更换一个至少8位且更复杂的密码。";
  if(code==="email_address_invalid"||msg.includes("invalid email"))return "邮箱格式有误，请检查地址和拼写。";
  if(code==="signup_disabled"||msg.includes("signups not allowed")||msg.includes("signups disabled"))return "云端暂未允许注册新账号，需要管理员检查认证设置。";
