@@ -22,9 +22,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Prepare Android source and launcher icon
         run: |
-          python3 -m pip install --user cairosvg
+          python3 -m pip install cairosvg
           bash wedding-android-app/build.sh
       - name: Build signed installable preview APK
         run: gradle -p wedding-android-app :app:assembleDebug --no-daemon --stacktrace
