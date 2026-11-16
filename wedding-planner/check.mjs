@@ -20,4 +20,18 @@ assert.equal(vm.runInContext("totalPaid()",ctx),900);
 assert.equal(vm.runInContext("totalDue()",ctx),1100);
 assert.equal(vm.runInContext("progress()",ctx),50);
 assert.equal(vm.runInContext("payStatus(state.expenses[0])",ctx),"partial");
+const cats=html.match(/const CAT_RULES=[\\s\\S]*?(?=const paid=e=>)/)?.[0];
+assert.ok(cats,"smart classifier exists");
+vm.runInContext(cats,ctx);
+const cases=[
+  ["结婚五金","彩礼及三金"],["结婚酒席","婚宴酒席"],
+  ["婚纱照","婚纱摄影"],["婚车费用","婚车交通"],
+  ["装修五金配件","婚房装修"],["普通未分类事项",null]
+];
+for(const [name,category] of cases)assert.equal(vm.runInContext("inferExpenseCategory("+JSON.stringify(name)+")",ctx),category);
+assert.ok(html.includes("editing?'未付款':'已付款'"),"new expenses default to paid");
+assert.ok(html.includes("id=\"markExpensePaid\""),"existing expenses can be marked paid");
+assert.ok(!html.includes("商家 / 收款人"),"merchant/payee field removed");
+assert.ok(html.includes("-webkit-user-select:none"),"non-interactive text selection prevented");
+console.log("新增：智能分类、默认已付款、历史记录一键付清及华为划词兼容检查通过");
 console.log("婚礼管家语法、分次付款计算、共享按钮与迁移功能基本静态检查通过");
