@@ -48,6 +48,32 @@ vm.runInContext(dateUtility[0],ctx);
 for(const [d,want] of [["2027-02-21",97],["2026-11-16",0],["2026-11-15",-1],["2026-11-17",1],["2026-02-30",null],["",null]]){
  assert.equal(vm.runInContext("daysUntilDate("+JSON.stringify(d)+")",ctx),want);
 }
+
+// Expenses chart regression: only actual payments count; banquet and photography always distinguishable.
+const chartLogic=html.match(/const EXPENSE_CHART_COLORS=[\s\S]*?(?=function renderExpenses\(\))/)?.[0];
+assert.ok(chartLogic,"expense spending visualization exists");
+assert.ok(html.includes('id="categoryChart"'),"expense chart widget exists");
+assert.ok(html.indexOf('id="categoryChart"')>html.indexOf('id="expenseList"'),"expense breakdown is below list");
+assert.ok(!html.includes('<h2>分类统计</h2>'),"old duplicate category section removed");
+const chartContext={
+ categories:()=>["婚宴酒席","婚纱摄影","其他"],
+ num:n=>Math.round(Number(n)*100)/100,
+ paid:e=>e.payments.reduce((sum,p)=>sum+p.amount,0),
+ money:n=>"¥"+Number(n).toFixed(2),
+ icon:()=>"",
+ esc:s=>String(s),
+ state:{expenses:[{category:"婚宴酒席",payments:[{amount:2000},{amount:1500}]},{category:"婚纱摄影",payments:[{amount:5999}]},{category:"婚宴酒席",payments:[]}]}
+};
+vm.createContext(chartContext);vm.runInContext(chartLogic,chartContext);
+assert.equal(vm.runInContext("expenseCategoryStats(state.expenses).total",chartContext),9499);
+assert.equal(vm.runInContext("expenseCategoryStats(state.expenses).groups.find(x=>x.c==='婚宴酒席').v",chartContext),3500);
+assert.equal(vm.runInContext("expenseCategoryStats(state.expenses).groups.find(x=>x.c==='婚纱摄影').v",chartContext),5999);
+assert.ok(vm.runInContext("renderExpenseCategoryChart()",chartContext).includes("conic-gradient"));
+chartContext.state.expenses=[{category:"婚纱摄影",payments:[{amount:9379}]},{category:"婚宴酒席",payments:[]}];
+assert.ok(vm.runInContext("renderExpenseCategoryChart()",chartContext).includes("¥0.00"),"unpaid banquet remains visible as zero");
+assert.equal(vm.runInContext("expenseCategoryStats(state.expenses).total",chartContext),9379);
+console.log("婚礼花费分类环形图、分类金额、定金口径及榜单位置检查通过");
+
 console.log("最终版 UI、订婚日期和跨设备设置同步静态检查通过");
 
 console.log("新增：智能分类、默认已付款、历史记录一键付清及华为划词兼容检查通过");
