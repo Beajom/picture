@@ -32,6 +32,7 @@
 .advanced-danger span{font-size:11px;color:#a88e84}
 .settings-footer{text-align:center;margin:24px 0}
 .settings-main .settingrow input{color:#58453d;min-width:0}
+.cloud-advanced-panel:empty{display:none}.cloud-advanced-panel:not(:empty){padding:0 13px 10px}.cloud-advanced-panel .cloud-card{margin:8px 0}.cloud-advanced-panel+.advanced-content{border-top:1px solid #f1e7e1}
 </style></head><body><div class="app"><header class="top"><div class="brand">囍 · 婚礼管家<small>OUR WEDDING PLANNER</small></div><button class="round-icon" id="quickSettings" title="设置">⚙</button></header>
 <section id="home" class="screen active"><div class="hero"><div class="sub">TOGETHER, FOREVER ♡</div><h1 id="heroCount">记录我们的幸福时刻</h1><div class="hero-moments"><div class="hero-moment" id="heroDate">婚礼日期待设置</div><div class="hero-moment engagement" id="heroEngagement" hidden></div></div><button data-action="go-dates">编辑婚礼 / 订婚日期 ›</button></div><div class="section-head"><h2>婚礼预算一览</h2><span class="muted">实时统计 · 人民币</span></div><div id="homeStats" class="stats"></div><div class="panel block"><div class="progressrow"><strong>筹备完成进度</strong><span id="homeProgressText">0%</span></div><div class="bar"><i id="homeProgressBar"></i></div><div class="progressdetail"><span id="taskCompleted">0 项已完成</span><span id="taskRemaining">0 项待完成</span></div></div><div class="section-head"><h2>近期需要准备</h2><button class="link" data-action="go-tasks">查看全部 ›</button></div><div id="homeTasks" class="checks"></div><div class="section-head"><h2>最新花费</h2><button class="link" data-action="go-expenses">查看账本 ›</button></div><div id="homeExpenses" class="list"></div></section>
 <section id="expenses" class="screen"><div class="titleline"><h1>花费账本</h1><button class="btn small" data-action="add-expense">＋ 记一笔</button></div><div id="expensesSummary" class="summary-inline"></div><div class="section-head"><h2>分类统计</h2><span class="muted">以已付款金额统计</span></div><div id="categoryChart" class="panel"></div><div class="section-head"><h2>全部项目</h2><span id="expenseCount" class="count-bubble"></span></div><div class="filters"><input type="search" id="expenseSearch" placeholder="搜索费用项目" aria-label="搜索花费"/><select id="expenseFilter" aria-label="按分类筛选"><option value="">全部分类</option></select><select id="payStatusFilter" aria-label="按付款状态筛选"><option value="">全部状态</option><option value="unpaid">未付款</option><option value="partial">部分付款</option><option value="paid">已付清</option></select></div><div id="expenseList" class="list"></div></section>
@@ -49,7 +50,8 @@
   <button class="btn full mt" id="saveSettings">保存重要日期与预算</button>
 </div>
 <details class="advanced-settings" id="dataAdvanced">
-  <summary>高级设置 <span>备份与数据管理</span></summary>
+  <summary>高级设置 <span>备份、空间与数据管理</span></summary>
+  <div id="cloudAdvancedPanel" class="cloud-advanced-panel"></div>
   <div class="panel advanced-content">
     <h3>数据备份</h3>
     <div class="notice">请定期导出备份；删除数据前先确认已保存备份文件。</div>
