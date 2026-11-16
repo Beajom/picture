@@ -1,4 +1,4 @@
-const CACHE='wedding-planner-v10-invite-code-20261116';
+const CACHE='wedding-planner-v11-final-ui-engagement-20261116';
 const ASSETS=['./','./index.html','./wedding-cloud.js','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
