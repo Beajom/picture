@@ -1,0 +1,48 @@
+name: 婚礼管家 APK 构建
+on:
+  push:
+    paths:
+      - 'wedding-android-app/**'
+      - '.github/workflows/wedding-android-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Android SDK 35
+        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Prepare Android source and launcher icon
+        run: |
+          python3 -m pip install --user cairosvg
+          bash wedding-android-app/build.sh
+      - name: Build signed installable preview APK
+        run: gradle -p wedding-android-app :app:assembleDebug --no-daemon --stacktrace
+      - name: Stage APK
+        run: cp wedding-android-app/app/build/outputs/apk/debug/app-debug.apk WeddingPlanner-v1-Preview.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WeddingPlanner-Android-APK
+          path: WeddingPlanner-v1-Preview.apk
+          retention-days: 30
+      - name: Publish preview APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: wedding-android-v1-preview
+          name: 婚礼管家 Android 安装包（预览版）
+          body: |
+            华为/荣耀安卓 APK，粉色爱心金色双环图标，无快应用蓝色角标。
+            此为调试签名预览版 APK，可以安装体验；后续稳定正式发布需固定发布签名密钥。
+            使用原来的婚礼管家邮箱密码登录，云端婚礼记录保留；安装前先导出旧 PWA 的本地 JSON 备份。
+          prerelease: true
+          files: WeddingPlanner-v1-Preview.apk
