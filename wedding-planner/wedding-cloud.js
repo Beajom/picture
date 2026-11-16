@@ -24,7 +24,22 @@ function spaceTitle(m){
   return (item?.title||"共享婚礼")+" · "+(m.itemCount||0)+" 条记录"+(m.hasSettings?"（已设置预算/日期）":"");
 }
 
+function updateHomeShareStatus(){
+ var label=document.getElementById("homeShareLabel"),desc=document.getElementById("homeShareDescription"),btn=document.getElementById("homeShareButton");
+ if(!label||!desc||!btn)return;
+ if(c.active){
+  var info=mine.find(function(m){return m.space_id===c.spaceId});
+  label.textContent="云端家庭共享 · 已连接";
+  desc.textContent=(spaces.find(function(v){return v.id===c.spaceId})?.title||"我们的婚礼")+" · "+(info?.itemCount??0)+" 条云端记录";
+  btn.textContent="共享设置 ›";
+ }else{
+  label.textContent="家庭共享 · 尚未连接";
+  desc.textContent=session?"请选择一个共享婚礼空间":"登录后可与对象、家人实时同步";
+  btn.textContent="进入共享 ›";
+ }
+}
 function draw(){
+ updateHomeShareStatus();
 if(!db){root.innerHTML='<div class="cloud-card"><h3>家庭共享服务暂不可用</h3><p>请检查网络并刷新；本机旧数据不会丢失。</p>'+esc(notice)+'</div>';return}
 var status=notice?'<p>'+esc(notice)+'</p>':"";
 if(!session){
