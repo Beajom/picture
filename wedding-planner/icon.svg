@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="囍 婚礼管家"><rect width="512" height="512" rx="108" fill="#c7958b"/><path d="M180 462H352V410H180ZM640 462H820V410H640ZM213 849V785H45V699H213V655H68V571H469V655H323V699H486V785H323V849ZM78 537V335H131L115 331C124 312 133 290 138 269H30V183H487V269H394L424 335H461V537ZM235 269C230 288 221 313 210 335H319C313 314 304 289 297 269ZM77 150V-90H182V-66H356V-89H466V150ZM182 12V77H356V12ZM673 849V785H510V699H673V655H528V571H937V655H784V699H957V785H784V849ZM537 537V335H586L572 332C581 313 589 290 595 269H503V183H970V269H863L892 335H929V537ZM692 269C687 288 678 314 667 335H787C781 313 772 289 765 269ZM532 150V-90H639V-66H823V-89H934V150ZM639 12V77H823V12Z" transform="translate(116 362) scale(.28 -.28)" fill="#fff9f5"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="粉色爱心与相扣金色婚戒 婚礼管家">
+<defs>
+ <linearGradient id="pink" x1="0" y1="0" x2="0.78" y2="1"><stop offset="0" stop-color="#f2a4c8"/><stop offset=".4" stop-color="#e773a0"/><stop offset=".75" stop-color="#de4385"/><stop offset="1" stop-color="#c51f65"/></linearGradient>
+ <radialGradient id="glow" cx=".35" cy=".08" r="1"><stop offset="0" stop-color="#fff" stop-opacity=".27"/><stop offset=".8" stop-color="#fff" stop-opacity="0"/></radialGradient>
+ <linearGradient id="gold" x1=".1" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#fff5b8"/><stop offset=".28" stop-color="#ffe582"/><stop offset=".62" stop-color="#fbd250"/><stop offset="1" stop-color="#fff0a0"/></linearGradient>
+ <linearGradient id="heart" x1=".2" y1="0" x2=".85" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff9fb"/></linearGradient>
+ <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<rect x="0" y="0" width="512" height="512" rx="111" fill="url(#pink)"/>
+<rect x="0" y="0" width="512" height="512" rx="111" fill="url(#glow)"/>
+<g opacity=".18" stroke="#8f1451" stroke-width="31" fill="none" filter="url(#shadow)" transform="translate(0 4)">
+ <circle cx="205" cy="290" r="101"/><circle cx="306" cy="290" r="101"/>
+</g>
+<g fill="none" stroke="url(#gold)" stroke-width="27"><circle cx="205" cy="290" r="101"/><circle cx="306" cy="290" r="101"/></g>
+<path d="M256 130 C222 77 143 88 143 153 C143 210 211 248 256 283 C301 248 369 210 369 153 C369 88 290 77 256 130Z" fill="url(#heart)"/>
+</svg>
