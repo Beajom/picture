@@ -30,8 +30,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Prepare Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Use runner Android SDK
+        run: |
+          test -d "$ANDROID_HOME"
+          sdkmanager --version
       - name: Install Android API 35
         run: |
           yes | sdkmanager --licenses >/dev/null || true
