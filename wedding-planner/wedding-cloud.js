@@ -220,6 +220,7 @@ try{
  if(!window.supabase?.createClient)throw Error("云端依赖加载失败，请检查浏览器网络连接");
  db=window.supabase.createClient(api,key,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
 db.auth.onAuthStateChange(function(evt){if(evt==="SIGNED_OUT"){session=null;c.active=false;app.replace(app.getLegacy());roleUI();draw()}});
+if(new URLSearchParams(location.search).has("invite")||new URLSearchParams(location.search).get("auth")==="signup")app.view("settings");
 await bootSession()
 }catch(e){notice=err(e);draw()}
 })();
