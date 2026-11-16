@@ -85,15 +85,13 @@ const mainCode=html.match(/<script>([\s\S]*?)<\/script>/)?.[1]||"";
 assert.ok(mainCode.includes("engagementDays>0?"),"future engagement message exists");
 assert.ok(mainCode.includes("engagementDays===0?"),"today engagement message exists");
 assert.ok(mainCode.includes("已订婚 "), "past engagement message exists");
-assert.ok(html.includes('id="startupSplash"'),"startup overlay exists");
-assert.ok(html.includes('class="startup-emblem"'),"wedding opening emblem exists");
-assert.ok(html.includes('prefers-reduced-motion:reduce'),"reduced-motion preference honored");
-const splashScript=html.match(/<script id="weddingStartupBootstrap">([\s\S]*?)<\/script>/)?.[1];
-assert.ok(splashScript,"startup bootstrap script exists");
-new vm.Script(splashScript,{filename:"wedding-planner/startup"});
-assert.ok(splashScript.includes("setTimeout(release,4000)"),"offline fallback avoids indefinite splash");
-assert.ok(shared.includes("finally{window.WeddingSplash?.done?.()}"),"cloud boot releases splash after initial sync");
-console.log("订婚纪念卡片、启动动画、初始化云端等待及超时回退检查通过");
+assert.ok(!html.includes('id="startupSplash"'),"no extra HTML splash screen");
+assert.ok(!html.includes('weddingStartupBootstrap'),"no startup script delaying navigation");
+assert.ok(!html.includes('startup-pending'),"main wedding page visible directly");
+assert.ok(!shared.includes('WeddingSplash'),"cloud login does not wait for splash");
+assert.ok(html.includes('id="heroCount"'),"wedding home visible at app start");
+console.log("移除双重启动页，保留首页倒计时、订婚纪念与云端登录检查通过");
+
 
 console.log("最终版 UI、订婚日期和跨设备设置同步静态检查通过");
 
