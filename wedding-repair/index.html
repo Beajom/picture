@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f9f0e9">
+<title>婚礼管家 · 安全更新修复</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#57423a;background:#fcf8f5}
+*{box-sizing:border-box}body{margin:0;padding:24px 18px;min-height:100dvh;display:grid;place-items:center}
+main{width:min(440px,100%);background:#fff;border:1px solid #efe3dd;border-radius:25px;padding:30px 24px;box-shadow:0 10px 30px #9c746313}
+.emblem{margin:0 auto 20px;width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,#e5a4b9,#da5d96);display:grid;place-items:center;color:white;font-size:32px}
+h1{font-size:22px;margin:0 0 12px;text-align:center}p{font-size:14px;color:#89766e;line-height:1.8;margin:0 0 17px}
+.info{background:#fcf7f4;border-radius:15px;padding:16px;margin-bottom:18px;color:#9a776f;font-size:13px;line-height:1.75}
+strong{color:#66463c}button{display:block;border:0;border-radius:14px;padding:15px 20px;font:600 16px inherit;font-size:16px;cursor:pointer;width:100%;background:#b98480;color:#fff}button:disabled{opacity:.5;cursor:progress}
+a{color:#b17b77}#status{margin-top:16px;min-height:28px;font-size:13px;line-height:1.6;text-align:center;color:#86706b;overflow-wrap:anywhere}
+.small{font-size:12px;color:#ab9890}ul{padding-left:20px}
+</style>
+</head><body><main>
+<div class="emblem" aria-hidden="true">♡</div>
+<h1>婚礼管家 · 安全更新</h1>
+<p>如果你的 APP 仍显示已经删除的「囍 · 婚礼管家」加载动画，说明旧网页缓存没有及时更新。这个入口可以<strong>只清理婚礼管家的网页缓存和旧后台服务</strong>，再打开最新版。</p>
+<div class="info">
+<strong>保留不变：</strong>本地记账数据、浏览器登录信息、Supabase 云端记录、婚礼日期。<br>
+<strong>会更新：</strong>旧版网页文件缓存和婚礼管家的 Service Worker。<br>
+<strong>不会执行：</strong>卸载 APP、清除浏览数据、清空 localStorage。
+</div>
+<button id="repair">安全刷新婚礼管家</button>
+<div id="status" role="status" aria-live="polite"></div>
+<p class="small">请使用安装旧版婚礼管家的<strong>同一个浏览器</strong>打开本页面。Chrome 和华为浏览器的缓存互不相通。如果仍有第一层纯图标过渡，那是系统画面，网页无法直接删掉。</p>
+</main>
+<script>
+(function(){
+ const button=document.getElementById('repair'),status=document.getElementById('status');
+ const path='/picture/wedding-planner/';
+ const current='20261116-no-web-splash-v19';
+ button.addEventListener('click',async function(){
+  if(button.disabled)return;
+  button.disabled=true;
+  status.textContent='正在安全刷新缓存，保留所有账目和登录信息…';
+  try{
+   let changed=0;
+   if('serviceWorker' in navigator){
+    const registrations=await navigator.serviceWorker.getRegistrations();
+    for(const reg of registrations){
+     const scope=new URL(reg.scope);
+     if(scope.origin===location.origin&&scope.pathname===path){
+      if(await reg.unregister())changed++;
+     }
+    }
+   }
+   if('caches' in window){
+    const names=await caches.keys();
+    for(const name of names){
+     if(name.startsWith('wedding-planner-')&&await caches.delete(name))changed++;
+    }
+   }
+   status.textContent='旧缓存已处理（'+changed+'项），正在打开最新婚礼管家…';
+   location.replace(path+'?refresh='+current+'&t='+Date.now());
+  }catch(error){
+   button.disabled=false;
+   status.textContent='更新遇到问题：'+(error&&error.message||String(error))+'。可以在Chrome浏览器中重试，但不要删除网站数据。';
+  }
+ });
+})();
+</script>
+</body></html>
