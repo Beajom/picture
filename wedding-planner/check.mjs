@@ -85,15 +85,12 @@ const mainCode=html.match(/<script>([\s\S]*?)<\/script>/)?.[1]||"";
 assert.ok(mainCode.includes("engagementDays>0?"),"future engagement message exists");
 assert.ok(mainCode.includes("engagementDays===0?"),"today engagement message exists");
 assert.ok(mainCode.includes("已订婚 "), "past engagement message exists");
-assert.ok(html.includes('id="startupSplash"'),"preferred Xi wedding loading page restored");
-assert.ok(html.includes('weddingStartupBootstrap'),"startup script handles transition");
-assert.ok(html.includes('startup-emblem'),"Xi brand symbol shown during cloud loading");
-assert.ok(shared.includes('finally{window.WeddingSplash?.done?.()}'),"cloud boot completes splash");
-assert.ok(html.includes('id="heroCount"'),"original wedding home retained");
-const splashScript=html.match(/<script id="weddingStartupBootstrap">([\s\S]*?)<\/script>/)?.[1];
-assert.ok(splashScript,"startup script present");new vm.Script(splashScript);
-assert.ok(splashScript.includes("setTimeout(release,4000)"),"startup cannot block indefinitely");
-console.log("保留用户指定的囍婚礼加载页，旧双环图标已由新安装清单替换");
+assert.ok(!html.includes('id="startupSplash"'),"no separate web loading screen");
+assert.ok(!html.includes('weddingStartupBootstrap'),"no artificial startup transition");
+assert.ok(!html.includes('startup-pending'),"no CSS hiding the home page");
+assert.ok(!shared.includes('WeddingSplash'),"cloud loading does not gate the home page");
+assert.ok(html.includes('id="heroCount"')&&html.includes('id="heroEngagement"'),"original home and wedding countdown are visible");
+console.log("婚礼管家立即显示首页、不等待网页加载动画检查通过");
 
 
 console.log("最终版 UI、订婚日期和跨设备设置同步静态检查通过");
