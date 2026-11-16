@@ -1,5 +1,5 @@
-const CACHE='wedding-planner-v15-direct-open-20261116';
-const ASSETS=['./','./index.html','./wedding-cloud.js','./manifest.webmanifest','./icon.svg'];
+const CACHE='wedding-planner-v16-xi-launch-20261116';
+const ASSETS=['./','./index.html','./wedding-cloud.js','./manifest.webmanifest','./icon.svg','./icon.svg?v=xi-20261116'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
