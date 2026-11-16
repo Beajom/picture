@@ -268,5 +268,6 @@ db.auth.onAuthStateChange(function(evt){if(evt==="SIGNED_OUT"){session=null;c.ac
 if(new URLSearchParams(location.search).has("invite")||new URLSearchParams(location.search).get("auth")==="signup")app.view("settings");
 await bootSession()
 }catch(e){notice=err(e);draw()}
+finally{window.WeddingSplash?.done?.()}
 })();
 })();
