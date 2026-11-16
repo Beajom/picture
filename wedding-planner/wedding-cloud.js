@@ -2,7 +2,7 @@
 (function(){
 "use strict";
 var app=window.WeddingApp,root=document.getElementById("cloudPanel");
-var db=null,session=null,spaces=[],mine=[],base=null,pending=null,busy=false,loading=false,channel=null,notice="",authMode="login";
+var db=null,session=null,spaces=[],mine=[],base=null,pending=null,busy=false,loading=false,channel=null,notice="",authMode=((new URLSearchParams(location.search).has("invite")||new URLSearchParams(location.search).get("auth")==="signup")?"signup":"login");
 var api="https://waiyncvhkzdaeitlmxdk.supabase.co";
 var key="sb_publishable_k4uukhu-jjAdOwm__C8BKA_vjHC0vuE";
 var c=window.WeddingCloud={active:false,role:null,spaceId:null,members:[],onSave:onSave,refresh:load};
@@ -12,6 +12,18 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(x){retur
 function copy(s){return JSON.parse(JSON.stringify(s))}
 function label(s){return s==="admin"?"管理员":"家人"}
 function err(e){return e&&e.message||String(e||"未知错误")}
+function authErrorMessage(e,mode){
+ const code=String(e?.code||"").toLowerCase(),msg=String(e?.message||"").toLowerCase();
+ if(code==="invalid_credentials"||msg.includes("invalid login credentials"))return "邮箱或密码不匹配。如果是第一次使用，请先点「注册新账号」，不是「登录已有账号」。";
+ if(code==="email_not_confirmed"||msg.includes("email not confirmed"))return "邮箱尚未验证，请打开注册邮件完成验证后再登录。";
+ if(code==="user_already_exists"||code==="email_exists"||msg.includes("already registered"))return "这个邮箱可能已经注册，请切换「登录已有账号」。";
+ if(code==="over_email_send_rate_limit"||msg.includes("email rate limit"))return "验证邮件发送过于频繁，请稍后再试，不要连续点击。";
+ if(code==="weak_password"||msg.includes("password should be")||msg.includes("password is too weak"))return "密码强度不够，请更换一个至少8位且更复杂的密码。";
+ if(code==="email_address_invalid"||msg.includes("invalid email"))return "邮箱格式有误，请检查地址和拼写。";
+ if(code==="signup_disabled"||msg.includes("signups not allowed")||msg.includes("signups disabled"))return "云端暂未允许注册新账号，需要管理员检查认证设置。";
+ if(msg.includes("email")&&msg.includes("send"))return "验证邮件发送失败。请保留页面错误信息，管理员需要检查邮件发送服务。";
+ return (mode==="signup"?"注册失败：":"登录失败：")+err(e);
+}
 function tip(s){notice=s;app.toast(s);draw()}
 function getCacheKey(){return "wedding-cloud-v2:"+c.spaceId}
 function actualLocalCount(s){
@@ -43,7 +55,7 @@ function draw(){
 if(!db){root.innerHTML='<div class="cloud-card"><h3>家庭共享服务暂不可用</h3><p>请检查网络并刷新；本机旧数据不会丢失。</p>'+esc(notice)+'</div>';return}
 var status=notice?'<p>'+esc(notice)+'</p>':"";
 if(!session){
-root.innerHTML='<div class="cloud-card"><h3>家庭共享 · '+(authMode==="login"?"登录":"注册")+'</h3><p>每位家庭成员使用自己的邮箱账号。请勿把你的管理员账号密码告诉家人。</p><form id="cloudAuth" class="cloud-stack"><input class="cloud-in" name="email" type="email" placeholder="邮箱" autocomplete="email" required><input class="cloud-in" name="password" type="password" minlength="8" autocomplete="'+(authMode==="login"?"current-password":"new-password")+'" placeholder="密码不少于8位" required><button class="btn full" type="submit">'+(authMode==="login"?"登录":"注册账号")+'</button></form><div class="cloud-actions"><button class="btn secondary" type="button" data-cloud="switch-auth">'+(authMode==="login"?"没有账号，创建账号":"已有账号，返回登录")+'</button></div><p>新注册账号可能需要先在邮箱中验证，验证后返回这个网页登录。</p>'+status+'</div>';bindForms();return
+root.innerHTML='<div class="cloud-card"><h3>家庭共享账号</h3><p>锦莉首次使用，请先点击<strong>「注册新账号」</strong>；已经注册过才选择「登录已有账号」。每人使用自己的邮箱，不要共用密码。</p><div class="cloud-actions" style="margin-bottom:14px"><button class="btn '+(authMode==="signup"?"":"secondary")+'" type="button" data-cloud="choose-signup">① 注册新账号</button><button class="btn '+(authMode==="login"?"":"secondary")+'" type="button" data-cloud="choose-login">② 登录已有账号</button></div><form id="cloudAuth" class="cloud-stack"><label style="font-size:13px">邮箱地址</label><input class="cloud-in" name="email" type="email" placeholder="输入自己可以收邮件的邮箱" autocomplete="email" required><label style="font-size:13px">设置密码（至少8位）</label><input class="cloud-in" name="password" type="password" minlength="8" autocomplete="'+(authMode==="login"?"current-password":"new-password")+'" placeholder="至少8位，请自己保存" required><button class="btn full" type="submit">'+(authMode==="login"?"登录已有账号":"确认注册新账号")+'</button></form><p>'+(authMode==="signup"?"注册后若提示确认邮件，请到邮箱完成验证，再使用「登录已有账号」。":"如果还没有注册过，直接点击上面的「注册新账号」，不要用未注册邮箱尝试登录。")+'</p>'+status+'</div>';bindForms();return
 }
 if(!c.active){
 var link=new URLSearchParams(location.search).get("invite")||"";
@@ -63,7 +75,7 @@ root.innerHTML='<div class="cloud-card"><h3>家庭共享已连接 <span class="c
 function bindForms(){
 var f=document.getElementById("cloudAuth");if(f)f.onsubmit=async function(e){e.preventDefault();var email=f.elements.email.value.trim(),pass=f.elements.password.value,button=f.querySelector("button[type=submit]");button.disabled=true;
 try{var r=authMode==="login"?await db.auth.signInWithPassword({email:email,password:pass}):await db.auth.signUp({email:email,password:pass,options:{emailRedirectTo:location.origin+location.pathname}});if(r.error)throw r.error;
-if(authMode==="signup"&&!r.data.session){authMode="login";tip("注册成功，请查看验证邮件。验证后返回本页面登录。")}else{await bootSession();tip("登录成功")}}catch(x){tip("登录/注册失败："+err(x))}finally{button.disabled=false}};
+if(authMode==="signup"&&!r.data.session){authMode="login";tip("注册成功，请查看验证邮件。验证后返回本页面登录。")}else{await bootSession();tip("登录成功")}}catch(x){tip(authErrorMessage(x,authMode))}finally{button.disabled=false}};
 var a=document.getElementById("cloudCreate");if(a)a.onsubmit=async function(e){
  e.preventDefault();const btn=a.querySelector('button[type="submit"]');if(btn.disabled)return;btn.disabled=true;
  try{
@@ -170,7 +182,9 @@ var b=e.target.closest("[data-cloud],[data-open-space],[data-remove-user]");if(!
 if(b.dataset.openSpace){try{await openSpace(b.dataset.openSpace)}catch(x){tip(err(x))}return}
 if(b.dataset.removeUser){if(!confirm("移除后对方不能再访问共享数据，确定继续？"))return;var rem=await db.rpc("wedding_remove_member",{p_space:c.spaceId,p_user:b.dataset.removeUser});if(rem.error)tip(err(rem.error));else{await load(true);tip("成员已移除")}return}
 var action=b.dataset.cloud;
-if(action==="switch-auth"){authMode=authMode==="login"?"signup":"login";draw();return}
+if(action==="choose-signup"){authMode="signup";notice="";draw();return}
+if(action==="choose-login"){authMode="login";notice="";draw();return}
+if(action==="switch-auth"){authMode=authMode==="login"?"signup":"login";notice="";draw();return}
 if(action==="logout"){if(pending||busy){tip("还有未同步修改，请先联网保存再退出");return}if(channel){await db.removeChannel(channel);channel=null}if(c.spaceId)localStorage.removeItem(getCacheKey());await db.auth.signOut();session=null;c.active=false;c.spaceId=null;base=null;pending=null;localStorage.removeItem("wedding-current-space-v2");await bootSession();return}
 if(action==="refresh"){if(pending)await flush();else await load(false);tip(pending?"仍有未同步修改":"已重新读取云端数据");return}
 if(action==="invite-admin"||action==="invite-family"){try{var role=action==="invite-admin"?"admin":"family";var rr=await db.rpc("wedding_create_invite",{p_space:c.spaceId,p_role:role});if(rr.error)throw rr.error;var inviteUrl=location.origin+location.pathname+"?invite="+rr.data;document.getElementById("cloudInviteResult").innerHTML='<div class="cloud-card"><b>'+label(role)+'邀请链接</b><input class="cloud-in" id="inviteToCopy" value="'+esc(inviteUrl)+'" readonly><button class="btn secondary" data-cloud="copy-link">复制链接</button><p>请私下发送。对象邀请链接仅供信任的另一半使用，拥有它可取得管理员权限。</p></div>'}catch(x){tip("邀请码创建失败："+err(x))}return}
