@@ -30,7 +30,7 @@ export function installSupplierPortalAdmin(ctx){
     const submitted=rows.filter(x=>x.status==='submitted').length;
     const lastCode=inv&&inv.accepted_at==null&&new Date(inv.expires_at)>new Date()?String(inv.token||'').toUpperCase():'';
     const accountInfo=acc
-      ? '<div class="notice"><b>登录状态：</b>'+esc(statusLabel(acc.status))+'<br><b>登录邮箱：</b>'+esc(acc.email||'未绑定')+'<br><b>分配产品：</b>'+rows.length+' 个 · <b>待审核：</b>'+submitted+' 个</div>'
+      ? '<div class="notice"><b>登录状态：</b>'+esc(statusLabel(acc.status))+'<br><b>登录邮箱：</b>'+esc(acc.email||'未绑定')+'<br><b>产品总数：</b>'+rows.length+' 个 · <b>自主新增：</b>'+rows.filter(x=>x.source_type==='supplier').length+' 个 · <b>待审核：</b>'+submitted+' 个</div>'
       : '<div class="notice">该供应商还没有登录账号。生成邀请码后，把“固定登录入口 + 邀请码”发给供应商即可。</div>';
 
     const inviteBox='<div class="card" style="box-shadow:none;margin-top:12px"><div class="card-pad"><h4 style="margin:0 0 10px">供应商登录邀请码</h4><div class="form-grid">'+
@@ -52,8 +52,8 @@ export function installSupplierPortalAdmin(ctx){
       : '';
 
     const reviewRows=rows.length
-      ? '<div class="table-wrap" style="margin-top:14px"><table class="table"><tr><th>产品</th><th>采购价</th><th>重量 KG/箱</th><th>装箱</th><th>箱规 cm</th><th>CBM</th><th>MOQ</th><th>交期</th><th>状态</th><th>审核</th></tr>'+
-        rows.map(r=>'<tr><td><b>'+esc(r.sku)+'</b><br><span class="muted">'+esc(r.product_name||'')+'</span></td>'+
+      ? '<div class="table-wrap" style="margin-top:14px"><table class="table"><tr><th>产品</th><th>来源</th><th>采购价</th><th>重量 KG/箱</th><th>装箱</th><th>箱规 cm</th><th>CBM</th><th>MOQ</th><th>交期</th><th>状态</th><th>审核</th></tr>'+
+        rows.map(r=>'<tr><td><b>'+esc(r.sku)+'</b><br><span class="muted">'+esc(r.product_name||'')+'</span></td><td><span class="badge">'+(r.source_type==='supplier'?'供应商自主新增':'采购方分配')+'</span></td>'+
           '<td>'+esc(r.purchase_currency)+' '+Number(r.purchase_price||0).toFixed(4)+'</td>'+
           '<td>NW '+Number(r.net_weight||0)+'<br>GW '+Number(r.gross_weight||0)+'</td>'+
           '<td>'+Number(r.pcs_carton||0)+' / 箱</td>'+
@@ -65,12 +65,12 @@ export function installSupplierPortalAdmin(ctx){
             ? '<button class="btn small primary" onclick="window.reviewSupplierPortalInput(\''+r.id+'\',true,\''+id+'\')">通过</button> <button class="btn small danger" onclick="window.reviewSupplierPortalInput(\''+r.id+'\',false,\''+id+'\')">驳回</button>'
             : '<span class="muted">—</span>')+'</td></tr>').join('')+
         '</table></div>'
-      : '<div class="empty" style="padding:24px">暂无分配给该供应商的产品。请先在产品库设置默认供应商。</div>';
+      : '<div class="empty" style="padding:24px">暂无产品。供应商也可以登录后自主添加产品并提交审核。</div>';
 
     state().modal='<div class="modal-bg"><div class="modal" style="max-width:1180px"><div class="modal-head"><div><h3>供应商账号 · '+esc(sp.company)+'</h3>'+
       '<div class="muted">供应商只能看到分配给自己的产品，不会看到客户、销售订单、销售价、利润或其他供应商资料。</div></div>'+
       '<button class="x" onclick="window.closeModal()">×</button></div><div class="modal-body">'+accountInfo+inviteBox+accountActions+
-      '<div class="section-head" style="padding:18px 0 6px"><div><h3>供应商填报 / 审核</h3><p>供应商提交后先进入待审核；通过后才更新正式产品库。</p></div>'+
+      '<div class="section-head" style="padding:18px 0 6px"><div><h3>供应商填报 / 审核</h3><p>采购方分配产品通过后更新正式产品；供应商自主新增产品通过后才创建/关联正式产品。</p></div>'+
       '<span class="badge">'+rows.length+' 个产品 · '+submitted+' 待审核</span></div>'+reviewRows+
       '</div><div class="modal-foot"><span class="save-state">供应商权限由 Supabase RLS 隔离</span><button class="btn primary" onclick="window.closeModal()">关闭</button></div></div></div>';
     render();
