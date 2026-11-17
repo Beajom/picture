@@ -76,6 +76,58 @@ export function installSupplierPortalAdmin(ctx){
     render();
   };
 
+
+  window.supplierReviewCenter=async()=>{
+    toast('正在读取供应商待审核产品...','warn');
+    const {data,error}=await supabase
+      .from('trade_supplier_product_inputs')
+      .select('*')
+      .eq('is_active',true)
+      .eq('status','submitted')
+      .order('supplier_updated_at',{ascending:false});
+    if(error)return toast('待审核产品读取失败','err',niceError(error));
+    const rows=data||[];
+
+    const body=rows.length
+      ? '<div class="table-wrap"><table class="table"><tr><th>供应商</th><th>产品</th><th>来源</th><th>采购价</th><th>重量 KG/箱</th><th>装箱</th><th>箱规 cm</th><th>CBM</th><th>MOQ</th><th>交期</th><th>备注</th><th>操作</th></tr>'+
+        rows.map(r=>'<tr>'+
+          '<td><b>'+esc(supplier(r.supplier_id)?.company||'未命名供应商')+'</b></td>'+
+          '<td><b>'+esc(r.sku||'')+'</b><br><span class="muted">'+esc(r.product_name||'')+'</span></td>'+
+          '<td><span class="badge">'+(r.source_type==='supplier'?'供应商自主新增':'采购方分配')+'</span></td>'+
+          '<td>'+esc(r.purchase_currency||'CNY')+' '+Number(r.purchase_price||0).toFixed(4)+'</td>'+
+          '<td>NW '+Number(r.net_weight||0)+'<br>GW '+Number(r.gross_weight||0)+'</td>'+
+          '<td>'+Number(r.pcs_carton||0)+' / 箱</td>'+
+          '<td>'+Number(r.carton_length_cm||0)+' × '+Number(r.carton_width_cm||0)+' × '+Number(r.carton_height_cm||0)+'</td>'+
+          '<td>'+Number(r.carton_cbm||0).toFixed(6)+'</td>'+
+          '<td>'+Number(r.moq||0)+'</td>'+
+          '<td>'+Number(r.lead_time_days||0)+' 天</td>'+
+          '<td>'+esc(r.note||'-')+'</td>'+
+          '<td><button class="btn small primary" onclick="window.reviewSupplierCenterInput(\''+r.id+'\',true)">通过</button> <button class="btn small danger" onclick="window.reviewSupplierCenterInput(\''+r.id+'\',false)">驳回</button></td>'+
+        '</tr>').join('')+
+        '</table></div>'
+      : '<div class="empty" style="padding:42px"><b>当前没有待审核产品</b><br><span class="muted">供应商提交新产品或修改资料后，会自动出现在这里。</span></div>';
+
+    state().modal='<div class="modal-bg"><div class="modal" style="max-width:1500px;width:min(96vw,1500px)"><div class="modal-head"><div><h3>供应商产品审核</h3><div class="muted">集中审核所有供应商提交的产品。自主新增产品只有通过后才会进入正式产品库。</div></div><button class="x" onclick="window.closeModal()">×</button></div><div class="modal-body">'+
+      '<div class="notice" style="margin-bottom:12px"><b>待审核：'+rows.length+' 条</b> · 路径：供应商 → 产品审核</div>'+
+      body+
+      '</div><div class="modal-foot"><span class="save-state">审核通过后才写入正式产品资料</span><button class="btn primary" onclick="window.closeModal()">关闭</button></div></div></div>';
+    render();
+  };
+
+  window.reviewSupplierCenterInput=async(inputId,approve)=>{
+    const note=approve?'':(prompt('请输入驳回原因（供应商登录后会看到）：','请核对后重新提交')||'');
+    if(!approve&&!note)return;
+    if(approve&&!confirm('确认通过这条供应商填报？\n供应商自主新增产品通过后会创建/关联正式产品；已分配产品则更新正式产品资料。'))return;
+    if(state().saving)return;
+    state().saving=true;
+    const {error}=await supabase.rpc('review_trade_supplier_product_input',{p_input_id:inputId,p_approve:!!approve,p_review_note:note});
+    state().saving=false;
+    if(error)return toast('审核失败','err',niceError(error));
+    await loadCloud();
+    toast(approve?'审核通过，正式产品资料已更新':'已驳回，供应商可重新修改提交','ok');
+    window.supplierReviewCenter();
+  };
+
   window.createSupplierPortalInvite=async id=>{
     if(state().saving)return;
     const email=String(document.getElementById('spPortalEmail')?.value||'').trim();
