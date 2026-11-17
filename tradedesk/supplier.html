@@ -27,7 +27,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}
 .auth-field{margin-bottom:13px}.auth-field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px}.auth-field input{width:100%;height:43px;border:1px solid #d0d5dd;border-radius:9px;padding:0 12px}.auth-card .primary{width:100%;height:44px;margin-top:4px}.invite-note{background:#eff6ff;border:1px solid #b2ccff;color:#1849a9;border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:14px}.msg{font-size:12px;line-height:1.5;margin-top:12px}.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
 .no-access{max-width:620px;margin:80px auto;padding:28px;text-align:center}.no-access h2{margin-top:0}.invite-accept{display:flex;gap:8px;margin-top:18px}.invite-accept input{flex:1;height:40px;border:1px solid #d0d5dd;border-radius:8px;padding:0 10px}
 .toast{position:fixed;right:22px;bottom:22px;z-index:50;background:#101828;color:#fff;border-radius:10px;padding:12px 15px;box-shadow:0 12px 30px rgba(16,24,40,.25);font-size:12px;max-width:360px}
-.add-panel{margin-bottom:16px;padding:18px}.add-panel h3{margin:0 0 4px;font-size:17px}.add-panel p{margin:0 0 16px;color:var(--muted);font-size:12px}.add-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.add-field label{display:block;font-size:11px;font-weight:800;color:#475467;margin-bottom:6px}.add-field input,.add-field select,.add-field textarea{width:100%;border:1px solid #d0d5dd;border-radius:8px;background:#fff;padding:9px 10px}.add-field textarea{min-height:72px;resize:vertical}.add-field.span2{grid-column:span 2}.add-field.span4{grid-column:1/-1}.add-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.source-tag{display:inline-flex;margin-top:5px;padding:2px 6px;border-radius:999px;font-size:9px;font-weight:800;background:#eef4ff;color:#3538cd}.source-tag.own{background:#ecfdf3;color:#067647}.hero-side{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;justify-content:flex-end}.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.empty .btn{margin-top:12px}@media(max-width:980px){.add-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.add-field.span4{grid-column:1/-1}}@media(max-width:620px){.add-grid{grid-template-columns:1fr}.add-field.span2,.add-field.span4{grid-column:auto}}
+.add-panel{margin-bottom:16px;padding:18px}.add-panel h3{margin:0 0 4px;font-size:17px}.add-panel p{margin:0 0 16px;color:var(--muted);font-size:12px}.add-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.add-field label{display:block;font-size:11px;font-weight:800;color:#475467;margin-bottom:6px}.add-field input,.add-field select,.add-field textarea{width:100%;border:1px solid #d0d5dd;border-radius:8px;background:#fff;padding:9px 10px}.add-field textarea{min-height:72px;resize:vertical}.add-field.span2{grid-column:span 2}.add-field.span4{grid-column:1/-1}.add-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.image-upload{border:1.5px dashed #b9c4d5;border-radius:12px;background:#f8fafc;min-height:132px;padding:14px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:.15s}.image-upload:hover,.image-upload.dragover{border-color:#155eef;background:#f2f6ff}.image-upload .preview{width:104px;height:104px;border-radius:10px;border:1px solid #e4e7ec;background:#fff;display:grid;place-items:center;overflow:hidden;flex:0 0 auto}.image-upload .preview img{width:100%;height:100%;object-fit:contain}.image-upload .preview span{font-size:11px;color:#98a2b3}.image-upload .upload-copy{min-width:0}.image-upload .upload-copy b{display:block;font-size:13px;color:#344054}.image-upload .upload-copy span{display:block;font-size:11px;color:#667085;line-height:1.6;margin-top:4px}.image-upload .upload-copy .upload-state{color:#155eef;font-weight:700}.image-url-backup{margin-top:8px}.source-tag{display:inline-flex;margin-top:5px;padding:2px 6px;border-radius:999px;font-size:9px;font-weight:800;background:#eef4ff;color:#3538cd}.source-tag.own{background:#ecfdf3;color:#067647}.hero-side{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;justify-content:flex-end}.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.empty .btn{margin-top:12px}@media(max-width:980px){.add-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.add-field.span4{grid-column:1/-1}}@media(max-width:620px){.add-grid{grid-template-columns:1fr}.add-field.span2,.add-field.span4{grid-column:auto}}
 @media(max-width:760px){.wrap{padding:14px}.hero{display:block}.summary{margin-top:14px}.top{padding:0 14px}.brand small{display:none}.toolbar{align-items:stretch;flex-direction:column}.toolbar input{width:100%}}
 </style>
 </head>
@@ -122,6 +122,50 @@ function renderPortal(){
  </tbody></table></div>`:'<div class="empty">当前还没有产品。您可以自己添加产品资料，提交后由采购方审核。<br><button class="btn primary" onclick="showAddForm=true;renderPortal();setTimeout(()=>document.getElementById(\'newSku\')?.focus(),0)">添加第一个产品</button></div>'}</div></div>`;
 }
 
+
+function productImageUploaderHtml(prefix,currentUrl=''){
+ const has=!!String(currentUrl||'').trim();
+ return '<div class="image-upload" id="'+prefix+'ImageDrop" tabindex="0" onclick="document.getElementById(\''+prefix+'ImageFile\').click()" ondragover="imageDragOver(event,\''+prefix+'\')" ondragleave="imageDragLeave(event,\''+prefix+'\')" ondrop="imageDrop(event,\''+prefix+'\')">'+
+   '<div class="preview" id="'+prefix+'ImagePreview">'+(has?'<img src="'+esc(currentUrl)+'" alt="产品图片">':'<span>暂无图片</span>')+'</div>'+
+   '<div class="upload-copy"><b>拖拽图片到这里，或点击选择本地图片</b><span>支持 JPG / PNG / WebP，单张不超过 5MB</span><span class="upload-state" id="'+prefix+'ImageState">'+(has?'已加载当前图片':'')+'</span></div>'+
+   '<input id="'+prefix+'ImageFile" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="imageFileChosen(this,\''+prefix+'\')">'+
+   '</div>'+
+   '<div class="image-url-backup"><input id="'+prefix+'Image" value="'+esc(currentUrl||'')+'" placeholder="也可以粘贴图片 URL（备用）" oninput="syncImageUrlPreview(\''+prefix+'\',this.value)"></div>';
+}
+function imageDragOver(e,prefix){e.preventDefault();e.stopPropagation();document.getElementById(prefix+'ImageDrop')?.classList.add('dragover')}
+function imageDragLeave(e,prefix){e.preventDefault();e.stopPropagation();document.getElementById(prefix+'ImageDrop')?.classList.remove('dragover')}
+function imageDrop(e,prefix){
+ e.preventDefault();e.stopPropagation();document.getElementById(prefix+'ImageDrop')?.classList.remove('dragover');
+ const file=e.dataTransfer?.files?.[0];if(file)uploadProductImage(file,prefix);
+}
+function imageFileChosen(input,prefix){const file=input?.files?.[0];if(file)uploadProductImage(file,prefix)}
+function syncImageUrlPreview(prefix,url){
+ const box=document.getElementById(prefix+'ImagePreview');if(!box)return;
+ const v=String(url||'').trim();box.innerHTML=v?'<img src="'+esc(v)+'" alt="产品图片">':'<span>暂无图片</span>';
+}
+async function uploadProductImage(file,prefix){
+ const allowed=['image/jpeg','image/png','image/webp'];
+ if(!allowed.includes(file.type))return toast('仅支持 JPG、PNG、WebP 图片');
+ if(file.size>5*1024*1024)return toast('图片不能超过 5MB');
+ const stateEl=document.getElementById(prefix+'ImageState'),drop=document.getElementById(prefix+'ImageDrop');
+ if(stateEl)stateEl.textContent='上传中...';if(drop)drop.style.pointerEvents='none';
+ try{
+  const s=await refresh();if(!s?.access_token||!s?.user?.id)throw new Error('登录状态已失效，请重新登录');
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+  const rand=(globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2)).replace(/[^a-zA-Z0-9-]/g,'');
+  const path=s.user.id+'/supplier/'+Date.now()+'-'+rand+'.'+ext;
+  const url=SUPABASE_URL+'/storage/v1/object/product-images/'+path.split('/').map(encodeURIComponent).join('/');
+  const r=await fetch(url,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+s.access_token,'Content-Type':file.type,'x-upsert':'false'},body:file});
+  const txt=await r.text();let body=null;try{body=txt?JSON.parse(txt):null}catch(e){body=txt}
+  if(!r.ok)throw new Error(body?.message||body?.error||('上传失败 HTTP '+r.status));
+  const publicUrl=SUPABASE_URL+'/storage/v1/object/public/product-images/'+path.split('/').map(encodeURIComponent).join('/');
+  const input=document.getElementById(prefix+'Image');if(input)input.value=publicUrl;
+  syncImageUrlPreview(prefix,publicUrl);
+  if(stateEl)stateEl.textContent='上传成功';
+  toast('产品图片上传成功');
+ }catch(e){if(stateEl)stateEl.textContent='上传失败';toast(e.message||'图片上传失败')}
+ finally{if(drop)drop.style.pointerEvents=''}
+}
 function editOwnProduct(id){editingId=id;showAddForm=false;renderPortal();setTimeout(()=>document.getElementById('editSku')?.focus(),0)}
 function editProductFormHtml(row){
  if(!row)return '';
@@ -131,7 +175,7 @@ function editProductFormHtml(row){
  '<div class="add-field"><label>供应商货号 / SKU *</label><input id="editSku" maxlength="80" value="'+esc(row.sku||'')+'"></div>'+
  '<div class="add-field span2"><label>产品名称 *</label><input id="editName" maxlength="160" value="'+esc(row.product_name||'')+'"></div>'+
  '<div class="add-field"><label>单位</label><select id="editUnit">'+['PCS','PAIR','SET','BOX'].map(v=>'<option '+(v===unit?'selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
- '<div class="add-field span2"><label>产品图片 URL</label><input id="editImage" value="'+esc(row.image_url||'')+'" placeholder="https://..."></div>'+
+ '<div class="add-field span4"><label>产品图片</label>'+productImageUploaderHtml('edit',row.image_url||'')+'</div>'+
  '<div class="add-field"><label>采购价</label><input id="editPrice" type="number" step="0.0001" min="0" value="'+num(row.purchase_price)+'"></div>'+
  '<div class="add-field"><label>币种</label><select id="editCurrency">'+['CNY','USD','EUR','GBP'].map(v=>'<option '+(v===cur?'selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
  '<div class="add-field"><label>净重 / 箱 KG</label><input id="editNet" type="number" step="0.001" min="0" value="'+num(row.net_weight)+'"></div>'+
@@ -168,7 +212,7 @@ function addProductFormHtml(){
  '<div class="add-field"><label>供应商货号 / SKU *</label><input id="newSku" maxlength="80" placeholder="例如：3037-BEIGE-M"></div>'+
  '<div class="add-field span2"><label>产品名称 *</label><input id="newName" maxlength="160" placeholder="请输入产品名称"></div>'+
  '<div class="add-field"><label>单位</label><select id="newUnit"><option>PCS</option><option>PAIR</option><option>SET</option><option>BOX</option></select></div>'+
- '<div class="add-field span2"><label>产品图片 URL</label><input id="newImage" placeholder="https://..."></div>'+
+ '<div class="add-field span4"><label>产品图片</label>'+productImageUploaderHtml('new','')+'</div>'+
  '<div class="add-field"><label>采购价</label><input id="newPrice" type="number" step="0.0001" min="0" value="0"></div>'+
  '<div class="add-field"><label>币种</label><select id="newCurrency"><option>CNY</option><option>USD</option><option>EUR</option><option>GBP</option></select></div>'+
  '<div class="add-field"><label>净重 / 箱 KG</label><input id="newNet" type="number" step="0.001" min="0" value="0"></div>'+
