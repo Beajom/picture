@@ -46,9 +46,10 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
 function stored(){try{return JSON.parse(localStorage.getItem(STORE)||'null')}catch(e){return null}}
 function saveSession(v){session=v;v?localStorage.setItem(STORE,JSON.stringify(v)):localStorage.removeItem(STORE)}
-function jwtExp(token=''){try{const p=token.split('.')[1];return Number(JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))).exp||0)}catch(e){return 0}}
+function jwtPayload(token=''){try{const p=token.split('.')[1];return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')))}catch(e){return {}}}
+function jwtExp(token=''){return Number(jwtPayload(token).exp||0)}
 async function raw(url,opts={}){const r=await fetch(url,opts);const txt=await r.text();let body=null;try{body=txt?JSON.parse(txt):null}catch(e){body=txt}if(!r.ok)throw new Error(body?.message||body?.error_description||body?.error||('HTTP '+r.status));return body}
-async function refresh(){let s=stored();if(!s?.access_token)return null;if(jwtExp(s.access_token)>Date.now()/1000+90){session=s;return s}if(!s.refresh_token){saveSession(null);return null}try{const d=await raw(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});s={...d,user:d.user||s.user};saveSession(s);session=s;return s}catch(e){saveSession(null);return null}}
+async function refresh(){let s=stored();if(!s?.access_token)return null;if(!s.user){const p=jwtPayload(s.access_token);if(p.sub){s.user={id:p.sub,email:p.email||''};saveSession(s)}}if(jwtExp(s.access_token)>Date.now()/1000+90){session=s;return s}if(!s.refresh_token){saveSession(null);return null}try{const d=await raw(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});s={...d,user:d.user||s.user};saveSession(s);session=s;return s}catch(e){saveSession(null);return null}}
 async function authHeaders(extra={}){const s=await refresh();return {apikey:SUPABASE_KEY,Authorization:'Bearer '+(s?.access_token||SUPABASE_KEY),'Content-Type':'application/json',...extra}}
 async function rest(table,query=''){const h=await authHeaders();return raw(SUPABASE_URL+'/rest/v1/'+table+(query?'?'+query:''),{headers:h})}
 async function rpc(name,payload={}){const h=await authHeaders();return raw(SUPABASE_URL+'/rest/v1/rpc/'+name,{method:'POST',headers:h,body:JSON.stringify(payload)})}
@@ -59,7 +60,7 @@ async function signOut(){try{if(session?.access_token)await raw(SUPABASE_URL+'/a
 function captureAuthCallback(){try{const h=new URLSearchParams(location.hash.replace(/^#/,''));
  const access=h.get('access_token'),refreshToken=h.get('refresh_token');
  if(access){const userRaw=h.get('user');let user=null;try{user=userRaw?JSON.parse(decodeURIComponent(userRaw)):null}catch(e){}
-  const s={access_token:access,refresh_token:refreshToken||'',token_type:h.get('token_type')||'bearer',expires_in:Number(h.get('expires_in')||0),user:user||stored()?.user||null};
+  const p=jwtPayload(access),s={access_token:access,refresh_token:refreshToken||'',token_type:h.get('token_type')||'bearer',expires_in:Number(h.get('expires_in')||0),user:user||stored()?.user||(p.sub?{id:p.sub,email:p.email||''}:null)};
   saveSession(s);session=s;history.replaceState({},'',location.pathname+location.search);return s}
  }catch(e){}return null}
 function inviteToken(){const q=new URLSearchParams(location.search).get('invite');if(q){localStorage.setItem(INVITE_STORE,q);return q}return localStorage.getItem(INVITE_STORE)||''}
