@@ -40,7 +40,7 @@ const SUPABASE_KEY='sb_publishable_R3C66b8mtDzaKyKogBYQCw_KyUbw6G1';
 const STORE='tradedesk_supplier_session_v1';
 const INVITE_STORE='tradedesk_supplier_invite_v1';
 const $=s=>document.querySelector(s);
-let session=null,account=null,items=[],filterText='',authMode='login',showAddForm=false;
+let session=null,account=null,items=[],filterText='',authMode='login',showAddForm=false,editingId='';
 
 function toast(msg){const el=$('#toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),3200)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -103,6 +103,7 @@ function renderPortal(){
  document.getElementById('app').innerHTML=`<div class="top"><div class="brand"><div class="logo">TD</div><div><b>TradeDesk Supplier</b><small>${esc(account.supplier_name||'供应商工作台')}</small></div></div><div class="top-actions"><span>${esc(account.email||session.user.email||'')}</span><button onclick="signOut()">退出</button></div></div>
  <div class="wrap"><div class="hero"><div><h1>我的产品资料</h1><p>这里包含采购方分配给您的产品，以及您自主新增的产品。自主新增产品审核通过前不会进入采购方正式产品库。</p></div><div class="hero-side"><div class="summary"><div class="chip"><b>${items.length}</b><span>全部产品</span></div><div class="chip"><b>${own}</b><span>自主新增</span></div><div class="chip"><b>${submitted}</b><span>待审核</span></div><div class="chip"><b>${approved}</b><span>已通过</span></div></div><button class="btn primary" onclick="showAddForm=!showAddForm;renderPortal()">${showAddForm?'收起新增':'＋ 添加产品'}</button></div></div>
  ${showAddForm?addProductFormHtml():''}
+ ${editingId?editProductFormHtml(items.find(x=>x.id===editingId)):''}
  <div class="card"><div class="toolbar"><input placeholder="搜索 SKU / 产品名称" value="${esc(filterText)}" oninput="filterText=this.value;renderPortal()"><div class="toolbar-right"><div class="hint">箱规单位：cm · 重量单位：KG · CBM 自动计算</div><button class="btn primary" onclick="showAddForm=true;renderPortal();setTimeout(()=>document.getElementById('newSku')?.focus(),0)">＋ 添加产品</button></div></div>
  ${list.length?`<div class="table-wrap"><table><thead><tr><th>产品</th><th>采购价</th><th>币种</th><th>净重/箱 KG</th><th>毛重/箱 KG</th><th>每箱数量</th><th>箱规 长 × 宽 × 高 cm</th><th>CBM</th><th>MOQ</th><th>交期/天</th><th>备注</th><th>状态</th><th>操作</th></tr></thead><tbody>
  ${list.map(row=>`<tr data-id="${row.id}"><td><div class="prod">${row.image_url?'<img src="'+esc(row.image_url)+'" alt="">':'<div style="width:48px;height:48px;background:#f2f4f7;border-radius:9px"></div>'}<div><b>${esc(row.sku)}</b><small>${esc(row.product_name)}</small><span class="source-tag ${row.source_type==='supplier'?'own':''}">${row.source_type==='supplier'?'供应商自主新增':'采购方分配'}</span></div></div></td>
@@ -117,8 +118,49 @@ function renderPortal(){
  <td><input class="field" data-k="lead_time_days" type="number" step="1" min="0" value="${num(row.lead_time_days)}"></td>
  <td><input class="field note" data-k="note" value="${esc(row.note||'')}" placeholder="包装/报价说明"></td>
  <td><span class="status ${esc(row.status)}">${statusLabel(row.status)}</span>${row.status==='rejected'&&row.review_note?'<div class="review-note">'+esc(row.review_note)+'</div>':''}</td>
- <td><button class="btn primary" onclick="saveRow('${row.id}',this)">保存提交</button></td></tr>`).join('')}
+ <td>${row.source_type==='supplier'?`<button class="btn" onclick="editOwnProduct('${row.id}')">修改</button> `:''}<button class="btn primary" onclick="saveRow('${row.id}',this)">保存提交</button></td></tr>`).join('')}
  </tbody></table></div>`:'<div class="empty">当前还没有产品。您可以自己添加产品资料，提交后由采购方审核。<br><button class="btn primary" onclick="showAddForm=true;renderPortal();setTimeout(()=>document.getElementById(\'newSku\')?.focus(),0)">添加第一个产品</button></div>'}</div></div>`;
+}
+
+function editOwnProduct(id){editingId=id;showAddForm=false;renderPortal();setTimeout(()=>document.getElementById('editSku')?.focus(),0)}
+function editProductFormHtml(row){
+ if(!row)return '';
+ const unit=String(row.unit||'PCS').toUpperCase(),cur=String(row.purchase_currency||'CNY').toUpperCase();
+ return '<div class="card add-panel"><h3>修改产品</h3><p>可修改供应商自主新增产品的完整资料。修改后重新提交审核，采购方通过后才会写入正式产品库。</p>'+
+ '<div class="add-grid">'+
+ '<div class="add-field"><label>供应商货号 / SKU *</label><input id="editSku" maxlength="80" value="'+esc(row.sku||'')+'"></div>'+
+ '<div class="add-field span2"><label>产品名称 *</label><input id="editName" maxlength="160" value="'+esc(row.product_name||'')+'"></div>'+
+ '<div class="add-field"><label>单位</label><select id="editUnit">'+['PCS','PAIR','SET','BOX'].map(v=>'<option '+(v===unit?'selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
+ '<div class="add-field span2"><label>产品图片 URL</label><input id="editImage" value="'+esc(row.image_url||'')+'" placeholder="https://..."></div>'+
+ '<div class="add-field"><label>采购价</label><input id="editPrice" type="number" step="0.0001" min="0" value="'+num(row.purchase_price)+'"></div>'+
+ '<div class="add-field"><label>币种</label><select id="editCurrency">'+['CNY','USD','EUR','GBP'].map(v=>'<option '+(v===cur?'selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
+ '<div class="add-field"><label>净重 / 箱 KG</label><input id="editNet" type="number" step="0.001" min="0" value="'+num(row.net_weight)+'"></div>'+
+ '<div class="add-field"><label>毛重 / 箱 KG</label><input id="editGross" type="number" step="0.001" min="0" value="'+num(row.gross_weight)+'"></div>'+
+ '<div class="add-field"><label>每箱数量</label><input id="editPcs" type="number" step="1" min="1" value="'+(num(row.pcs_carton)||1)+'"></div>'+
+ '<div class="add-field"><label>MOQ</label><input id="editMoq" type="number" step="1" min="1" value="'+(num(row.moq)||1)+'"></div>'+
+ '<div class="add-field"><label>外箱长 cm</label><input id="editL" type="number" step="0.1" min="0" value="'+num(row.carton_length_cm)+'"></div>'+
+ '<div class="add-field"><label>外箱宽 cm</label><input id="editW" type="number" step="0.1" min="0" value="'+num(row.carton_width_cm)+'"></div>'+
+ '<div class="add-field"><label>外箱高 cm</label><input id="editH" type="number" step="0.1" min="0" value="'+num(row.carton_height_cm)+'"></div>'+
+ '<div class="add-field"><label>交期 / 天</label><input id="editLead" type="number" step="1" min="0" value="'+num(row.lead_time_days)+'"></div>'+
+ '<div class="add-field span4"><label>备注</label><textarea id="editNote" placeholder="材质、颜色、尺码、包装、报价说明等">'+esc(row.note||'')+'</textarea></div>'+
+ '</div><div class="add-actions"><button class="btn" onclick="editingId=\'\';renderPortal()">取消</button><button class="btn" onclick="saveOwnProductEdit(false,this)">保存修改</button><button class="btn primary" onclick="saveOwnProductEdit(true,this)">保存并重新提交</button></div></div>';
+}
+async function saveOwnProductEdit(submit,btn){
+ const row=items.find(x=>x.id===editingId);if(!row)return;
+ const sku=$('#editSku')?.value.trim()||'',name=$('#editName')?.value.trim()||'';
+ if(!sku)return toast('请填写供应商货号 / SKU');
+ if(!name)return toast('请填写产品名称');
+ btn.disabled=true;const old=btn.textContent;btn.textContent=submit?'提交中...':'保存中...';
+ try{
+  await rpc('supplier_update_own_trade_product_input',{
+   p_input_id:row.id,p_sku:sku,p_product_name:name,p_image_url:$('#editImage')?.value.trim()||'',p_unit:$('#editUnit')?.value||'PCS',
+   p_purchase_price:num($('#editPrice')?.value),p_purchase_currency:$('#editCurrency')?.value||'CNY',
+   p_net_weight:num($('#editNet')?.value),p_gross_weight:num($('#editGross')?.value),p_pcs_carton:num($('#editPcs')?.value)||1,
+   p_carton_length_cm:num($('#editL')?.value),p_carton_width_cm:num($('#editW')?.value),p_carton_height_cm:num($('#editH')?.value),
+   p_moq:num($('#editMoq')?.value)||1,p_lead_time_days:Math.round(num($('#editLead')?.value)),p_note:$('#editNote')?.value||'',p_submit:!!submit
+  });
+  editingId='';toast(submit?'修改已保存，并重新提交采购方审核':'修改已保存');await loadPortal();
+ }catch(e){toast(e.message||'修改失败');btn.disabled=false;btn.textContent=old}
 }
 function addProductFormHtml(){
  return '<div class="card add-panel"><h3>新增产品</h3><p>您可以自主添加新产品。保存草稿不会进入审核；点击“保存并提交”后，采购方审核通过才会进入正式产品库。</p>'+
