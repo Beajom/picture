@@ -4,9 +4,9 @@ export function installSupplierPortalAdmin(ctx){
 
   function statusLabel(s){return ({pending:'待绑定',active:'已启用',disabled:'已停用'})[s]||s||'未创建'}
   function inputStatusLabel(s){return ({pending:'未填写',submitted:'待审核',approved:'已通过',rejected:'需修改'})[s]||s||'-'}
-  function portalLink(token=''){
+  function portalLink(){
     const base=location.origin+location.pathname.replace(/index\.html$/,'').replace(/\/$/,'');
-    return base+'/supplier.html'+(token?'?invite='+encodeURIComponent(token):'');
+    return base+'/supplier.html';
   }
   async function copyText(id){
     const el=document.getElementById(id);if(!el)return;
@@ -28,17 +28,18 @@ export function installSupplierPortalAdmin(ctx){
     if(aRes.error||iRes.error||pRes.error)return toast('供应商账号读取失败','err',niceError(aRes.error||iRes.error||pRes.error));
     const acc=aRes.data,inv=Array.isArray(iRes.data)?iRes.data[0]:null,rows=pRes.data||[];
     const submitted=rows.filter(x=>x.status==='submitted').length;
-    const lastLink=inv&&inv.accepted_at==null&&new Date(inv.expires_at)>new Date()?portalLink(inv.token):'';
+    const lastCode=inv&&inv.accepted_at==null&&new Date(inv.expires_at)>new Date()?String(inv.token||'').toUpperCase():'';
     const accountInfo=acc
       ? '<div class="notice"><b>登录状态：</b>'+esc(statusLabel(acc.status))+'<br><b>登录邮箱：</b>'+esc(acc.email||'未绑定')+'<br><b>分配产品：</b>'+rows.length+' 个 · <b>待审核：</b>'+submitted+' 个</div>'
-      : '<div class="notice">该供应商还没有登录账号。生成邀请链接后，把链接发给供应商注册或登录即可。</div>';
+      : '<div class="notice">该供应商还没有登录账号。生成邀请码后，把“固定登录入口 + 邀请码”发给供应商即可。</div>';
 
-    const inviteBox='<div class="card" style="box-shadow:none;margin-top:12px"><div class="card-pad"><h4 style="margin:0 0 10px">供应商登录邀请</h4><div class="form-grid">'+
+    const inviteBox='<div class="card" style="box-shadow:none;margin-top:12px"><div class="card-pad"><h4 style="margin:0 0 10px">供应商登录邀请码</h4><div class="form-grid">'+
       '<div class="field"><label>登录邮箱（可留空）</label><input id="spPortalEmail" type="email" value="'+esc(acc?.email||sp.email||'')+'" placeholder="supplier@example.com"></div>'+
-      '<div class="field full"><label>邀请链接</label><div class="row"><input id="spInviteLink" style="flex:1" readonly value="'+esc(lastLink)+'" placeholder="点击“生成邀请链接”">'+
-      '<button class="btn" onclick="window.copySupplierPortalText(\'spInviteLink\')">复制</button>'+
-      '<button class="btn primary" onclick="window.createSupplierPortalInvite(\''+id+'\')">生成邀请链接</button></div>'+
-      '<div class="hint">邀请有效期 14 天；新生成链接会使之前未使用的链接失效。</div></div></div></div></div>';
+      '<div class="field"><label>邀请码</label><div class="row"><input id="spInviteCode" style="flex:1;font-weight:800;letter-spacing:1.5px" readonly value="'+esc(lastCode)+'" placeholder="点击“生成邀请码”">'+
+      '<button class="btn" onclick="window.copySupplierPortalText(\'spInviteCode\')">复制</button>'+
+      '<button class="btn primary" onclick="window.createSupplierPortalInvite(\''+id+'\')">生成邀请码</button></div><div class="hint">邀请码有效期 14 天；新生成邀请码会使之前未使用的旧码失效。</div></div>'+
+      '<div class="field full"><label>固定登录入口</label><div class="row"><input id="spPortalUrl" style="flex:1" readonly value="'+esc(portalLink())+'"><button class="btn" onclick="window.copySupplierPortalText(\'spPortalUrl\')">复制网址</button><a class="btn" href="'+esc(portalLink())+'" target="_blank" rel="noopener">打开入口 ↗</a></div><div class="hint">以后所有供应商都使用同一个登录网址，只需要给不同供应商不同的邀请码。</div></div>'+
+      '</div></div></div>';
 
     const accountActions=acc
       ? '<div class="row" style="margin-top:10px"><a class="btn" href="'+esc(portalLink())+'" target="_blank" rel="noopener">打开供应商入口 ↗</a>'+
@@ -82,10 +83,10 @@ export function installSupplierPortalAdmin(ctx){
     const {data,error}=await supabase.rpc('create_trade_supplier_invite',{p_supplier_id:id,p_email:email||null});
     state().saving=false;
     if(error)return toast('邀请链接生成失败','err',niceError(error));
-    const link=portalLink(data?.token||'');
-    const el=document.getElementById('spInviteLink');if(el)el.value=link;
-    try{await navigator.clipboard.writeText(link);toast('邀请链接已生成并复制','ok','可直接发给供应商')}
-    catch(e){toast('邀请链接已生成','ok','点击复制按钮发送给供应商')}
+    const code=String(data?.code||data?.token||'').toUpperCase();
+    const el=document.getElementById('spInviteCode');if(el)el.value=code;
+    try{await navigator.clipboard.writeText(code);toast('邀请码已生成并复制','ok',code)}
+    catch(e){toast('邀请码已生成','ok',code)}
   };
 
   window.setSupplierPortalStatus=async(id,status)=>{
