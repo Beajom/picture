@@ -44,7 +44,9 @@ export function installSupplierPortalAdmin(ctx){
       ? '<div class="row" style="margin-top:10px"><a class="btn" href="'+esc(portalLink())+'" target="_blank" rel="noopener">打开供应商入口 ↗</a>'+
         (acc.status==='active'
           ? '<button class="btn danger" onclick="window.setSupplierPortalStatus(\''+id+'\',\'disabled\')">停用账号</button>'
-          : '<button class="btn primary" onclick="window.setSupplierPortalStatus(\''+id+'\',\'active\')">启用账号</button>')+
+          : acc.status==='disabled'
+            ? '<button class="btn primary" onclick="window.setSupplierPortalStatus(\''+id+'\',\'active\')">启用账号</button>'
+            : '<span class="muted">等待供应商接受邀请并绑定账号</span>')+
         '</div>'
       : '';
 
