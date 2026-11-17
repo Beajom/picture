@@ -56,6 +56,12 @@ async function signIn(email,password){const d=await raw(SUPABASE_URL+'/auth/v1/t
 async function signUp(email,password){const redirect=location.origin+location.pathname;return raw(SUPABASE_URL+'/auth/v1/signup?redirect_to='+encodeURIComponent(redirect),{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})})}
 async function signOut(){try{if(session?.access_token)await raw(SUPABASE_URL+'/auth/v1/logout',{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+session.access_token}})}catch(e){}saveSession(null);session=null;account=null;items=[];renderAuth()}
 
+function captureAuthCallback(){try{const h=new URLSearchParams(location.hash.replace(/^#/,''));
+ const access=h.get('access_token'),refreshToken=h.get('refresh_token');
+ if(access){const userRaw=h.get('user');let user=null;try{user=userRaw?JSON.parse(decodeURIComponent(userRaw)):null}catch(e){}
+  const s={access_token:access,refresh_token:refreshToken||'',token_type:h.get('token_type')||'bearer',expires_in:Number(h.get('expires_in')||0),user:user||stored()?.user||null};
+  saveSession(s);session=s;history.replaceState({},'',location.pathname+location.search);return s}
+ }catch(e){}return null}
 function inviteToken(){const q=new URLSearchParams(location.search).get('invite');if(q){localStorage.setItem(INVITE_STORE,q);return q}return localStorage.getItem(INVITE_STORE)||''}
 function setAuthMode(mode){authMode=mode;renderAuth()}
 function renderAuth(message='',kind=''){
@@ -120,7 +126,7 @@ async function saveRow(id,btn){const tr=document.querySelector('tr[data-id="'+id
  });
  const idx=items.findIndex(x=>x.id===id);if(idx>=0){items[idx].status='submitted';items[idx].carton_cbm=data.carton_cbm;items[idx].supplier_updated_at=data.supplier_updated_at;items[idx].review_note=''}toast('已提交给采购方审核');renderPortal();
  }catch(e){toast(e.message||'保存失败');btn.disabled=false;btn.textContent='保存提交'}}
-(async function init(){const q=new URLSearchParams(location.search).get('invite');if(q)localStorage.setItem(INVITE_STORE,q);session=await refresh();if(!session)renderAuth();else await afterAuth()})();
+(async function init(){const q=new URLSearchParams(location.search).get('invite');if(q)localStorage.setItem(INVITE_STORE,q);captureAuthCallback();session=await refresh();if(!session)renderAuth();else await afterAuth()})();
 </script>
 </body>
 </html>
