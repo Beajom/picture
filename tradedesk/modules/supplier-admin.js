@@ -4,6 +4,14 @@ export function installSupplierPortalAdmin(ctx){
 
   function statusLabel(s){return ({pending:'待绑定',active:'已启用',disabled:'已停用'})[s]||s||'未创建'}
   function inputStatusLabel(s){return ({pending:'未填写',submitted:'待审核',approved:'已通过',rejected:'需修改'})[s]||s||'-'}
+  function reviewProductHtml(r){
+    const img=String(r?.image_url||'').trim();
+    const pic=img
+      ? '<button type="button" title="点击查看大图" onclick="window.openSupplierReviewImage(\''+encodeURIComponent(img)+'\')" style="width:58px;height:58px;border:1px solid #dfe5ee;border-radius:9px;background:#fff;padding:2px;overflow:hidden;cursor:zoom-in;flex:0 0 auto"><img src="'+esc(img)+'" alt="" style="width:100%;height:100%;object-fit:contain;display:block"></button>'
+      : '<div style="width:58px;height:58px;border:1px solid #e4e7ec;border-radius:9px;background:#f8fafc;display:grid;place-items:center;color:#98a2b3;font-size:9px;flex:0 0 auto">无图片</div>';
+    return '<div style="display:flex;align-items:center;gap:9px;min-width:190px">'+pic+'<div style="min-width:0"><b style="display:block">'+esc(r?.sku||'')+'</b><span class="muted" style="display:block;max-width:180px;white-space:normal;line-height:1.35">'+esc(r?.product_name||'')+'</span></div></div>';
+  }
+  window.openSupplierReviewImage=encoded=>{const url=decodeURIComponent(String(encoded||''));if(url)window.open(url,'_blank','noopener,noreferrer')};
   function portalLink(){
     const base=location.origin+location.pathname.replace(/index\.html$/,'').replace(/\/$/,'');
     return base+'/supplier.html';
@@ -53,7 +61,7 @@ export function installSupplierPortalAdmin(ctx){
 
     const reviewRows=rows.length
       ? '<div class="table-wrap" style="margin-top:14px"><table class="table"><tr><th>产品</th><th>来源</th><th>采购价</th><th>重量 KG/箱</th><th>装箱</th><th>箱规 cm</th><th>CBM</th><th>MOQ</th><th>交期</th><th>状态</th><th>审核</th></tr>'+
-        rows.map(r=>'<tr><td><b>'+esc(r.sku)+'</b><br><span class="muted">'+esc(r.product_name||'')+'</span></td><td><span class="badge">'+(r.source_type==='supplier'?'供应商自主新增':'采购方分配')+'</span></td>'+
+        rows.map(r=>'<tr><td>'+reviewProductHtml(r)+'</td><td><span class="badge">'+(r.source_type==='supplier'?'供应商自主新增':'采购方分配')+'</span></td>'+
           '<td>'+esc(r.purchase_currency)+' '+Number(r.purchase_price||0).toFixed(4)+'</td>'+
           '<td>NW '+Number(r.net_weight||0)+'<br>GW '+Number(r.gross_weight||0)+'</td>'+
           '<td>'+Number(r.pcs_carton||0)+' / 箱</td>'+
@@ -92,7 +100,7 @@ export function installSupplierPortalAdmin(ctx){
       ? '<div class="table-wrap"><table class="table"><tr><th>供应商</th><th>产品</th><th>来源</th><th>采购价</th><th>重量 KG/箱</th><th>装箱</th><th>箱规 cm</th><th>CBM</th><th>MOQ</th><th>交期</th><th>备注</th><th>操作</th></tr>'+
         rows.map(r=>'<tr>'+
           '<td><b>'+esc(supplier(r.supplier_id)?.company||'未命名供应商')+'</b></td>'+
-          '<td><b>'+esc(r.sku||'')+'</b><br><span class="muted">'+esc(r.product_name||'')+'</span></td>'+
+          '<td>'+reviewProductHtml(r)+'</td>'+
           '<td><span class="badge">'+(r.source_type==='supplier'?'供应商自主新增':'采购方分配')+'</span></td>'+
           '<td>'+esc(r.purchase_currency||'CNY')+' '+Number(r.purchase_price||0).toFixed(4)+'</td>'+
           '<td>NW '+Number(r.net_weight||0)+'<br>GW '+Number(r.gross_weight||0)+'</td>'+
