@@ -63,18 +63,19 @@ function captureAuthCallback(){try{const h=new URLSearchParams(location.hash.rep
   const p=jwtPayload(access),s={access_token:access,refresh_token:refreshToken||'',token_type:h.get('token_type')||'bearer',expires_in:Number(h.get('expires_in')||0),user:user||stored()?.user||(p.sub?{id:p.sub,email:p.email||''}:null)};
   saveSession(s);session=s;history.replaceState({},'',location.pathname+location.search);return s}
  }catch(e){}return null}
-function inviteToken(){const q=new URLSearchParams(location.search).get('invite');if(q){localStorage.setItem(INVITE_STORE,q);return q}return localStorage.getItem(INVITE_STORE)||''}
+function normalizeInviteCode(v=''){const raw=String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');return raw.length===12?raw.slice(0,4)+'-'+raw.slice(4,8)+'-'+raw.slice(8):String(v||'').trim().toUpperCase()}
+function inviteToken(){const legacy=new URLSearchParams(location.search).get('invite');if(legacy){const code=normalizeInviteCode(legacy);localStorage.setItem(INVITE_STORE,code);return code}return normalizeInviteCode(localStorage.getItem(INVITE_STORE)||'')}
 function setAuthMode(mode){authMode=mode;renderAuth()}
 function renderAuth(message='',kind=''){
  const inv=inviteToken();
  document.getElementById('app').innerHTML=`<div class="auth-shell"><div class="auth-card"><div class="auth-head"><div class="logo">TD</div><h1>供应商工作台</h1><p>仅用于维护分配给您的产品报价、重量和装箱资料。</p></div>
- ${inv?'<div class="invite-note">已检测到供应商邀请链接。注册或登录后会自动绑定您的供应商资料。</div>':''}
  <div class="tabs"><button class="${authMode==='login'?'active':''}" onclick="setAuthMode('login')">登录</button><button class="${authMode==='signup'?'active':''}" onclick="setAuthMode('signup')">首次注册</button></div>
  <form onsubmit="submitAuth(event)"><div class="auth-field"><label>邮箱</label><input id="authEmail" type="email" required autocomplete="email" placeholder="supplier@example.com"></div><div class="auth-field"><label>密码</label><input id="authPassword" type="password" minlength="6" required autocomplete="${authMode==='login'?'current-password':'new-password'}" placeholder="至少 6 位"></div>
+ <div class="auth-field"><label>邀请码 <span style="font-weight:400;color:#98a2b3">（首次绑定必填）</span></label><input id="authInviteCode" value="${esc(inv)}" maxlength="14" autocomplete="off" placeholder="例如：7F3A-9C2D-B681" style="text-transform:uppercase;letter-spacing:1.2px"><div style="font-size:11px;color:#98a2b3;margin-top:5px">已经绑定过的账号，后续登录可以不填。</div></div>
  <button class="btn primary" id="authBtn" type="submit">${authMode==='login'?'登录供应商工作台':'创建供应商账号'}</button></form>
  <div id="authMsg" class="msg ${kind}">${esc(message)}</div></div></div>`;
 }
-async function submitAuth(e){e.preventDefault();const email=$('#authEmail').value.trim(),password=$('#authPassword').value,btn=$('#authBtn');btn.disabled=true;btn.textContent='处理中...';try{
+async function submitAuth(e){e.preventDefault();const email=$('#authEmail').value.trim(),password=$('#authPassword').value,code=normalizeInviteCode($('#authInviteCode')?.value||'');if(code)localStorage.setItem(INVITE_STORE,code);const btn=$('#authBtn');btn.disabled=true;btn.textContent='处理中...';try{
  if(authMode==='signup'){const d=await signUp(email,password);if(d.access_token){session={...d,user:d.user};saveSession(session);await afterAuth()}else{renderAuth('注册成功。请先到邮箱完成验证，然后返回此页面登录。','ok')}}
  else{await signIn(email,password);await afterAuth()}
  }catch(err){renderAuth(err.message||'操作失败','err')}}
@@ -89,8 +90,8 @@ async function loadPortal(){try{
  items=await rest('trade_supplier_product_inputs','select=*&supplier_id=eq.'+encodeURIComponent(account.supplier_id)+'&is_active=eq.true&order=sku.asc');
  renderPortal();
  }catch(e){document.getElementById('app').innerHTML='<div class="no-access card"><h2>加载失败</h2><p>'+esc(e.message)+'</p><button class="btn" onclick="location.reload()">重新加载</button></div>'}}
-function renderNoAccess(){document.getElementById('app').innerHTML=`<div class="top"><div class="brand"><div class="logo">TD</div><div><b>Supplier Portal</b><small>TradeDesk 供应商工作台</small></div></div><button onclick="signOut()">退出</button></div><div class="no-access card"><h2>账号尚未绑定供应商</h2><p>请使用 TradeDesk 管理员发给您的邀请链接。也可以在下面粘贴邀请代码。</p><div class="invite-accept"><input id="manualInvite" placeholder="邀请代码"><button class="btn primary" onclick="acceptManualInvite()">绑定账号</button></div></div>`}
-async function acceptManualInvite(){const t=$('#manualInvite').value.trim();if(!t)return toast('请输入邀请代码');try{await acceptInvite(t);await loadPortal()}catch(e){toast(e.message)}}
+function renderNoAccess(){document.getElementById('app').innerHTML=`<div class="top"><div class="brand"><div class="logo">TD</div><div><b>Supplier Portal</b><small>TradeDesk 供应商工作台</small></div></div><button onclick="signOut()">退出</button></div><div class="no-access card"><h2>账号尚未绑定供应商</h2><p>请输入采购方提供的 12 位邀请码，绑定后即可看到分配给您的产品。</p><div class="invite-accept"><input id="manualInvite" maxlength="14" value="${esc(inviteToken())}" placeholder="例如：7F3A-9C2D-B681" style="text-transform:uppercase;letter-spacing:1.2px"><button class="btn primary" onclick="acceptManualInvite()">绑定账号</button></div></div>`}
+async function acceptManualInvite(){const t=normalizeInviteCode($('#manualInvite').value);if(!t)return toast('请输入邀请码');localStorage.setItem(INVITE_STORE,t);try{await acceptInvite(t);await loadPortal()}catch(e){toast(e.message)}}
 function renderDisabled(){document.getElementById('app').innerHTML=`<div class="top"><div class="brand"><div class="logo">TD</div><div><b>Supplier Portal</b><small>TradeDesk 供应商工作台</small></div></div><button onclick="signOut()">退出</button></div><div class="no-access card"><h2>账号已暂停</h2><p>该供应商账号当前已被管理员停用。如需继续填写，请联系采购方。</p></div>`}
 
 function filteredItems(){const q=filterText.trim().toLowerCase();return q?items.filter(x=>(x.sku+' '+x.product_name).toLowerCase().includes(q)):items}
