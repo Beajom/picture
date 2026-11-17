@@ -27,6 +27,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}
 .auth-field{margin-bottom:13px}.auth-field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px}.auth-field input{width:100%;height:43px;border:1px solid #d0d5dd;border-radius:9px;padding:0 12px}.auth-card .primary{width:100%;height:44px;margin-top:4px}.invite-note{background:#eff6ff;border:1px solid #b2ccff;color:#1849a9;border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:14px}.msg{font-size:12px;line-height:1.5;margin-top:12px}.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
 .no-access{max-width:620px;margin:80px auto;padding:28px;text-align:center}.no-access h2{margin-top:0}.invite-accept{display:flex;gap:8px;margin-top:18px}.invite-accept input{flex:1;height:40px;border:1px solid #d0d5dd;border-radius:8px;padding:0 10px}
 .toast{position:fixed;right:22px;bottom:22px;z-index:50;background:#101828;color:#fff;border-radius:10px;padding:12px 15px;box-shadow:0 12px 30px rgba(16,24,40,.25);font-size:12px;max-width:360px}
+.add-panel{margin-bottom:16px;padding:18px}.add-panel h3{margin:0 0 4px;font-size:17px}.add-panel p{margin:0 0 16px;color:var(--muted);font-size:12px}.add-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.add-field label{display:block;font-size:11px;font-weight:800;color:#475467;margin-bottom:6px}.add-field input,.add-field select,.add-field textarea{width:100%;border:1px solid #d0d5dd;border-radius:8px;background:#fff;padding:9px 10px}.add-field textarea{min-height:72px;resize:vertical}.add-field.span2{grid-column:span 2}.add-field.span4{grid-column:1/-1}.add-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.source-tag{display:inline-flex;margin-top:5px;padding:2px 6px;border-radius:999px;font-size:9px;font-weight:800;background:#eef4ff;color:#3538cd}.source-tag.own{background:#ecfdf3;color:#067647}.hero-side{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;justify-content:flex-end}.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.empty .btn{margin-top:12px}@media(max-width:980px){.add-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.add-field.span4{grid-column:1/-1}}@media(max-width:620px){.add-grid{grid-template-columns:1fr}.add-field.span2,.add-field.span4{grid-column:auto}}
 @media(max-width:760px){.wrap{padding:14px}.hero{display:block}.summary{margin-top:14px}.top{padding:0 14px}.brand small{display:none}.toolbar{align-items:stretch;flex-direction:column}.toolbar input{width:100%}}
 </style>
 </head>
@@ -39,7 +40,7 @@ const SUPABASE_KEY='sb_publishable_R3C66b8mtDzaKyKogBYQCw_KyUbw6G1';
 const STORE='tradedesk_supplier_session_v1';
 const INVITE_STORE='tradedesk_supplier_invite_v1';
 const $=s=>document.querySelector(s);
-let session=null,account=null,items=[],filterText='',authMode='login';
+let session=null,account=null,items=[],filterText='',authMode='login',showAddForm=false;
 
 function toast(msg){const el=$('#toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),3200)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -98,12 +99,13 @@ function filteredItems(){const q=filterText.trim().toLowerCase();return q?items.
 function statusLabel(s){return {pending:'未填写',submitted:'待审核',approved:'已通过',rejected:'需修改'}[s]||s}
 function cbmOf(x){return num(x.carton_length_cm)*num(x.carton_width_cm)*num(x.carton_height_cm)/1000000}
 function renderPortal(){
- const list=filteredItems(),submitted=items.filter(x=>x.status==='submitted').length,approved=items.filter(x=>x.status==='approved').length;
+ const list=filteredItems(),submitted=items.filter(x=>x.status==='submitted').length,approved=items.filter(x=>x.status==='approved').length,own=items.filter(x=>x.source_type==='supplier').length;
  document.getElementById('app').innerHTML=`<div class="top"><div class="brand"><div class="logo">TD</div><div><b>TradeDesk Supplier</b><small>${esc(account.supplier_name||'供应商工作台')}</small></div></div><div class="top-actions"><span>${esc(account.email||session.user.email||'')}</span><button onclick="signOut()">退出</button></div></div>
- <div class="wrap"><div class="hero"><div><h1>我的产品资料</h1><p>只显示采购方分配给您的产品。保存后进入采购方审核，不会直接修改对方正式产品库。</p></div><div class="summary"><div class="chip"><b>${items.length}</b><span>分配产品</span></div><div class="chip"><b>${submitted}</b><span>待审核</span></div><div class="chip"><b>${approved}</b><span>已通过</span></div></div></div>
- <div class="card"><div class="toolbar"><input placeholder="搜索 SKU / 产品名称" value="${esc(filterText)}" oninput="filterText=this.value;renderPortal()"><div class="hint">箱规单位：cm · 重量单位：KG · CBM 自动计算</div></div>
+ <div class="wrap"><div class="hero"><div><h1>我的产品资料</h1><p>这里包含采购方分配给您的产品，以及您自主新增的产品。自主新增产品审核通过前不会进入采购方正式产品库。</p></div><div class="hero-side"><div class="summary"><div class="chip"><b>${items.length}</b><span>全部产品</span></div><div class="chip"><b>${own}</b><span>自主新增</span></div><div class="chip"><b>${submitted}</b><span>待审核</span></div><div class="chip"><b>${approved}</b><span>已通过</span></div></div><button class="btn primary" onclick="showAddForm=!showAddForm;renderPortal()">${showAddForm?'收起新增':'＋ 添加产品'}</button></div></div>
+ ${showAddForm?addProductFormHtml():''}
+ <div class="card"><div class="toolbar"><input placeholder="搜索 SKU / 产品名称" value="${esc(filterText)}" oninput="filterText=this.value;renderPortal()"><div class="toolbar-right"><div class="hint">箱规单位：cm · 重量单位：KG · CBM 自动计算</div><button class="btn primary" onclick="showAddForm=true;renderPortal();setTimeout(()=>document.getElementById('newSku')?.focus(),0)">＋ 添加产品</button></div></div>
  ${list.length?`<div class="table-wrap"><table><thead><tr><th>产品</th><th>采购价</th><th>币种</th><th>净重/箱 KG</th><th>毛重/箱 KG</th><th>每箱数量</th><th>箱规 长 × 宽 × 高 cm</th><th>CBM</th><th>MOQ</th><th>交期/天</th><th>备注</th><th>状态</th><th>操作</th></tr></thead><tbody>
- ${list.map(row=>`<tr data-id="${row.id}"><td><div class="prod">${row.image_url?'<img src="'+esc(row.image_url)+'" alt="">':'<div style="width:48px;height:48px;background:#f2f4f7;border-radius:9px"></div>'}<div><b>${esc(row.sku)}</b><small>${esc(row.product_name)}</small></div></div></td>
+ ${list.map(row=>`<tr data-id="${row.id}"><td><div class="prod">${row.image_url?'<img src="'+esc(row.image_url)+'" alt="">':'<div style="width:48px;height:48px;background:#f2f4f7;border-radius:9px"></div>'}<div><b>${esc(row.sku)}</b><small>${esc(row.product_name)}</small><span class="source-tag ${row.source_type==='supplier'?'own':''}">${row.source_type==='supplier'?'供应商自主新增':'采购方分配'}</span></div></div></td>
  <td><input class="field" data-k="purchase_price" type="number" step="0.0001" min="0" value="${num(row.purchase_price)}"></td>
  <td><select class="field" data-k="purchase_currency">${['CNY','USD','EUR','GBP'].map(c=>'<option '+(c===row.purchase_currency?'selected':'')+'>'+c+'</option>').join('')}</select></td>
  <td><input class="field" data-k="net_weight" type="number" step="0.001" min="0" value="${num(row.net_weight)}"></td>
@@ -116,7 +118,43 @@ function renderPortal(){
  <td><input class="field note" data-k="note" value="${esc(row.note||'')}" placeholder="包装/报价说明"></td>
  <td><span class="status ${esc(row.status)}">${statusLabel(row.status)}</span>${row.status==='rejected'&&row.review_note?'<div class="review-note">'+esc(row.review_note)+'</div>':''}</td>
  <td><button class="btn primary" onclick="saveRow('${row.id}',this)">保存提交</button></td></tr>`).join('')}
- </tbody></table></div>`:'<div class="empty">采购方暂时没有分配产品给您。</div>'}</div></div>`;
+ </tbody></table></div>`:'<div class="empty">当前还没有产品。您可以自己添加产品资料，提交后由采购方审核。<br><button class="btn primary" onclick="showAddForm=true;renderPortal();setTimeout(()=>document.getElementById(\'newSku\')?.focus(),0)">添加第一个产品</button></div>'}</div></div>`;
+}
+function addProductFormHtml(){
+ return '<div class="card add-panel"><h3>新增产品</h3><p>您可以自主添加新产品。保存草稿不会进入审核；点击“保存并提交”后，采购方审核通过才会进入正式产品库。</p>'+
+ '<div class="add-grid">'+
+ '<div class="add-field"><label>供应商货号 / SKU *</label><input id="newSku" maxlength="80" placeholder="例如：3037-BEIGE-M"></div>'+
+ '<div class="add-field span2"><label>产品名称 *</label><input id="newName" maxlength="160" placeholder="请输入产品名称"></div>'+
+ '<div class="add-field"><label>单位</label><select id="newUnit"><option>PCS</option><option>PAIR</option><option>SET</option><option>BOX</option></select></div>'+
+ '<div class="add-field span2"><label>产品图片 URL</label><input id="newImage" placeholder="https://..."></div>'+
+ '<div class="add-field"><label>采购价</label><input id="newPrice" type="number" step="0.0001" min="0" value="0"></div>'+
+ '<div class="add-field"><label>币种</label><select id="newCurrency"><option>CNY</option><option>USD</option><option>EUR</option><option>GBP</option></select></div>'+
+ '<div class="add-field"><label>净重 / 箱 KG</label><input id="newNet" type="number" step="0.001" min="0" value="0"></div>'+
+ '<div class="add-field"><label>毛重 / 箱 KG</label><input id="newGross" type="number" step="0.001" min="0" value="0"></div>'+
+ '<div class="add-field"><label>每箱数量</label><input id="newPcs" type="number" step="1" min="1" value="1"></div>'+
+ '<div class="add-field"><label>MOQ</label><input id="newMoq" type="number" step="1" min="1" value="1"></div>'+
+ '<div class="add-field"><label>外箱长 cm</label><input id="newL" type="number" step="0.1" min="0" value="0"></div>'+
+ '<div class="add-field"><label>外箱宽 cm</label><input id="newW" type="number" step="0.1" min="0" value="0"></div>'+
+ '<div class="add-field"><label>外箱高 cm</label><input id="newH" type="number" step="0.1" min="0" value="0"></div>'+
+ '<div class="add-field"><label>交期 / 天</label><input id="newLead" type="number" step="1" min="0" value="0"></div>'+
+ '<div class="add-field span4"><label>备注</label><textarea id="newNote" placeholder="材质、颜色、尺码、包装、报价说明等"></textarea></div>'+
+ '</div><div class="add-actions"><button class="btn" onclick="showAddForm=false;renderPortal()">取消</button><button class="btn" onclick="createOwnProduct(false,this)">保存草稿</button><button class="btn primary" onclick="createOwnProduct(true,this)">保存并提交</button></div></div>';
+}
+async function createOwnProduct(submit,btn){
+ const sku=$('#newSku')?.value.trim()||'',name=$('#newName')?.value.trim()||'';
+ if(!sku)return toast('请填写供应商货号 / SKU');
+ if(!name)return toast('请填写产品名称');
+ btn.disabled=true;const old=btn.textContent;btn.textContent=submit?'提交中...':'保存中...';
+ try{
+  await rpc('supplier_create_trade_product_input',{
+   p_sku:sku,p_product_name:name,p_image_url:$('#newImage')?.value.trim()||'',p_unit:$('#newUnit')?.value||'PCS',
+   p_purchase_price:num($('#newPrice')?.value),p_purchase_currency:$('#newCurrency')?.value||'CNY',
+   p_net_weight:num($('#newNet')?.value),p_gross_weight:num($('#newGross')?.value),p_pcs_carton:num($('#newPcs')?.value)||1,
+   p_carton_length_cm:num($('#newL')?.value),p_carton_width_cm:num($('#newW')?.value),p_carton_height_cm:num($('#newH')?.value),
+   p_moq:num($('#newMoq')?.value)||1,p_lead_time_days:Math.round(num($('#newLead')?.value)),p_note:$('#newNote')?.value||'',p_submit:!!submit
+  });
+  showAddForm=false;toast(submit?'产品已提交采购方审核':'草稿已保存');await loadPortal();
+ }catch(e){toast(e.message||'保存失败');btn.disabled=false;btn.textContent=old}
 }
 function updateCbm(el){const tr=el.closest('tr');const l=num(tr.querySelector('[data-k="carton_length_cm"]').value),w=num(tr.querySelector('[data-k="carton_width_cm"]').value),h=num(tr.querySelector('[data-k="carton_height_cm"]').value);tr.querySelector('[data-cbm]').textContent=(l*w*h/1000000).toFixed(6)}
 async function saveRow(id,btn){const tr=document.querySelector('tr[data-id="'+id+'"]');if(!tr)return;const v=k=>tr.querySelector('[data-k="'+k+'"]').value;btn.disabled=true;btn.textContent='保存中...';try{
