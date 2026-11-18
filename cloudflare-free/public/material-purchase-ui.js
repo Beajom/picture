@@ -187,7 +187,8 @@ window.printMaterialPurchaseContract=function(){
   if(!currentOrder)return;
   const w=window.open('','_blank');
   if(!w){toastMsg('请允许弹出窗口后再打印');return}
-  w.document.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>'+safe(currentOrder.order_no)+' 订货合同</title><link rel="stylesheet" href="'+location.origin+'/material-purchase-ui.css"><style>@page{size:A4;margin:14mm}body{font-family:Arial,"Microsoft YaHei",sans-serif;background:#fff;margin:0;padding:0}.mpo-paper{border:none;padding:0;max-width:none}.mpo-material-thumb{max-height:62px}</style></head><body>'+paperMarkup(currentOrder)+'</body></html>');
+  const embeddedStyles=[...document.querySelectorAll('style')].map(x=>x.textContent||'').join('\n');
+  w.document.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>'+safe(currentOrder.order_no)+' 订货合同</title><style>'+embeddedStyles+'\n@page{size:A4;margin:14mm}body{font-family:Arial,"Microsoft YaHei",sans-serif;background:#fff;margin:0;padding:0}.mpo-paper{border:none;padding:0;max-width:none}.mpo-material-thumb{max-height:62px}</style></head><body>'+paperMarkup(currentOrder)+'</body></html>');
   w.document.close();
   w.onload=()=>{w.focus();w.print()};
 };
