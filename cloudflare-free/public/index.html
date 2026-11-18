@@ -13,6 +13,7 @@
 .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.variant-hide-btn{min-height:34px;min-width:90px;border-color:#bfdbfe;color:#1d4ed8}.variant-toolbar{position:relative;z-index:1}.inventory-visibility-toolbar{border:1px solid #93c5fd;background:#eff6ff}.inventory-visibility-toolbar b{color:#1e40af}.color-side img{object-fit:contain!important;object-position:center!important}.inventory-head img,.thumb{object-fit:contain!important}.color-card .size-list{min-width:0}@media(max-width:1050px){.inventory-colors{grid-template-columns:1fr}}@media(max-width:600px){.color-card{grid-template-columns:90px 1fr}.color-side{padding:8px 4px}.color-side img{width:58px;height:58px}.variant-toolbar{flex-wrap:wrap}}
 </style>
 <link rel="stylesheet" href="/material-purchase-ui.css">
+<script src="/material-purchase-ui.js" defer></script>
 </head>
 <body>
 <div class="app">
@@ -750,8 +751,7 @@ function previewPOPDF(id){
         '<div class="summary"><div>总数量<b>'+totalQty.toLocaleString()+'</b></div><div>货款小计<b>'+money(subtotal)+'</b></div><div>运费<b>'+money(shipping)+'</b></div><div>采购总额<b>'+money(total)+'</b></div></div>'+
         '<div class="terms"><b>付款条件：</b>'+esc(o.payment_terms||'—')+'</div>'+
         '<div class="foot"><div class="sign">采购方确认：</div><div class="sign">供应商确认：</div></div>'+
-      '</div></div><script src="/material-purchase-ui.js"></script>
-</body></html>';
+      '</div></div></body></html>';
     w.document.open();w.document.write(html);w.document.close();w.focus()
   }).catch(e=>{w.document.body.innerHTML='<p style="font-family:Arial;padding:24px">生成失败：'+esc(e.message)+'</p>'})
 }
