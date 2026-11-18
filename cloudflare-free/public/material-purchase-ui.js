@@ -149,6 +149,19 @@ function upperMoney(value){
   }
   return result+'元'+(jiao?digit[jiao]+'角':'')+(fen?digit[fen]+'分':'')+(!jiao&&!fen?'整':'');
 }
+function materialContractSealSize(){
+  try{
+    const size=Number(localStorage.getItem('mpoSealPrintSize'));
+    return [24,26,28].includes(size)?size:26;
+  }catch(_){return 26}
+}
+window.changeMaterialContractSealSize=function(value){
+  const size=Number(value);
+  if(![24,26,28].includes(size))return;
+  try{localStorage.setItem('mpoSealPrintSize',String(size))}catch(_){}
+  const documentView=document.getElementById('materialContractPaper');
+  if(documentView&&currentOrder)documentView.outerHTML=paperMarkup(currentOrder);
+};
 function paperMarkup(o){
   const items=o.items||[];
   const rows=items.map(it=>{
@@ -162,6 +175,7 @@ function paperMarkup(o){
       (it.remarks?'<div class="mpo-remarks">'+safe(it.remarks)+'</div>':'')+'</td></tr>';
   }).join('');
   const seal=!!o.has_buyer_stamp&&o.seal_enabled!==false&&!!o.buyer_stamp_url;
+  const sealSize=materialContractSealSize();
   const line=(label,value)=>'<div class="mpo-sig-line"><strong>'+label+'</strong><span>'+safe(value||'')+'</span></div>';
   const buyerBlock=line('甲　方：',o.buyer_company)+line('地　址：',o.buyer_address)+
     line('电　话：',o.buyer_phone)+line('委托代表人：',o.buyer_representative)+
@@ -169,8 +183,8 @@ function paperMarkup(o){
   const supplierBlock=line('乙　方：',o.supplier_name)+line('地　址：',o.supplier_address)+
     line('电　话：',o.supplier_phone)+line('委托代表人：',o.supplier_representative)+
     line('日　期：',(o.supplier_sign_date||o.order_date||'').replaceAll('-','.'));
-  return '<article class="mpo-paper" id="materialContractPaper">'+
-    '<header class="mpo-doc-title"><h2>订货合同</h2><p>（包装辅料采购）</p></header>'+
+  return '<article class="mpo-paper'+(items.length<=2?' mpo-short-contract':'')+'" id="materialContractPaper" style="--mpo-preview-seal:'+Math.round(sealSize*3)+'px;--mpo-print-seal:'+sealSize+'mm">'+
+    '<div class="mpo-doc-title"><h2>订货合同</h2><p>（包装辅料采购）</p></div>'+
     '<div class="mpo-contract-meta"><div class="mpo-contract-parties">'+
       '<div><strong>甲　方：</strong><span>'+safe(o.buyer_company||'')+'</span></div>'+
       '<div><strong>乙　方：</strong><span>'+safe(o.supplier_name||'')+'</span></div></div>'+
@@ -211,6 +225,8 @@ window.previewMaterialPurchaseContract=async function(id){
     currentOrder=await getOrder(id);
     openModal('包材订货合同 · '+currentOrder.order_no,
       '<div class="row" style="gap:9px;justify-content:flex-end;margin-bottom:12px">'+
+      '<label class="mpo-seal-size-picker">公章尺寸 <select class="field" aria-label="公章打印尺寸" onchange="changeMaterialContractSealSize(this.value)">'+
+      [24,26,28].map(size=>'<option value="'+size+'"'+(materialContractSealSize()===size?' selected':'')+'>'+({24:'小 · 24mm',26:'标准 · 26mm',28:'大 · 28mm'}[size])+'</option>').join('')+'</select></label>'+
       btn('甲方资料 / 公章管理','editMaterialContractProfile()')+
       btn('修改合同内容',"editMaterialPurchaseContract('"+safe(id)+"')")+
       btn('打印 / 保存 PDF','printMaterialPurchaseContract()',true)+'</div>'+
@@ -219,19 +235,35 @@ window.previewMaterialPurchaseContract=async function(id){
 };
 window.printMaterialPurchaseContract=function(){
   if(!currentOrder)return;
-  const w=window.open('','_blank');
-  if(!w){toastMsg('请允许弹出窗口后再打印');return}
-  const cssText=[...document.querySelectorAll('style')].map(x=>x.textContent||'').join('\n');
-  const extra='<style>@page{size:A4;margin:12mm}html,body{background:white!important;margin:0;padding:0;font-family:"Microsoft YaHei","SimSun",sans-serif}.mpo-paper{box-sizing:border-box;max-width:none;width:100%;padding:0;border:0;box-shadow:none;margin:0}.mpo-material-thumb{max-height:17mm}.mpo-signatures{break-inside:avoid}.mpo-product-row{break-inside:avoid}</style>';
-  w.document.open();
-  w.document.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="'+safe(location.origin)+'/"><title>'+safe(currentOrder.order_no)+' 订货合同</title><style>'+cssText+'</style>'+extra+'</head><body>'+paperMarkup(currentOrder)+'</body></html>');
-  w.document.close();
-  const printWhenReady=async()=>{
-    try{await Promise.all([...w.document.images].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve})));}catch(_){}
-    w.focus();w.print();
+  const win=window.open('','_blank');
+  if(!win){toastMsg('浏览器阻止了打印窗口，请允许弹出窗口');return}
+  // Keep the printable document completely separate from application CSS:
+  // the app's global "header" and responsive rules previously broke A4 layout.
+  const cssURL=new URL('/material-purchase-ui.css?v=a4-formal-20261118',location.origin).href;
+  const baseURL=new URL('/',location.origin).href;
+  const printExtra='@page{size:A4 portrait;margin:15mm}'+
+    'html,body{margin:0!important;padding:0!important;width:auto!important;height:auto!important;background:#fff!important}'+
+    '.mpo-paper{margin:0!important;padding:0!important;border:0!important;max-width:none!important;width:100%!important;box-shadow:none!important}'+
+    '.mpo-doc-title{position:static!important;display:block!important;width:auto!important;height:auto!important;padding:0!important;border:0!important;background:transparent!important;text-align:center!important}'+
+    '@media print{.mpo-paper{margin:0!important;max-width:none!important}.mpo-buyer-seal{width:var(--mpo-print-seal,26mm)!important;height:var(--mpo-print-seal,26mm)!important}}';
+  win.document.open();
+  win.document.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<base href="'+safe(baseURL)+'"><title>'+safe(currentOrder.order_no)+' 订货合同</title>'+
+    '<link rel="stylesheet" href="'+safe(cssURL)+'"><style>'+printExtra+'</style></head><body>'+
+    paperMarkup(currentOrder)+'</body></html>');
+  win.document.close();
+  let printed=false;
+  const printAfterAssets=async()=>{
+    if(printed)return;printed=true;
+    try{
+      if(win.document.fonts?.ready)await win.document.fonts.ready;
+      await Promise.all([...win.document.images].map(img=>img.complete?Promise.resolve():
+        new Promise(resolve=>{img.onload=resolve;img.onerror=resolve})));
+    }catch(_){}
+    if(!win.closed){win.focus();win.print()}
   };
-  if(w.document.readyState==='complete')printWhenReady();
-  else w.addEventListener('load',printWhenReady,{once:true});
+  if(win.document.readyState==='complete')printAfterAssets();
+  else win.addEventListener('load',printAfterAssets,{once:true});
 };
 window.editMaterialPurchaseContract=async function(id){
   try{
