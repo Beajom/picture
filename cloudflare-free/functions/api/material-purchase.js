@@ -92,9 +92,10 @@ export async function materialPurchaseHandler({request,env,path,method}){
           if(!item||!Number.isInteger(count)||count<=0||toReceive.has(item.id)||count>number(item.quantity)-number(item.received_qty))return resp({error:"入库数量有误或超过剩余未到货数量，请刷新后重试"},400);
           toReceive.set(item.id,{item,count});
         }
-        const batch=[];
+        const batch=[],runningBalances=new Map();
         for(const {item,count} of toReceive.values()){
-          const balance=number(item.current_stock)+count;
+          const balance=(runningBalances.get(item.material_id)??number(item.current_stock))+count;
+          runningBalances.set(item.material_id,balance);
           batch.push(env.DB.prepare("UPDATE material_purchase_order_items SET received_qty=received_qty+? WHERE id=? AND received_qty+?<=quantity").bind(count,item.id,count));
           batch.push(env.DB.prepare("UPDATE materials SET current_stock=current_stock+?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(count,item.material_id));
           batch.push(env.DB.prepare("INSERT INTO material_movements(id,material_id,purchase_order_id,movement_type,qty_change,balance_after,reference_no,notes) VALUES(?,?,NULL,'包材采购入库',?,?,?,?)").bind(crypto.randomUUID(),item.material_id,count,balance,order.order_no,shortText(d.notes,500)||"包材采购到货入库"));
