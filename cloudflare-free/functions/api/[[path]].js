@@ -1,3 +1,4 @@
+import { materialPurchaseHandler } from "./material-purchase.js";
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json;charset=utf-8','cache-control':'no-store'}})}
 function err(e,status=400){return json({error:e instanceof Error?e.message:String(e)},status)}
 const id=()=>crypto.randomUUID();
@@ -202,6 +203,9 @@ async function createDailyBackup(env){
 export async function onRequest(ctx){
   const {request,env}=ctx, url=new URL(request.url), p=url.pathname.replace(/^\/api/,'')||'/', method=request.method;
   try{
+    if(p==='/material-purchase-orders'||p.startsWith('/material-purchase-orders/')){
+      return materialPurchaseHandler({request,env,path:p,method});
+    }
     if(p==='/bootstrap'&&method==='GET'){
       await ensureOutboundMetaTables(env);
       await ensureProductVisibilityTable(env);
