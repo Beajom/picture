@@ -120,3 +120,17 @@ jobs:
           grep -q "newMaterialPO" /tmp/material-purchase-ui.js
           grep -q "mpo-paper" /tmp/material-purchase-ui.css
           echo "Deployment verified."
+
+      - name: Inventory reconciliation preflight
+        working-directory: cloudflare-free
+        env:
+          APPLY_STOCK_RECONCILIATION: "no"
+        run: node scripts/reconcile-inventory-20261118.mjs
+      - name: Archive reconciliation snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-reconciliation-20261118
+          path: /tmp/stock-reconciliation-20261118.json
+          if-no-files-found: ignore
+          retention-days: 14
