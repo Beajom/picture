@@ -1259,6 +1259,13 @@ function quoteSetProgress(text,pct){
   if(bar)bar.style.width=Math.max(0,Math.min(100,Number(pct)||0))+'%';
 }
 function quoteCleanText(s=''){return String(s||'').replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/\s+\n/g,'\n').trim()}
+function quoteCleanSpec(s=''){
+  const v=quoteCleanText(s);
+  if(!v)return '';
+  if(/^(?:税率\s*)?\d+(?:\.\d+)?%$/i.test(v))return '';
+  if(/^税率[:：\s]*\d+(?:\.\d+)?%$/i.test(v))return '';
+  return v;
+}
 function quoteNormHeader(s=''){return String(s||'').replace(/[\s()（）:：/\\_-]/g,'').toLowerCase()}
 function quoteHeaderField(s=''){
   const n=quoteNormHeader(s);
@@ -1720,12 +1727,12 @@ function quoteRenderResult(parsed){
         '<td><select id="qAction_'+i+'"><option value="add" '+(x.action==='add'?'selected':'')+'>新增</option><option value="update" '+(x.action==='update'?'selected':'')+'>更新已有</option><option value="skip">跳过</option></select>'+(x.existingId?'<div class="muted" style="font-size:9px;margin-top:3px">SKU已存在</div>':'')+'</td>'+
         '<td><input class="q-sku" id="qSku_'+i+'" value="'+esc(x.sku||'')+'"></td>'+
         '<td><input class="q-name" id="qName_'+i+'" value="'+esc(x.name||'')+'"></td>'+
-        '<td><input class="q-spec" id="qSpec_'+i+'" value="'+esc([x.spec,x.desc].filter(Boolean).join(' / '))+'"></td>'+
+        '<td><input class="q-spec" id="qSpec_'+i+'" value="'+esc(quoteCleanSpec([x.spec,x.desc].filter(Boolean).join(' / ')))+'"></td>'+
         '<td><input id="qUnit_'+i+'" value="'+esc(x.unit||'PCS')+'"></td>'+
         '<td><input class="q-num" id="qQty_'+i+'" type="number" step="0.01" value="'+Number(quoteParseNumber(x.qty)||1)+'"></td>'+
         '<td><input class="q-num" id="qPrice_'+i+'" type="number" step="0.0001" value="'+Number(quoteParseNumber(x.price)||0)+'"></td>'+
       '</tr>').join('')+'</table></div>':'<div class="quote-import-warn">没有可靠识别到产品行。可以换一份更清晰的 PDF / 图片，或使用清晰扫描件重新识别。</div>')+
-    '<div class="quote-import-note">识别结果只是草稿。你可以在这里修改 SKU、名称、规格、数量和采购价；只有勾选并点击“导入选中产品”后才会写入正式产品库。</div>';
+    '<div class="quote-import-note">识别结果只是草稿。你可以在这里修改 SKU、名称、规格、数量和采购单价；只有勾选并点击“导入选中产品”后才会写入正式产品库。税率不会写入规格/描述。</div>';
   const btn=$('#modalSaveBtn');
   if(btn){btn.textContent='导入选中产品';btn.setAttribute('onclick','window.importRecognizedQuoteProducts()');btn.disabled=!parsed.items.length}
   const stateEl=$('#modalSaveState');if(stateEl)stateEl.textContent='识别完成，请核对后再导入';
@@ -1808,7 +1815,7 @@ window.importRecognizedQuoteProducts=async()=>{
   for(let i=0;i<q.items.length;i++){
     if(!$('#qUse_'+i)?.checked)continue;
     const action=$('#qAction_'+i)?.value||'add';if(action==='skip')continue;
-    const sku=$('#qSku_'+i)?.value.trim()||'',name=$('#qName_'+i)?.value.trim()||'',spec=$('#qSpec_'+i)?.value.trim()||'',unit=$('#qUnit_'+i)?.value.trim()||'PCS';
+    const sku=$('#qSku_'+i)?.value.trim()||'',name=$('#qName_'+i)?.value.trim()||'',spec=quoteCleanSpec($('#qSpec_'+i)?.value||''),unit=$('#qUnit_'+i)?.value.trim()||'PCS';
     const qty=Number($('#qQty_'+i)?.value||0),price=Number($('#qPrice_'+i)?.value||0);
     if(!sku||!name)continue;
     rows.push({i,action,sku,name,spec,unit,qty,price});
@@ -1816,15 +1823,13 @@ window.importRecognizedQuoteProducts=async()=>{
   if(!rows.length)return toast('请至少勾选一个有 SKU 和产品名称的产品','warn');
   const supplierId=$('#quoteSupplierSelect')?.value||'',btn=$('#modalSaveBtn');state.saving=true;busy(btn,true,'导入中');
   try{
-    quoteSetProgress('正在保存原始报价单...',92);
-    let sourcePath='';
-    try{sourcePath=await quoteUploadSource(q.file)}
-    catch(e){toast('原始报价单存档失败，但产品仍会继续导入','warn',niceError(e))}
+    quoteSetProgress('正在写入产品库...',92);
+    const sourcePath='';
     const u=await fastUser();if(!u)throw new Error('登录状态失效');
     let added=0,updated=0,skipped=0;
     for(const row of rows){
       const existing=db.products.find(p=>String(p.sku||'').toLowerCase()===row.sku.toLowerCase());
-      const meta={supplierQuote:{fileName:q.file?.name||'',storagePath:sourcePath,quoteNo:q.quoteNo||'',quoteDate:q.date||'',supplierName:q.supplierName||'',recognizedCurrency:q.currency||'CNY',spec:row.spec,quotedQty:row.qty,quotedUnitPrice:row.price,importedAt:new Date().toISOString()}};
+      const meta={supplierQuote:{fileName:q.file?.name||'',quoteNo:q.quoteNo||'',quoteDate:q.date||'',supplierName:q.supplierName||'',recognizedCurrency:q.currency||'CNY',spec:quoteCleanSpec(row.spec),quotedQty:row.qty,quotedUnitPrice:row.price,importedAt:new Date().toISOString()}};
       if(row.action==='update'){
         if(!existing){skipped++;continue}
         const sourceMeta={...(existing.sourceMeta||{}),...meta};
