@@ -116,6 +116,8 @@ jobs:
                grep -q "newMaterialPO" /tmp/index.html &&
                grep -q "procurementTypeSwitch" /tmp/index.html &&
                grep -q "editMaterialContractProfile" /tmp/index.html &&
+               grep -q "公章已保存到云端" /tmp/index.html &&
+               grep -q "onchange=\"uploadMaterialContractStamp()\"" /tmp/index.html &&
                grep -q "mpo-buyer-seal" /tmp/index.html &&
                grep -q "采购类型" /tmp/index.html &&
                grep -q "cloudDataStatus" /tmp/index.html; then
