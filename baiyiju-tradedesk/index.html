@@ -1817,7 +1817,10 @@ window.importRecognizedQuoteProducts=async()=>{
   const supplierId=$('#quoteSupplierSelect')?.value||'',btn=$('#modalSaveBtn');state.saving=true;busy(btn,true,'导入中');
   try{
     quoteSetProgress('正在保存原始报价单...',92);
-    const sourcePath=await quoteUploadSource(q.file),u=await fastUser();if(!u)throw new Error('登录状态失效');
+    let sourcePath='';
+    try{sourcePath=await quoteUploadSource(q.file)}
+    catch(e){toast('原始报价单存档失败，但产品仍会继续导入','warn',niceError(e))}
+    const u=await fastUser();if(!u)throw new Error('登录状态失效');
     let added=0,updated=0,skipped=0;
     for(const row of rows){
       const existing=db.products.find(p=>String(p.sku||'').toLowerCase()===row.sku.toLowerCase());
