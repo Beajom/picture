@@ -252,7 +252,7 @@ window.receiveMaterialPurchase=async function(id){
       if(!items.length){toastMsg('请填写至少一项入库数量');return}
       if(!confirm('确认将 '+items.reduce((s,x)=>s+x.quantity,0).toLocaleString()+' 件包装辅料计入库存并写入流水吗？'))return;
       const submit=form.querySelector('button[type=submit]');submit.disabled=true;
-      try{await api('/material-purchase-orders/'+encodeURIComponent(id)+'/receive',{method:'POST',body:JSON.stringify({items,notes:form.notes.value})});
+      try{await api('/material-purchase-orders/'+encodeURIComponent(id)+'/receive',{method:'POST',body:JSON.stringify({items,notes:form.querySelector('[name=notes]').value})});
         closeModal();await load(true);await loadPurchaseOrders();render();toastMsg('包材已入库，库存流水已记录')
       }catch(err){toastMsg('入库失败：'+err.message);submit.disabled=false}
     }
