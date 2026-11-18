@@ -246,6 +246,8 @@ window.receiveMaterialPurchase=async function(id){
       '<form id="materialReceiveForm" class="form"><div class="full mpo-lines">'+rows+'</div>'+
       '<label class="full">收货备注<input class="field" name="notes" placeholder="质检记录、送货单号等"></label>'+
       '<div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button class="btn primary">确认收货并入库</button></div></form>');
+    // Retain the same request ID across retries so a network timeout cannot double receive.
+    const receiptRequestId=crypto.randomUUID();
     el('materialReceiveForm').onsubmit=async e=>{
       e.preventDefault();
       const form=e.currentTarget;
@@ -253,7 +255,7 @@ window.receiveMaterialPurchase=async function(id){
       if(!items.length){toastMsg('请填写至少一项入库数量');return}
       if(!confirm('确认将 '+items.reduce((s,x)=>s+x.quantity,0).toLocaleString()+' 件包装辅料计入库存并写入流水吗？'))return;
       const submit=form.querySelector('button[type=submit]');submit.disabled=true;
-      try{await api('/material-purchase-orders/'+encodeURIComponent(id)+'/receive',{method:'POST',body:JSON.stringify({items,notes:form.querySelector('[name=notes]').value})});
+      try{await api('/material-purchase-orders/'+encodeURIComponent(id)+'/receive',{method:'POST',body:JSON.stringify({request_id:receiptRequestId,items,notes:form.querySelector('[name=notes]').value})});
         closeModal();await load(true);await loadPurchaseOrders();render();toastMsg('包材已入库，库存流水已记录')
       }catch(err){toastMsg('入库失败：'+err.message);submit.disabled=false}
     }
