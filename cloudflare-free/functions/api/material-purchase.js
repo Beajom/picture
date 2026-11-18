@@ -12,7 +12,10 @@ async function ensureTables(db){
   await db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS material_purchase_orders(id TEXT PRIMARY KEY,order_no TEXT NOT NULL UNIQUE,supplier_id TEXT NOT NULL,order_date TEXT NOT NULL,delivery_date TEXT,delivery_address TEXT NOT NULL DEFAULT '',payment_terms TEXT NOT NULL DEFAULT '',quality_terms TEXT NOT NULL DEFAULT '',packaging_terms TEXT NOT NULL DEFAULT '',other_terms TEXT NOT NULL DEFAULT '',shipping_fee REAL NOT NULL DEFAULT 0,sign_location TEXT NOT NULL DEFAULT '浙江义乌',buyer_company TEXT NOT NULL DEFAULT '义乌市时盈电子商务有限公司',status TEXT NOT NULL DEFAULT '已下单',notes TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     db.prepare("CREATE TABLE IF NOT EXISTS material_purchase_order_items(id TEXT PRIMARY KEY,order_id TEXT NOT NULL REFERENCES material_purchase_orders(id) ON DELETE CASCADE,material_id TEXT NOT NULL REFERENCES materials(id),quantity INTEGER NOT NULL,received_qty INTEGER NOT NULL DEFAULT 0,unit_price REAL NOT NULL DEFAULT 0,material_grade TEXT NOT NULL DEFAULT '',material_spec TEXT NOT NULL DEFAULT '',remarks TEXT NOT NULL DEFAULT '')"),
-    db.prepare("CREATE INDEX IF NOT EXISTS idx_material_po_items_order ON material_purchase_order_items(order_id)")
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_material_po_items_order ON material_purchase_order_items(order_id)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS material_receipt_requests(id TEXT PRIMARY KEY,order_id TEXT NOT NULL REFERENCES material_purchase_orders(id),received_total INTEGER NOT NULL,notes TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
+    // Database-level guard: a simultaneous receive or contract edit must never over-receive.
+    db.prepare("CREATE TRIGGER IF NOT EXISTS trg_material_po_received_guard BEFORE UPDATE OF received_qty,quantity ON material_purchase_order_items WHEN NEW.received_qty < 0 OR NEW.received_qty > NEW.quantity BEGIN SELECT RAISE(ABORT,'received quantity exceeds ordered quantity'); END")
   ]);
 }
 async function detail(db,id){
@@ -84,27 +87,38 @@ export async function materialPurchaseHandler({request,env,path,method}){
       if(method==="POST"&&action==="receive"){
         const d=await request.json();
         const incoming=Array.isArray(d.items)?d.items:[];
-        if(!incoming.length)return resp({error:"请选择需要入库的包材数量"},400);
-        const prior=await detail(env.DB,id), byId=new Map(prior.items.map(x=>[x.id,x]));
+        if(!incoming.length||incoming.length>40)return resp({error:"请选择1至40项需要入库的包材"},400);
+        // Each client submission carries a stable UUID. A retry cannot be counted twice.
+        const requestId=shortText(d.request_id||crypto.randomUUID(),100);
+        if(!/^[a-zA-Z0-9-]{8,100}$/.test(requestId))return resp({error:"收货请求编号格式不正确"},400);
+        if(await first(env.DB,"SELECT id FROM material_receipt_requests WHERE id=?",requestId))return resp({error:"该收货请求已处理，请刷新采购单核对库存和流水"},409);
+        const prior=await detail(env.DB,id),byId=new Map(prior.items.map(x=>[x.id,x]));
         const toReceive=new Map();
         for(const it of incoming){
           const item=byId.get(String(it.id||"")),count=Number(it.quantity);
-          if(!item||!Number.isInteger(count)||count<=0||toReceive.has(item.id)||count>number(item.quantity)-number(item.received_qty))return resp({error:"入库数量有误或超过剩余未到货数量，请刷新后重试"},400);
+          if(!item||!Number.isSafeInteger(count)||count<=0||toReceive.has(item.id)||count>number(item.quantity)-number(item.received_qty))return resp({error:"入库数量有误或超过剩余未到货数量，请刷新后重试"},400);
           toReceive.set(item.id,{item,count});
         }
-        const batch=[],runningBalances=new Map();
+        const total=[...toReceive.values()].reduce((sum,x)=>sum+x.count,0);
+        if(!Number.isSafeInteger(total))return resp({error:"本次入库数量超出范围"},400);
+        const note=shortText(d.notes,500)||"包材采购到货入库";
+        // D1 batch executes inside one transaction. Unique receipt id and quantity
+        // guard roll back the stock and ledger writes if a competing request wins.
+        const batch=[env.DB.prepare("INSERT INTO material_receipt_requests(id,order_id,received_total,notes) VALUES(?,?,?,?)").bind(requestId,id,total,note)];
         for(const {item,count} of toReceive.values()){
-          const balance=(runningBalances.get(item.material_id)??number(item.current_stock))+count;
-          runningBalances.set(item.material_id,balance);
-          batch.push(env.DB.prepare("UPDATE material_purchase_order_items SET received_qty=received_qty+? WHERE id=? AND received_qty+?<=quantity").bind(count,item.id,count));
+          batch.push(env.DB.prepare("UPDATE material_purchase_order_items SET received_qty=received_qty+? WHERE id=?").bind(count,item.id));
           batch.push(env.DB.prepare("UPDATE materials SET current_stock=current_stock+?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(count,item.material_id));
-          batch.push(env.DB.prepare("INSERT INTO material_movements(id,material_id,purchase_order_id,movement_type,qty_change,balance_after,reference_no,notes) VALUES(?,?,NULL,'包材采购入库',?,?,?,?)").bind(crypto.randomUUID(),item.material_id,count,balance,order.order_no,shortText(d.notes,500)||"包材采购到货入库"));
+          // Read balance AFTER updating material stock, never from an old page snapshot.
+          batch.push(env.DB.prepare("INSERT INTO material_movements(id,material_id,purchase_order_id,movement_type,qty_change,balance_after,reference_no,notes) SELECT ?,id,NULL,'包材采购入库',?,current_stock,?,? FROM materials WHERE id=?").bind(crypto.randomUUID(),count,order.order_no,note,item.material_id));
         }
-        await env.DB.batch(batch);
-        const updated=await detail(env.DB,id);
-        const full=updated.items.every(x=>number(x.received_qty)>=number(x.quantity));
-        await env.DB.prepare("UPDATE material_purchase_orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(full?"已入库":"部分到货",id).run();
-        return resp({ok:true,order:await detail(env.DB,id)});
+        batch.push(env.DB.prepare("UPDATE material_purchase_orders SET status=CASE WHEN NOT EXISTS(SELECT 1 FROM material_purchase_order_items WHERE order_id=? AND received_qty<quantity) THEN '已入库' ELSE '部分到货' END,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(id,id));
+        try{await env.DB.batch(batch)}catch(e){
+          const msg=String(e&&e.message||e);
+          if(/UNIQUE constraint|material_receipt_requests/i.test(msg))return resp({error:"该收货请求已处理，请刷新确认，系统没有重复入库"},409);
+          if(/received quantity exceeds ordered quantity/i.test(msg))return resp({error:"收货期间数量已变化，请刷新采购单后重新核对"},409);
+          throw e;
+        }
+        return resp({ok:true,receipt_id:requestId,order:await detail(env.DB,id)});
       }
     }
     return resp({error:"Not found"},404);
