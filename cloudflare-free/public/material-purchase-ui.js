@@ -293,9 +293,10 @@ window.editMaterialContractProfile=async function(){
       '<div class="actions full"><button type="button" class="btn" onclick="closeModal()">取消</button><button type="submit" class="btn primary">保存甲方资料</button></div></form>'+
       '<div class="mpo-stamp-manager"><b>甲方公章图片（仅接受上传的真实公章）</b>'+
       '<p class="small muted">支持PNG透明背景 / JPG / WebP，最大2MB。公章可能随合同打印输出，请确认用途和授权。</p>'+
-      '<div id="mpoStampPreview">'+(p.has_stamp?'<img alt="已保存公章" class="mpo-stamp-manager-img" src="/api/material-contract-profile/stamp?v='+encodeURIComponent(p.updated_at||'')+'">':'<span class="muted small">尚未上传公章</span>')+'</div>'+
-      '<div class="row" style="gap:8px;flex-wrap:wrap"><label class="btn" style="cursor:pointer">选择公章图片<input type="file" accept="image/png,image/jpeg,image/webp" id="mpoStampFile" style="display:none"></label>'+
-      '<button type="button" class="btn primary" id="mpoStampUpload" onclick="uploadMaterialContractStamp()">上传并保存公章</button>'+
+      '<div id="mpoStampPreview">'+(p.has_stamp?'<img alt="已保存公章" class="mpo-stamp-manager-img" src="/api/material-contract-profile/stamp?v='+encodeURIComponent(p.updated_at||'')+'" onerror="this.style.display=\'none\';document.getElementById(\'mpoStampStatus\').textContent=\'公章记录存在，但图片读取失败，请重新选择上传\'">':'')+'</div>'+
+      '<div id="mpoStampStatus" class="mpo-stamp-status '+(p.has_stamp?'is-saved':'')+'">'+(p.has_stamp?'✓ 公章已保存到云端，无需再次保存。需要更换时直接选择新图片。':'尚未保存公章，点击下方选择图片即可上传。')+'</div>'+
+      '<div class="row" style="gap:8px;flex-wrap:wrap"><label class="btn primary" style="cursor:pointer">'+(p.has_stamp?'更换公章图片':'选择公章图片并上传')+
+      '<input type="file" accept="image/png,image/jpeg,image/webp" id="mpoStampFile" style="display:none" onchange="uploadMaterialContractStamp()"></label>'+
       (p.has_stamp?'<button type="button" class="btn danger" onclick="deleteMaterialContractStamp()">删除已保存公章</button>':'')+'</div></div>');
     el('materialBuyerProfileForm').onsubmit=async e=>{
       e.preventDefault();const f=e.currentTarget,button=f.querySelector('button[type=submit]');
@@ -308,21 +309,31 @@ window.editMaterialContractProfile=async function(){
   }catch(err){toastMsg('读取甲方资料失败：'+err.message)}
 };
 window.uploadMaterialContractStamp=async function(){
-  const file=el('mpoStampFile')?.files?.[0];
-  if(!file){toastMsg('请先选择真实公章图片');return}
+  const input=el('mpoStampFile'),file=input?.files?.[0];
+  if(!file)return;
   if(file.size>2*1024*1024||!['image/png','image/jpeg','image/webp'].includes(file.type)){
-    toastMsg('公章仅支持2MB以内PNG、JPG、WebP');return
+    toastMsg('公章仅支持2MB以内PNG、JPG、WebP');input.value='';return
   }
-  if(!confirm('请确认此公章真实、已获授权，并知悉当前工作台未配置严格登录保护。确定上传到云端吗？'))return;
-  const button=el('mpoStampUpload');if(button)button.disabled=true;
+  if(!confirm('请确认已获授权，并知悉当前工作台尚未配置严格登录保护。确认将此公章保存到云端吗？')){
+    input.value='';return
+  }
+  const status=el('mpoStampStatus');
+  input.disabled=true;
+  if(status)status.textContent='正在上传和保存公章，请勿关闭窗口…';
   try{
     const fd=new FormData();fd.append('file',file);
     const response=await fetch('/api/material-contract-profile/stamp',{method:'POST',body:fd,cache:'no-store'});
     const payload=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(payload.error||'上传失败');
-    toastMsg('公章已保存，合同可选择显示');await editMaterialContractProfile()
-  }catch(err){toastMsg('公章保存失败：'+err.message)}
-  finally{if(button)button.disabled=false}
+    await editMaterialContractProfile();
+    toastMsg('公章已保存到云端，无需再次操作');
+  }catch(err){
+    if(status)status.textContent='上传未成功：'+err.message;
+    toastMsg('公章保存失败：'+err.message)
+  }finally{
+    input.disabled=false;
+    input.value='';
+  }
 };
 window.deleteMaterialContractStamp=async function(){
   if(!confirm('确定删除云端保存的甲方公章吗？此前合同打印也将不再自动显示该公章。'))return;
