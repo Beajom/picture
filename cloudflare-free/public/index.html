@@ -104,6 +104,211 @@
 .mpo-stamp-status.is-saved{color:#047857;font-weight:700}
 #mpoStampPreview:empty{display:none}
 
+
+/* A4 formal layout v2: same content, readable measurements, no global app header styles. */
+.mpo-paper{
+  box-sizing:border-box;
+  width:100%;
+  max-width:182mm;
+  margin:0 auto;
+  padding:15mm 12mm 12mm;
+  font-size:13px;
+  line-height:1.65;
+  background:#fff;
+  color:#171717;
+}
+.mpo-paper .mpo-doc-title{
+  display:block;
+  position:static;
+  width:auto;
+  min-height:0;
+  height:auto;
+  padding:0;
+  border:0;
+  background:none;
+  text-align:center;
+  margin:0 0 16px;
+}
+.mpo-paper .mpo-doc-title h2{
+  display:block;
+  margin:0;
+  font-size:26px;
+  font-weight:750;
+  line-height:1.45;
+  letter-spacing:4px;
+  text-align:center;
+}
+.mpo-paper .mpo-doc-title p{
+  font-size:12px;
+  margin:2px 0 0;
+  line-height:1.4;
+  letter-spacing:1px;
+  text-align:center;
+}
+.mpo-paper .mpo-contract-meta{
+  grid-template-columns:minmax(0,1.42fr) minmax(0,1fr);
+  gap:14px;
+  margin:0 0 12px;
+  font-size:12px;
+  line-height:1.8;
+}
+.mpo-paper .mpo-contract-meta span{min-width:0}
+.mpo-paper .mpo-intro{margin:8px 0}
+.mpo-paper .mpo-section-heading{font-size:13px;margin:0 0 8px}
+.mpo-paper .mpo-contract-table th,
+.mpo-paper .mpo-contract-table td{
+  font-size:12px;
+  padding:7px 4px;
+  border:1px solid #222;
+  line-height:1.5;
+}
+.mpo-paper .mpo-contract-table th{font-weight:700}
+.mpo-paper .mpo-product-row td{padding:11px 4px}
+.mpo-paper .mpo-contract-table .mpo-sum-row td{padding:5px 4px}
+.mpo-paper .mpo-contract-table .mpo-grand-total td{font-size:12px}
+.mpo-paper .mpo-contract-table .mpo-money-words td{padding:7px 8px;font-size:12px}
+.mpo-paper .mpo-terms .mpo-clause{font-size:12px;line-height:1.7;padding:8px}
+.mpo-paper .mpo-signatures{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  align-items:stretch;
+  gap:11px;
+  margin:18px 0 4px;
+}
+.mpo-paper .mpo-signatures .mpo-sign-block{
+  box-sizing:border-box;
+  min-height:215px;
+  height:auto;
+  padding:11px 10px 114px;
+  border:1px solid #333;
+  overflow:hidden;
+  position:relative;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.mpo-paper .mpo-sig-line{
+  grid-template-columns:78px minmax(0,1fr);
+  font-size:12px;
+  line-height:1.6;
+  margin-bottom:5px;
+}
+.mpo-paper .mpo-seal-zone{
+  left:10px;
+  right:10px;
+  bottom:10px;
+  height:100px;
+  font-size:11px;
+}
+.mpo-paper .mpo-buyer-seal{
+  width:var(--mpo-preview-seal,78px);
+  height:var(--mpo-preview-seal,78px);
+  right:9px;
+  bottom:5px;
+  max-width:none;
+  object-fit:contain;
+  opacity:.95;
+}
+.mpo-paper .mpo-document-footnote{font-size:10px;margin:8px 0 0}
+.mpo-seal-size-picker{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#475467;white-space:nowrap}
+.mpo-seal-size-picker .field{min-width:126px;padding:8px 9px;margin:0}
+@media (max-width:650px) and (not print){
+  .mpo-paper{max-width:100%;padding:12px}
+  .mpo-paper .mpo-contract-meta{grid-template-columns:1fr;gap:4px}
+  .mpo-paper .mpo-signatures{grid-template-columns:1fr}
+  .mpo-paper .mpo-contract-table td,.mpo-paper .mpo-contract-table th{font-size:10px;padding:5px 2px}
+}
+@page{size:A4 portrait;margin:15mm}
+@media print{
+  html,body{
+    width:auto!important;
+    height:auto!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+    background:#fff!important;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .mpo-paper{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    box-shadow:none!important;
+    font-size:12px!important;
+    line-height:1.55!important;
+    overflow:visible!important;
+  }
+  .mpo-paper .mpo-doc-title{
+    display:block!important;
+    position:static!important;
+    width:auto!important;
+    height:auto!important;
+    min-height:0!important;
+    padding:0!important;
+    margin:0 0 12mm!important;
+    background:transparent!important;
+    border:0!important;
+    text-align:center!important;
+  }
+  .mpo-paper .mpo-doc-title h2{font-size:21pt!important;letter-spacing:3px;text-align:center!important;line-height:1.3}
+  .mpo-paper .mpo-doc-title p{font-size:10pt!important;margin-top:1mm}
+  .mpo-paper .mpo-contract-meta{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)!important;font-size:10pt!important;gap:6mm;line-height:1.7}
+  .mpo-paper .mpo-section-heading{font-size:10pt!important}
+  .mpo-paper .mpo-contract-table{width:100%!important;table-layout:fixed!important}
+  .mpo-paper .mpo-contract-table th,.mpo-paper .mpo-contract-table td{
+    font-size:9pt!important;
+    padding:2.1mm 1mm!important;
+    line-height:1.45!important;
+    overflow-wrap:anywhere;
+  }
+  .mpo-paper .mpo-material-thumb{width:16mm!important;height:16mm!important}
+  .mpo-paper .mpo-terms .mpo-clause{font-size:9pt!important;line-height:1.6!important;padding:2.1mm 2.5mm!important}
+  .mpo-paper .mpo-signatures{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    align-items:stretch;
+    gap:3mm!important;
+    margin:7mm 0 0!important;
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  .mpo-paper .mpo-signatures .mpo-sign-block{
+    min-height:56mm!important;
+    height:auto!important;
+    padding:3mm 2.5mm 30mm!important;
+    border:1px solid #333!important;
+  }
+  .mpo-paper .mpo-sig-line{
+    display:grid!important;
+    grid-template-columns:23mm minmax(0,1fr)!important;
+    font-size:8.8pt!important;
+    line-height:1.55!important;
+    margin-bottom:1mm!important;
+  }
+  .mpo-paper .mpo-seal-zone{
+    position:absolute!important;
+    height:28mm!important;
+    left:2.5mm!important;
+    right:2.5mm!important;
+    bottom:2mm!important;
+  }
+  .mpo-paper .mpo-buyer-seal{
+    position:absolute!important;
+    width:var(--mpo-print-seal,26mm)!important;
+    height:var(--mpo-print-seal,26mm)!important;
+    max-width:none!important;
+    right:2mm!important;
+    bottom:0!important;
+    opacity:.95!important;
+  }
+  .mpo-paper .mpo-contract-table thead{display:table-header-group}
+  .mpo-paper .mpo-product-row,
+  .mpo-paper .mpo-signatures,
+  .mpo-paper .mpo-terms .mpo-clause{break-inside:avoid;page-break-inside:avoid}
+  .mpo-paper .mpo-document-footnote{font-size:8pt!important;margin-top:3mm!important;color:#555}
+}
+
 /* MATERIAL_PURCHASE_CSS_BUNDLE_END */
 </style>
 
@@ -1210,6 +1415,19 @@ function upperMoney(value){
   }
   return result+'元'+(jiao?digit[jiao]+'角':'')+(fen?digit[fen]+'分':'')+(!jiao&&!fen?'整':'');
 }
+function materialContractSealSize(){
+  try{
+    const size=Number(localStorage.getItem('mpoSealPrintSize'));
+    return [24,26,28].includes(size)?size:26;
+  }catch(_){return 26}
+}
+window.changeMaterialContractSealSize=function(value){
+  const size=Number(value);
+  if(![24,26,28].includes(size))return;
+  try{localStorage.setItem('mpoSealPrintSize',String(size))}catch(_){}
+  const documentView=document.getElementById('materialContractPaper');
+  if(documentView&&currentOrder)documentView.outerHTML=paperMarkup(currentOrder);
+};
 function paperMarkup(o){
   const items=o.items||[];
   const rows=items.map(it=>{
@@ -1223,6 +1441,7 @@ function paperMarkup(o){
       (it.remarks?'<div class="mpo-remarks">'+safe(it.remarks)+'</div>':'')+'</td></tr>';
   }).join('');
   const seal=!!o.has_buyer_stamp&&o.seal_enabled!==false&&!!o.buyer_stamp_url;
+  const sealSize=materialContractSealSize();
   const line=(label,value)=>'<div class="mpo-sig-line"><strong>'+label+'</strong><span>'+safe(value||'')+'</span></div>';
   const buyerBlock=line('甲　方：',o.buyer_company)+line('地　址：',o.buyer_address)+
     line('电　话：',o.buyer_phone)+line('委托代表人：',o.buyer_representative)+
@@ -1230,8 +1449,8 @@ function paperMarkup(o){
   const supplierBlock=line('乙　方：',o.supplier_name)+line('地　址：',o.supplier_address)+
     line('电　话：',o.supplier_phone)+line('委托代表人：',o.supplier_representative)+
     line('日　期：',(o.supplier_sign_date||o.order_date||'').replaceAll('-','.'));
-  return '<article class="mpo-paper" id="materialContractPaper">'+
-    '<header class="mpo-doc-title"><h2>订货合同</h2><p>（包装辅料采购）</p></header>'+
+  return '<article class="mpo-paper'+(items.length<=2?' mpo-short-contract':'')+'" id="materialContractPaper" style="--mpo-preview-seal:'+Math.round(sealSize*3)+'px;--mpo-print-seal:'+sealSize+'mm">'+
+    '<div class="mpo-doc-title"><h2>订货合同</h2><p>（包装辅料采购）</p></div>'+
     '<div class="mpo-contract-meta"><div class="mpo-contract-parties">'+
       '<div><strong>甲　方：</strong><span>'+safe(o.buyer_company||'')+'</span></div>'+
       '<div><strong>乙　方：</strong><span>'+safe(o.supplier_name||'')+'</span></div></div>'+
@@ -1272,6 +1491,8 @@ window.previewMaterialPurchaseContract=async function(id){
     currentOrder=await getOrder(id);
     openModal('包材订货合同 · '+currentOrder.order_no,
       '<div class="row" style="gap:9px;justify-content:flex-end;margin-bottom:12px">'+
+      '<label class="mpo-seal-size-picker">公章尺寸 <select class="field" aria-label="公章打印尺寸" onchange="changeMaterialContractSealSize(this.value)">'+
+      [24,26,28].map(size=>'<option value="'+size+'"'+(materialContractSealSize()===size?' selected':'')+'>'+({24:'小 · 24mm',26:'标准 · 26mm',28:'大 · 28mm'}[size])+'</option>').join('')+'</select></label>'+
       btn('甲方资料 / 公章管理','editMaterialContractProfile()')+
       btn('修改合同内容',"editMaterialPurchaseContract('"+safe(id)+"')")+
       btn('打印 / 保存 PDF','printMaterialPurchaseContract()',true)+'</div>'+
@@ -1280,19 +1501,35 @@ window.previewMaterialPurchaseContract=async function(id){
 };
 window.printMaterialPurchaseContract=function(){
   if(!currentOrder)return;
-  const w=window.open('','_blank');
-  if(!w){toastMsg('请允许弹出窗口后再打印');return}
-  const cssText=[...document.querySelectorAll('style')].map(x=>x.textContent||'').join('\n');
-  const extra='<style>@page{size:A4;margin:12mm}html,body{background:white!important;margin:0;padding:0;font-family:"Microsoft YaHei","SimSun",sans-serif}.mpo-paper{box-sizing:border-box;max-width:none;width:100%;padding:0;border:0;box-shadow:none;margin:0}.mpo-material-thumb{max-height:17mm}.mpo-signatures{break-inside:avoid}.mpo-product-row{break-inside:avoid}</style>';
-  w.document.open();
-  w.document.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="'+safe(location.origin)+'/"><title>'+safe(currentOrder.order_no)+' 订货合同</title><style>'+cssText+'</style>'+extra+'</head><body>'+paperMarkup(currentOrder)+'</body></html>');
-  w.document.close();
-  const printWhenReady=async()=>{
-    try{await Promise.all([...w.document.images].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve})));}catch(_){}
-    w.focus();w.print();
+  const win=window.open('','_blank');
+  if(!win){toastMsg('浏览器阻止了打印窗口，请允许弹出窗口');return}
+  // Keep the printable document completely separate from application CSS:
+  // the app's global "header" and responsive rules previously broke A4 layout.
+  const cssURL=new URL('/material-purchase-ui.css?v=a4-formal-20261118',location.origin).href;
+  const baseURL=new URL('/',location.origin).href;
+  const printExtra='@page{size:A4 portrait;margin:15mm}'+
+    'html,body{margin:0!important;padding:0!important;width:auto!important;height:auto!important;background:#fff!important}'+
+    '.mpo-paper{margin:0!important;padding:0!important;border:0!important;max-width:none!important;width:100%!important;box-shadow:none!important}'+
+    '.mpo-doc-title{position:static!important;display:block!important;width:auto!important;height:auto!important;padding:0!important;border:0!important;background:transparent!important;text-align:center!important}'+
+    '@media print{.mpo-paper{margin:0!important;max-width:none!important}.mpo-buyer-seal{width:var(--mpo-print-seal,26mm)!important;height:var(--mpo-print-seal,26mm)!important}}';
+  win.document.open();
+  win.document.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<base href="'+safe(baseURL)+'"><title>'+safe(currentOrder.order_no)+' 订货合同</title>'+
+    '<link rel="stylesheet" href="'+safe(cssURL)+'"><style>'+printExtra+'</style></head><body>'+
+    paperMarkup(currentOrder)+'</body></html>');
+  win.document.close();
+  let printed=false;
+  const printAfterAssets=async()=>{
+    if(printed)return;printed=true;
+    try{
+      if(win.document.fonts?.ready)await win.document.fonts.ready;
+      await Promise.all([...win.document.images].map(img=>img.complete?Promise.resolve():
+        new Promise(resolve=>{img.onload=resolve;img.onerror=resolve})));
+    }catch(_){}
+    if(!win.closed){win.focus();win.print()}
   };
-  if(w.document.readyState==='complete')printWhenReady();
-  else w.addEventListener('load',printWhenReady,{once:true});
+  if(win.document.readyState==='complete')printAfterAssets();
+  else win.addEventListener('load',printAfterAssets,{once:true});
 };
 window.editMaterialPurchaseContract=async function(id){
   try{
