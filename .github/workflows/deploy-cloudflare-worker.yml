@@ -115,6 +115,8 @@ jobs:
                grep -q "MATERIAL_PURCHASE_JS_BUNDLE_BEGIN" /tmp/index.html &&
                grep -q "newMaterialPO" /tmp/index.html &&
                grep -q "procurementTypeSwitch" /tmp/index.html &&
+               grep -q "editMaterialContractProfile" /tmp/index.html &&
+               grep -q "mpo-buyer-seal" /tmp/index.html &&
                grep -q "采购类型" /tmp/index.html &&
                grep -q "cloudDataStatus" /tmp/index.html; then
               ok=1
@@ -146,5 +148,14 @@ jobs:
             exit 1
           fi
           echo "Packaging procurement API verified."
+          curl -fsS "$BASE/api/material-contract-profile?ts=$(date +%s)" -o /tmp/material-contract-profile.json
+          python - <<'PY'
+          import json
+          profile=json.load(open('/tmp/material-contract-profile.json'))['profile']
+          assert profile['company_name']
+          assert 'address' in profile and 'phone' in profile and 'representative' in profile
+          assert isinstance(profile['has_stamp'],bool)
+          print('Contract company details API verified')
+          PY
           echo "Deployment verified."
 
