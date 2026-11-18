@@ -63,6 +63,10 @@ jobs:
           Path("/tmp/frontend.js").write_text(s[a+8:b], encoding="utf-8")
           PY
           node --check /tmp/frontend.js
+          node --check cloudflare-free/public/material-purchase-ui.js
+          node --check cloudflare-free/functions/api/material-purchase.js
+          grep -q "变体显示管理" cloudflare-free/public/index.html
+          grep -q "newMaterialPO" cloudflare-free/public/material-purchase-ui.js
           grep -q "<th>产品图片</th>" cloudflare-free/public/index.html
           grep -q "function previewPurchaseContract(id)" cloudflare-free/public/index.html
           grep -q "出口产品购货合同" cloudflare-free/public/index.html
@@ -103,11 +107,14 @@ jobs:
                grep -q "库存中心" /tmp/index.html &&
                grep -q "管理隐藏变体" /tmp/index.html &&
                grep -q "隐藏此颜色" /tmp/index.html &&
-               grep -q "setColorVariantHiddenFromButton" /tmp/index.html; then
+               grep -q "setColorVariantHiddenFromButton" /tmp/index.html &&
+               grep -q "material-purchase-ui.js" /tmp/index.html; then
               ok=1
               break
             fi
             sleep 5
           done
           test "$ok" = "1"
+          curl -fsS "$BASE/material-purchase-ui.js" | grep -q "newMaterialPO"
+          curl -fsS "$BASE/material-purchase-ui.css" | grep -q "mpo-paper"
           echo "Deployment verified."
