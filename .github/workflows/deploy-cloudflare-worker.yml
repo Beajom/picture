@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "cloudflare-free/**"
+      - "wrangler.toml"
       - ".github/workflows/deploy-cloudflare-worker.yml"
   workflow_dispatch: {}
 
@@ -113,6 +114,8 @@ jobs:
                grep -q "setColorVariantHiddenFromButton" /tmp/index.html &&
                grep -q "MATERIAL_PURCHASE_JS_BUNDLE_BEGIN" /tmp/index.html &&
                grep -q "newMaterialPO" /tmp/index.html &&
+               grep -q "procurementTypeSwitch" /tmp/index.html &&
+               grep -q "采购类型" /tmp/index.html &&
                grep -q "cloudDataStatus" /tmp/index.html; then
               ok=1
               break
@@ -122,7 +125,7 @@ jobs:
           if [ "$ok" != "1" ]; then
             echo "::error::Production HTML did not pass verification"
             wc -c /tmp/index.html
-            for token in "load().then(render)" "商品 / ASIN" "库存中心" "管理隐藏变体" "隐藏此颜色" "setColorVariantHiddenFromButton" "MATERIAL_PURCHASE_JS_BUNDLE_BEGIN" "newMaterialPO"; do
+            for token in "load().then(render)" "商品 / ASIN" "库存中心" "管理隐藏变体" "隐藏此颜色" "setColorVariantHiddenFromButton" "MATERIAL_PURCHASE_JS_BUNDLE_BEGIN" "newMaterialPO" "procurementTypeSwitch" "采购类型"; do
               if grep -Fq "$token" /tmp/index.html; then echo "FOUND: $token"; else echo "MISSING: $token"; fi
             done
             exit 1
