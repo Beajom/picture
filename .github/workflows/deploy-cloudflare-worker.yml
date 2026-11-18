@@ -94,6 +94,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID="$(cat .cloudflare-account-id)" \
             npx wrangler deploy --config wrangler.deploy.toml --no-x-provision
 
+      - name: Inventory reconciliation preflight
+        working-directory: cloudflare-free
+        env:
+          APPLY_STOCK_RECONCILIATION: "no"
+        run: node scripts/reconcile-inventory-20261118.mjs
       - name: Verify deployed production page
         shell: bash
         run: |
@@ -114,18 +119,20 @@ jobs:
             fi
             sleep 5
           done
-          test "$ok" = "1"
+          if [ "$ok" != "1" ]; then
+            echo "::error::Production HTML did not pass verification"
+            wc -c /tmp/index.html
+            for token in "load().then(render)" "商品 / ASIN" "库存中心" "管理隐藏变体" "隐藏此颜色" "setColorVariantHiddenFromButton" "material-purchase-ui.js"; do
+              if grep -Fq "$token" /tmp/index.html; then echo "FOUND: $token"; else echo "MISSING: $token"; fi
+            done
+            exit 1
+          fi
           curl -fsS "$BASE/material-purchase-ui.js" -o /tmp/material-purchase-ui.js
           curl -fsS "$BASE/material-purchase-ui.css" -o /tmp/material-purchase-ui.css
           grep -q "newMaterialPO" /tmp/material-purchase-ui.js
           grep -q "mpo-paper" /tmp/material-purchase-ui.css
           echo "Deployment verified."
 
-      - name: Inventory reconciliation preflight
-        working-directory: cloudflare-free
-        env:
-          APPLY_STOCK_RECONCILIATION: "no"
-        run: node scripts/reconcile-inventory-20261118.mjs
       - name: Archive reconciliation snapshot
         if: always()
         uses: actions/upload-artifact@v4
