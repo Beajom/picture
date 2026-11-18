@@ -1251,6 +1251,354 @@ async function invokeTradeEdge(name,payload){
   }catch(e){return {data:null,error:{message:e?.message||'网络请求失败'}}}
 }
 function normCompanyName(s=''){return String(s||'').toLowerCase().replace(/[\s·,，.。()（）\-]/g,'')}
+
+window._quoteImportDraft=null;
+function quoteSetProgress(text,pct){
+  const t=$('#quoteProgressText'),bar=$('#quoteProgressBar');
+  if(t)t.textContent=text||'';
+  if(bar)bar.style.width=Math.max(0,Math.min(100,Number(pct)||0))+'%';
+}
+function quoteCleanText(s=''){return String(s||'').replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/\s+\n/g,'\n').trim()}
+function quoteNormHeader(s=''){return String(s||'').replace(/[\s()（）:：/\\_-]/g,'').toLowerCase()}
+function quoteHeaderField(s=''){
+  const n=quoteNormHeader(s);
+  const tests=[
+    ['index',['序号','编号']],
+    ['sku',['商品编码','产品编码','料号','货号','物料编码','款号']],
+    ['name',['商品名称','产品名称','品名型号','品名','名称']],
+    ['spec',['产品规格','规格尺寸','规格']],
+    ['desc',['产品描述','商品描述','描述']],
+    ['unit',['单位']],
+    ['qty',['数量','订购数量','采购数量']],
+    ['price',['实际报价','含税单价','未税单价','折扣价','单价','价格含税','价格']],
+    ['total',['价税合计','未税订单金额','折扣后金额','订单金额','金额','小计']]
+  ];
+  for(const [field,arr] of tests)if(arr.some(x=>n.includes(quoteNormHeader(x))))return field;
+  return '';
+}
+function quoteParseNumber(v){
+  const s=String(v??'').replace(/[,，]/g,'').replace(/[￥¥$€£]/g,'').replace(/[^\d.\-]/g,'');
+  const n=Number(s);return Number.isFinite(n)?n:0;
+}
+function quoteDetectCurrency(text=''){
+  const s=String(text||'');
+  if(/[￥¥]|人民币|CNY|RMB/i.test(s))return 'CNY';
+  if(/£|GBP/i.test(s))return 'GBP';
+  if(/€|EUR/i.test(s))return 'EUR';
+  if(/\$|USD/i.test(s))return 'USD';
+  return 'CNY';
+}
+function quoteGuessSupplier(lines,text){
+  const all=[...(lines||[]).map(x=>x.text||x),...(String(text||'').split(/\n/))].map(x=>quoteCleanText(x)).filter(Boolean);
+  const direct=String(text||'').match(/(?:供方|供应商|卖方|销售方)[：:\s]*([^\n]{2,80}?(?:有限公司|公司))/);
+  if(direct?.[1]&&!/佰益居/.test(direct[1]))return direct[1].trim();
+  for(const line of all.slice(0,30)){
+    const m=line.match(/([\u4e00-\u9fa5A-Za-z0-9（）()·\-]{4,80}(?:有限公司|公司))/);
+    if(m?.[1]&&!/佰益居/.test(m[1])&&!/客户/.test(line))return m[1].trim();
+  }
+  return '';
+}
+function quoteGuessMeta(lines,text){
+  const s=String(text||'');
+  const no=(s.match(/(?:单据编号|报价单号|报价编号|订单编号|单号)[：:\s]*([A-Za-z0-9_\-]+)/i)||[])[1]||'';
+  const dm=s.match(/20\d{2}[\/\-.年]\d{1,2}[\/\-.月]\d{1,2}/);
+  const date=dm?dm[0].replace(/[年月]/g,'-').replace(/日/g,'').replace(/[/.]/g,'-'):'';
+  return {supplierName:quoteGuessSupplier(lines,text),quoteNo:no,date,currency:quoteDetectCurrency(s)};
+}
+async function quotePdfModule(){
+  const lib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
+  lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+  return lib;
+}
+async function quoteTesseract(){
+  if(window.Tesseract)return window.Tesseract;
+  await new Promise((resolve,reject)=>{
+    const sc=document.createElement('script');
+    sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    sc.onload=resolve;sc.onerror=()=>reject(new Error('OCR 组件加载失败'));
+    document.head.appendChild(sc);
+  });
+  return window.Tesseract;
+}
+function quoteGroupPdfItems(items,pageNo){
+  const groups=[];
+  for(const it of (items||[])){
+    const txt=quoteCleanText(it.str||'');if(!txt)continue;
+    const x=Number(it.transform?.[4]||0),y=Number(it.transform?.[5]||0);
+    let g=groups.find(r=>Math.abs(r.y-y)<2.4);
+    if(!g){g={y,cells:[],page:pageNo};groups.push(g)}
+    g.cells.push({text:txt,x});
+  }
+  return groups.sort((a,b)=>b.y-a.y).map(g=>{
+    g.cells.sort((a,b)=>a.x-b.x);
+    return {page:g.page,text:g.cells.map(x=>x.text).join(' '),cells:g.cells};
+  });
+}
+function quoteGroupOcrWords(words,pageNo){
+  const map=new Map();
+  for(const w of (words||[])){
+    const txt=quoteCleanText(w.text||'');if(!txt)continue;
+    const key=[w.block_num||0,w.par_num||0,w.line_num||0].join('-');
+    if(!map.has(key))map.set(key,[]);
+    map.get(key).push({text:txt,x:Number(w.bbox?.x0||0),y:Number(w.bbox?.y0||0)});
+  }
+  const rows=[];
+  for(const cells of map.values()){
+    cells.sort((a,b)=>a.x-b.x);
+    rows.push({page:pageNo,text:cells.map(x=>x.text).join(' '),cells:cells.map(x=>({text:x.text,x:x.x})),y:Math.min(...cells.map(x=>x.y))});
+  }
+  return rows.sort((a,b)=>a.y-b.y);
+}
+async function quoteExtractPdf(file){
+  const pdfjs=await quotePdfModule(),buf=await file.arrayBuffer(),pdf=await pdfjs.getDocument({data:buf}).promise;
+  const rows=[];let text='';
+  for(let n=1;n<=pdf.numPages;n++){
+    quoteSetProgress('正在读取 PDF 第 '+n+' / '+pdf.numPages+' 页',Math.round(n/pdf.numPages*38));
+    const page=await pdf.getPage(n),content=await page.getTextContent(),pr=quoteGroupPdfItems(content.items,n);
+    rows.push(...pr);text+=pr.map(x=>x.text).join('\n')+'\n';
+  }
+  return {rows,text:quoteCleanText(text),pageCount:pdf.numPages,pdf};
+}
+async function quoteOcrCanvas(canvas,pageNo,totalPages){
+  const T=await quoteTesseract();
+  const result=await T.recognize(canvas,'chi_sim+eng',{logger:m=>{
+    if(m.status==='recognizing text'){
+      const base=40+(pageNo-1)/Math.max(1,totalPages)*45;
+      const pct=base+(Number(m.progress||0)*45/Math.max(1,totalPages));
+      quoteSetProgress('OCR 识别第 '+pageNo+' / '+totalPages+' 页 · '+Math.round(Number(m.progress||0)*100)+'%',pct);
+    }
+  }});
+  const rows=quoteGroupOcrWords(result?.data?.words||[],pageNo);
+  const text=quoteCleanText(result?.data?.text||rows.map(x=>x.text).join('\n'));
+  return {rows,text};
+}
+async function quoteOcrPdf(file,pageCount){
+  const pdfjs=await quotePdfModule(),buf=await file.arrayBuffer(),pdf=await pdfjs.getDocument({data:buf}).promise;
+  const max=Math.min(pdf.numPages,8),rows=[];let text='';
+  for(let n=1;n<=max;n++){
+    const page=await pdf.getPage(n),viewport=page.getViewport({scale:1.8}),canvas=document.createElement('canvas');
+    canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+    const r=await quoteOcrCanvas(canvas,n,max);rows.push(...r.rows);text+=r.text+'\n';
+  }
+  return {rows,text:quoteCleanText(text),pageCount:max};
+}
+async function quoteOcrImage(file){
+  const bitmap=await createImageBitmap(file),scale=Math.min(2,2200/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);if(bitmap.close)bitmap.close();
+  return quoteOcrCanvas(canvas,1,1);
+}
+function quoteFindHeader(rows){
+  let best=null,bestScore=0;
+  for(let i=0;i<Math.min(rows.length,80);i++){
+    const r=rows[i],mapped=(r.cells||[]).map(c=>({field:quoteHeaderField(c.text),x:c.x,text:c.text})).filter(x=>x.field);
+    const unique=[...new Set(mapped.map(x=>x.field))],score=unique.length;
+    if(score>bestScore&&score>=3){best={index:i,cols:mapped};bestScore=score}
+  }
+  return best;
+}
+function quoteMapRowToHeader(row,headerCols){
+  const cols=[...headerCols].sort((a,b)=>a.x-b.x),out={};
+  if(!cols.length)return out;
+  for(const cell of (row.cells||[])){
+    let best=cols[0],dist=Math.abs(cell.x-best.x);
+    for(const col of cols){const d=Math.abs(cell.x-col.x);if(d<dist){best=col;dist=d}}
+    if(!best.field)continue;
+    out[best.field]=quoteCleanText((out[best.field]?out[best.field]+' ':'')+cell.text);
+  }
+  return out;
+}
+function quoteItemValid(x){
+  return !!(quoteCleanText(x.name||x.sku||x.spec||x.desc)&&(quoteParseNumber(x.price)>0||quoteParseNumber(x.qty)>0));
+}
+function quoteParseTableRows(rows){
+  const header=quoteFindHeader(rows);if(!header)return [];
+  const items=[];
+  for(let i=header.index+1;i<Math.min(rows.length,header.index+80);i++){
+    const row=rows[i],t=quoteCleanText(row.text);
+    if(!t)continue;
+    if(/^(每页小计|小计|合计|合计金额|付款|备注|说明|条款|制单人|一、|二、|三、|四、|五、|六、)/.test(t)){
+      if(items.length)break; else continue;
+    }
+    const x=quoteMapRowToHeader(row,header.cols);
+    if(quoteItemValid(x))items.push(x);
+  }
+  return items;
+}
+function quoteFallbackItems(lines){
+  const out=[],clean=(lines||[]).map(x=>quoteCleanText(x.text||x)).filter(Boolean);
+  for(let i=0;i<clean.length;i++){
+    const line=clean[i];
+    if(/商品编码|产品名称|品名\/?型号|价税合计|每页小计|合计金额/.test(line))continue;
+    const lead=line.match(/^\s*(\d{1,3})\s+(.+)/);
+    const money=[...line.matchAll(/[￥¥$€£]?\s*\d+(?:,\d{3})*(?:\.\d+)?/g)].map(m=>({raw:m[0],n:quoteParseNumber(m[0]),idx:m.index||0}));
+    if(lead&&money.length>=2){
+      const body=lead[2],tokens=body.split(/\s+/).filter(Boolean);
+      const unitIdx=tokens.findIndex(v=>/^(个|件|套|卷|米|公斤|kg|kgs|pcs?|pair|set|箱)$/i.test(v));
+      let sku='',name='';
+      if(tokens[0]&&/[A-Za-z0-9]/.test(tokens[0])&&!/^\d+(?:\.\d+)?$/.test(tokens[0])){sku=tokens[0];name=tokens.slice(1,unitIdx>1?unitIdx:Math.max(2,tokens.length-3)).join(' ')}
+      else{name=tokens.slice(0,unitIdx>0?unitIdx:Math.max(1,tokens.length-3)).join(' ')}
+      const total=money[money.length-1]?.n||0,price=money[money.length-2]?.n||0;
+      const qty=money.length>=3?money[money.length-3]?.n:0,unit=unitIdx>=0?tokens[unitIdx]:'PCS';
+      const item={sku,name:name||sku,spec:'',desc:'',unit,qty,price,total};
+      if(quoteItemValid(item))out.push(item);
+      continue;
+    }
+    if(/[￥¥$€£]\s*\d/.test(line)&&!/合计|小计/.test(line)){
+      const nums=money.map(x=>x.n).filter(x=>x>0);if(!nums.length)continue;
+      const context=clean.slice(Math.max(0,i-3),i+1).join(' ');
+      const item={sku:'',name:context.replace(/[￥¥$€£]\s*\d[\d.,]*/g,'').trim().slice(0,100),spec:'',desc:'',unit:'PCS',qty:1,price:nums[nums.length-1],total:nums[nums.length-1]};
+      if(quoteItemValid(item))out.push(item);
+    }
+  }
+  return out;
+}
+function quoteDedupItems(items){
+  const out=[],seen=new Set();
+  for(const x of items){
+    const key=[quoteCleanText(x.sku),quoteCleanText(x.name),quoteParseNumber(x.price),quoteParseNumber(x.total)].join('|').toLowerCase();
+    if(seen.has(key))continue;seen.add(key);out.push(x);
+  }
+  return out;
+}
+function quoteSuggestSku(item,i,date){
+  const direct=quoteCleanText(item.sku||'');if(direct)return direct.replace(/\s+/g,'-').slice(0,50);
+  const model=quoteCleanText(item.name||'').match(/[A-Za-z]{1,8}[-_]?\d[A-Za-z0-9._-]{0,20}/)?.[0];
+  if(model)return model.toUpperCase();
+  const d=(date||today()).replace(/\D/g,'').slice(0,8)||today().replaceAll('-','');
+  return 'Q-'+d+'-'+String(i+1).padStart(2,'0');
+}
+function quoteMatchSupplier(name){
+  const n=normCompanyName(name||'');if(!n)return null;
+  return db.suppliers.find(s=>{const x=normCompanyName(s.company||'');return x===n||x.includes(n)||n.includes(x)})||null;
+}
+function quoteRenderResult(parsed){
+  const host=$('#quoteImportResult');if(!host)return;
+  const match=quoteMatchSupplier(parsed.supplierName),suppliers=[...db.suppliers].sort((a,b)=>String(a.company).localeCompare(String(b.company),'zh-CN'));
+  parsed.items=quoteDedupItems(parsed.items||[]).slice(0,80).map((x,i)=>{
+    const sku=quoteSuggestSku(x,i,parsed.date),existing=db.products.find(p=>String(p.sku||'').toLowerCase()===String(sku).toLowerCase());
+    return {...x,sku,existingId:existing?.id||'',action:existing?'update':'add'};
+  });
+  window._quoteImportDraft=parsed;
+  host.innerHTML='<div class="quote-result-head">'+
+    '<div class="quote-result-card"><span>识别供应商</span><b>'+esc(parsed.supplierName||'未识别')+'</b></div>'+
+    '<div class="quote-result-card"><span>报价单号 / 日期</span><b>'+esc((parsed.quoteNo||'-')+' / '+(parsed.date||'-'))+'</b></div>'+
+    '<div class="quote-result-card"><span>识别结果</span><b>'+parsed.items.length+' 个产品 · '+esc(parsed.currency)+'</b></div>'+
+    '</div>'+
+    '<div class="field"><label>关联供应商</label><select id="quoteSupplierSelect"><option value="">未指定供应商</option>'+suppliers.map(s=>'<option value="'+esc(s.id)+'" '+(match?.id===s.id?'selected':'')+'>'+esc(s.company)+'</option>').join('')+'</select><div class="hint">'+(match?'已自动匹配供应商库。':'未自动匹配时，请手动选择；也可以先去供应商库新增后再导入。')+'</div></div>'+
+    (parsed.items.length?'<div class="quote-import-table-wrap"><table class="quote-import-table"><tr><th>导入</th><th>动作</th><th>SKU</th><th>产品名称</th><th>规格 / 描述</th><th>单位</th><th>数量</th><th>采购价</th><th>金额</th></tr>'+
+      parsed.items.map((x,i)=>'<tr>'+
+        '<td><input id="qUse_'+i+'" type="checkbox" checked></td>'+
+        '<td><select id="qAction_'+i+'"><option value="add" '+(x.action==='add'?'selected':'')+'>新增</option><option value="update" '+(x.action==='update'?'selected':'')+'>更新已有</option><option value="skip">跳过</option></select>'+(x.existingId?'<div class="muted" style="font-size:9px;margin-top:3px">SKU已存在</div>':'')+'</td>'+
+        '<td><input class="q-sku" id="qSku_'+i+'" value="'+esc(x.sku||'')+'"></td>'+
+        '<td><input class="q-name" id="qName_'+i+'" value="'+esc(x.name||'')+'"></td>'+
+        '<td><input class="q-spec" id="qSpec_'+i+'" value="'+esc([x.spec,x.desc].filter(Boolean).join(' / '))+'"></td>'+
+        '<td><input id="qUnit_'+i+'" value="'+esc(x.unit||'PCS')+'"></td>'+
+        '<td><input class="q-num" id="qQty_'+i+'" type="number" step="0.01" value="'+Number(quoteParseNumber(x.qty)||1)+'"></td>'+
+        '<td><input class="q-num" id="qPrice_'+i+'" type="number" step="0.0001" value="'+Number(quoteParseNumber(x.price)||0)+'"></td>'+
+        '<td><input class="q-num" id="qTotal_'+i+'" type="number" step="0.01" value="'+Number(quoteParseNumber(x.total)||0)+'"></td>'+
+      '</tr>').join('')+'</table></div>':'<div class="quote-import-warn">没有可靠识别到产品行。可以换一份更清晰的 PDF / 图片，或使用清晰扫描件重新识别。</div>')+
+    '<div class="quote-import-note">识别结果只是草稿。你可以在这里修改 SKU、名称、规格、数量和采购价；只有勾选并点击“导入选中产品”后才会写入正式产品库。</div>';
+  const btn=$('#modalSaveBtn');
+  if(btn){btn.textContent='导入选中产品';btn.setAttribute('onclick','window.importRecognizedQuoteProducts()');btn.disabled=!parsed.items.length}
+  const stateEl=$('#modalSaveState');if(stateEl)stateEl.textContent='识别完成，请核对后再导入';
+}
+window.quoteImportModal=()=>{
+  window._quoteImportDraft={file:null};
+  showModal('供应商报价单识别导入','<div class="notice">上传供应商 PDF 报价单、销售订单或报价图片。系统会优先读取 PDF 文字层；扫描件会自动使用 OCR。识别后先预览核对，不会直接写入产品库。</div>'+
+    '<div class="quote-import-drop" id="quoteDrop" style="margin-top:12px" onclick="document.getElementById(\\'quoteFile\\').click()" ondragover="event.preventDefault();this.classList.add(\\'dragover\\')" ondragleave="this.classList.remove(\\'dragover\\')" ondrop="window.quoteFileDrop(event)"><div><b>拖拽报价单到这里，或点击选择文件</b><span>支持 PDF / JPG / PNG / WebP，最大 20MB。扫描件识别会比文字型 PDF 慢一些。</span><div id="quoteFileName"></div></div><input id="quoteFile" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden onchange="window.quoteFileChosen(this)"></div>'+
+    '<div class="quote-progress"><i id="quoteProgressBar"></i></div><div class="quote-progress-text" id="quoteProgressText">请选择供应商报价单</div><div id="quoteImportResult"></div>',
+    'window.runQuoteRecognition()','开始识别');
+  setTimeout(()=>document.querySelector('.modal')?.classList.add('quote-wide'),0);
+};
+window.quoteFileChosen=input=>{const file=input?.files?.[0];if(file)window.setQuoteImportFile(file);if(input)input.value=''};
+window.quoteFileDrop=e=>{e.preventDefault();e.stopPropagation();e.currentTarget?.classList.remove('dragover');const file=e.dataTransfer?.files?.[0];if(file)window.setQuoteImportFile(file)};
+window.setQuoteImportFile=file=>{
+  const allowed=['application/pdf','image/jpeg','image/png','image/webp'];
+  if(!allowed.includes(file.type))return toast('仅支持 PDF / JPG / PNG / WebP','warn');
+  if(file.size>20*1024*1024)return toast('报价单文件不能超过 20MB','warn');
+  window._quoteImportDraft={file};
+  const box=$('#quoteFileName');if(box)box.innerHTML='<span class="quote-file-pill">📎 '+esc(file.name)+' · '+(file.size/1024/1024).toFixed(2)+'MB</span>';
+  quoteSetProgress('文件已选择，点击“开始识别”',0);const host=$('#quoteImportResult');if(host)host.innerHTML='';
+  const btn=$('#modalSaveBtn');if(btn){btn.textContent='开始识别';btn.setAttribute('onclick','window.runQuoteRecognition()');btn.disabled=false}
+};
+window.runQuoteRecognition=async()=>{
+  const draft=window._quoteImportDraft||{},file=draft.file;if(!file)return toast('请先选择报价单文件','warn');
+  const btn=$('#modalSaveBtn');busy(btn,true,'识别中');quoteSetProgress('正在分析文件...',5);
+  try{
+    let extracted;
+    if(file.type==='application/pdf'){
+      extracted=await quoteExtractPdf(file);
+      const compact=String(extracted.text||'').replace(/\s/g,'');
+      if(compact.length<80){
+        quoteSetProgress('PDF 没有足够文字层，切换 OCR 识别扫描件...',40);
+        extracted=await quoteOcrPdf(file,extracted.pageCount);
+      }
+    }else{
+      quoteSetProgress('正在 OCR 识别图片...',35);
+      extracted=await quoteOcrImage(file);
+    }
+    quoteSetProgress('正在解析供应商和产品表格...',88);
+    const meta=quoteGuessMeta(extracted.rows,extracted.text);
+    let items=quoteParseTableRows(extracted.rows);
+    if(!items.length)items=quoteFallbackItems(extracted.rows);
+    if(!items.length)items=quoteFallbackItems(String(extracted.text||'').split(/\n/).map(text=>({text,cells:[]})));
+    quoteRenderResult({...meta,items,rawText:extracted.text,file,pageCount:extracted.pageCount||1});
+    quoteSetProgress('识别完成',100);
+  }catch(e){
+    quoteSetProgress('识别失败',0);toast('报价单识别失败','err',niceError(e));
+  }finally{busy(btn,false,window._quoteImportDraft?.items?.length?'导入选中产品':'开始识别')}
+};
+async function quoteUploadSource(file){
+  const u=await fastUser();if(!u)return '';
+  const {data}=await supabase.auth.getSession(),token=data.session?.access_token;if(!token)throw new Error('登录状态失效');
+  const owner=state.dataOwnerId||u.id,safe=(file.name||'quote').replace(/[^A-Za-z0-9._\-\u4e00-\u9fa5]/g,'_');
+  const path=owner+'/supplier-quotes/'+today()+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,7)+'-'+safe;
+  const encoded=path.split('/').map(encodeURIComponent).join('/');
+  const r=await fetch(SUPABASE_URL+'/storage/v1/object/supplier-documents/'+encoded,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+token,'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file});
+  if(!r.ok)throw new Error((await r.text().catch(()=>''))||('报价单存档失败 HTTP '+r.status));
+  return path;
+}
+window.importRecognizedQuoteProducts=async()=>{
+  const q=window._quoteImportDraft;if(!q?.items?.length)return toast('没有可导入的识别结果','warn');
+  if(state.saving)return;
+  const rows=[];
+  for(let i=0;i<q.items.length;i++){
+    if(!$('#qUse_'+i)?.checked)continue;
+    const action=$('#qAction_'+i)?.value||'add';if(action==='skip')continue;
+    const sku=$('#qSku_'+i)?.value.trim()||'',name=$('#qName_'+i)?.value.trim()||'',spec=$('#qSpec_'+i)?.value.trim()||'',unit=$('#qUnit_'+i)?.value.trim()||'PCS';
+    const qty=Number($('#qQty_'+i)?.value||0),price=Number($('#qPrice_'+i)?.value||0),total=Number($('#qTotal_'+i)?.value||0);
+    if(!sku||!name)continue;
+    rows.push({i,action,sku,name,spec,unit,qty,price,total});
+  }
+  if(!rows.length)return toast('请至少勾选一个有 SKU 和产品名称的产品','warn');
+  const supplierId=$('#quoteSupplierSelect')?.value||'',btn=$('#modalSaveBtn');state.saving=true;busy(btn,true,'导入中');
+  try{
+    quoteSetProgress('正在保存原始报价单...',92);
+    const sourcePath=await quoteUploadSource(q.file),u=await fastUser();if(!u)throw new Error('登录状态失效');
+    let added=0,updated=0,skipped=0;
+    for(const row of rows){
+      const existing=db.products.find(p=>String(p.sku||'').toLowerCase()===row.sku.toLowerCase());
+      const meta={supplierQuote:{fileName:q.file?.name||'',storagePath:sourcePath,quoteNo:q.quoteNo||'',quoteDate:q.date||'',supplierName:q.supplierName||'',recognizedCurrency:q.currency||'CNY',spec:row.spec,quotedQty:row.qty,quotedTotal:row.total,importedAt:new Date().toISOString()}};
+      if(row.action==='update'){
+        if(!existing){skipped++;continue}
+        const sourceMeta={...(existing.sourceMeta||{}),...meta};
+        const patch={name:row.name,name_cn:row.name,unit:row.unit,purchase_price:row.price,purchase_currency:q.currency||'CNY',supplier_id:supplierId||null,source_meta:sourceMeta,updated_at:new Date().toISOString()};
+        const res=await supabase.from('trade_products').update(patch).eq('id',existing.id).eq('user_id',state.dataOwnerId||u.id).select('*').single();
+        if(res.error)throw res.error;updated++;
+      }else{
+        if(existing){skipped++;continue}
+        const payload={user_id:state.dataOwnerId||u.id,sku:row.sku,name:row.name,name_cn:row.name,hs_code:'',unit:row.unit,sale_price:0,price:0,purchase_price:row.price,currency:'USD',purchase_currency:q.currency||'CNY',supplier_id:supplierId||null,moq:1,pcs_carton:1,net_weight:0,gross_weight:0,carton_size:'',image_url:'',image_urls:[],source_platform:'supplier_quote',source_url:'',source_offer_id:'',source_meta:meta,updated_at:new Date().toISOString()};
+        const res=await supabase.from('trade_products').insert(payload).select('*').single();
+        if(res.error)throw res.error;added++;
+      }
+    }
+    quoteSetProgress('导入完成',100);state.modal='';await loadCloud();render();toast('报价单产品导入完成','ok','新增 '+added+' · 更新 '+updated+(skipped?' · 跳过 '+skipped:''));
+  }catch(e){toast('报价单导入失败','err',niceError(e))}
+  finally{state.saving=false;busy(btn,false,'导入选中产品')}
+};
+
 window.import1688Modal=()=>{state.import1688Draft=null;window._import1688ClipboardHtml='';showModal('1688 链接一键导入',`<div class="notice">先直接粘贴 1688 商品链接自动识别。若 1688 出现登录/安全验证，不用找源码：<b>在已登录的商品页按 Ctrl+A → Ctrl+C，再回这里点“从剪贴板读取并识别”</b>。</div><div class="field" style="margin-top:12px"><label>1688 商品链接 *</label><input id="import1688Url" value="" placeholder="https://detail.1688.com/offer/xxxxxxxxxxxx.html"></div><div class="row" style="margin-top:8px"><button type="button" class="btn" onclick="window.open1688ImportUrl()">打开 1688 商品页 ↗</button><button type="button" class="btn" onclick="window.read1688Clipboard()">📋 从剪贴板读取并识别</button></div><details class="import1688-fallback"><summary>高级兜底：手工粘贴网页可见文字 / HTML</summary><textarea id="import1688Html" oninput="window._import1688ClipboardHtml=''" placeholder="在 1688 商品页 Ctrl+A、Ctrl+C 后粘贴到这里；普通网页文字即可，不要求页面源码。"></textarea></details>`,'window.run1688Import()','直接自动识别')};
 window.open1688ImportUrl=()=>{const url=$('#import1688Url')?.value.trim()||'';if(!url)return toast('请先粘贴 1688 商品链接','warn');window.open(url,'_blank','noopener')};
 window.read1688Clipboard=async()=>{const url=$('#import1688Url')?.value.trim()||'';if(!url)return toast('请先粘贴 1688 商品链接','warn');try{let html='',txt='';if(navigator.clipboard.read){const items=await navigator.clipboard.read();for(const item of items){if(item.types.includes('text/html')&&!html){html=await (await item.getType('text/html')).text()}if(item.types.includes('text/plain')&&!txt){txt=await (await item.getType('text/plain')).text()}}}if(!txt&&navigator.clipboard.readText)txt=await navigator.clipboard.readText();const payload=html||txt;if(!payload||payload.trim().length<20)return toast('剪贴板内容太少','warn','请先在已登录的 1688 商品页按 Ctrl+A，再按 Ctrl+C。');window._import1688ClipboardHtml=html||'';if($('#import1688Html'))$('#import1688Html').value=txt||'[已读取网页 HTML，可直接重新识别]';toast(html?'已读取网页 HTML':'已读取网页文字','ok',html?'正在按商品主图区域重新识别…':'正在识别商品内容…');await window.run1688Import()}catch(e){toast('浏览器未允许读取剪贴板','warn','请把 Ctrl+C 复制的内容手工粘贴到下面文本框，再点“重新识别”。')}};
