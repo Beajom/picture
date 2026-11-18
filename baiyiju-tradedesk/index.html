@@ -1507,7 +1507,7 @@ function quoteRenderResult(parsed){
 window.quoteImportModal=()=>{
   window._quoteImportDraft={file:null};
   showModal('供应商报价单识别导入','<div class="notice">上传供应商 PDF 报价单、销售订单或报价图片。系统会优先读取 PDF 文字层；扫描件会自动使用 OCR。识别后先预览核对，不会直接写入产品库。</div>'+
-    '<div class="quote-import-drop" id="quoteDrop" style="margin-top:12px" onclick="document.getElementById(\\'quoteFile\\').click()" ondragover="event.preventDefault();this.classList.add(\\'dragover\\')" ondragleave="this.classList.remove(\\'dragover\\')" ondrop="window.quoteFileDrop(event)"><div><b>拖拽报价单到这里，或点击选择文件</b><span>支持 PDF / JPG / PNG / WebP，最大 20MB。扫描件识别会比文字型 PDF 慢一些。</span><div id="quoteFileName"></div></div><input id="quoteFile" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden onchange="window.quoteFileChosen(this)"></div>'+
+    '<div class="quote-import-drop" id="quoteDrop" style="margin-top:12px" onclick="document.getElementById(\'quoteFile\').click()" ondragover="event.preventDefault();this.classList.add(\'dragover\')" ondragleave="this.classList.remove(\'dragover\')" ondrop="window.quoteFileDrop(event)"><div><b>拖拽报价单到这里，或点击选择文件</b><span>支持 PDF / JPG / PNG / WebP，最大 20MB。扫描件识别会比文字型 PDF 慢一些。</span><div id="quoteFileName"></div></div><input id="quoteFile" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden onchange="window.quoteFileChosen(this)"></div>'+
     '<div class="quote-progress"><i id="quoteProgressBar"></i></div><div class="quote-progress-text" id="quoteProgressText">请选择供应商报价单</div><div id="quoteImportResult"></div>',
     'window.runQuoteRecognition()','开始识别');
   setTimeout(()=>document.querySelector('.modal')?.classList.add('quote-wide'),0);
