@@ -22,7 +22,7 @@
   <div class="nav" id="nav"></div>
 </aside>
 <main class="main">
-  <header><div class="crumb"><b id="pageTitle">经营总览</b><span>Cloudflare D1 + Workers KV</span></div><div class="top-actions"><button id="topInventoryVisibilityBtn" class="btn" style="display:none;border-color:#93c5fd;color:#1d4ed8;background:#eff6ff" onclick="openInventoryVisibilityManager()">⚙ 变体显示管理</button><button class="btn" onclick="refresh()">刷新</button><button class="btn primary" onclick="quick()">＋ 新建</button></div></header>
+  <header><div class="crumb"><b id="pageTitle">经营总览</b><span>Cloudflare D1 + Workers KV · <span id="cloudDataStatus" style="color:#667085">等待同步</span></span></div><div class="top-actions"><button id="topInventoryVisibilityBtn" class="btn" style="display:none;border-color:#93c5fd;color:#1d4ed8;background:#eff6ff" onclick="openInventoryVisibilityManager()">⚙ 变体显示管理</button><button class="btn" onclick="refresh()">刷新</button><button class="btn primary" onclick="quick()">＋ 新建</button></div></header>
   <div class="content" id="root"></div>
 </main>
 </div>
@@ -79,20 +79,25 @@ async function api(path,opt={}){
 function renderNav(){let last='';nav.innerHTML=navs.map(n=>{let s='';if(n[2]!=last){last=n[2];s='<div class="navsec">'+last+'</div>'}return s+'<button class="'+(route===n[0]?'on':'')+'" onclick="go(\''+n[0]+'\')"><span class="ico">'+n[3]+'</span>'+n[1]+'</button>'}).join('')}
 function go(r){route=normalizeRoute(r);location.hash=route;render()}
 window.onhashchange=()=>{route=normalizeRoute(location.hash.slice(1)||'dashboard');render()}
-async function refresh(){try{await load(true);render();toastMsg('已同步')}catch(e){toastMsg('同步失败，已保留当前页面数据')}}
+let lastCloudSync=0;
+function setCloudSyncStatus(ok,message=''){
+  const badge=document.getElementById('cloudDataStatus');
+  if(!badge)return;
+  badge.textContent=ok?'云端已同步 '+new Date(lastCloudSync).toLocaleTimeString('zh-CN',{hour12:false}):('云端同步失败'+(message?'：'+message:''));
+  badge.style.color=ok?'#047857':'#b42318';
+}
+async function refresh(){
+  try{await load(true);render();toastMsg('已同步云端最新数据')}
+  catch(e){setCloudSyncStatus(false,e.message);toastMsg('云端同步失败，请检查网络；当前数据未经刷新确认')}
+}
 async function load(force=false){
-  if(!force){
-    try{
-      const saved=sessionStorage.getItem('asw_bootstrap');
-      if(saved){cache=normalizeCache(JSON.parse(saved));render()}
-    }catch(e){try{sessionStorage.removeItem('asw_bootstrap')}catch(_){}}
-  }
-  try{
-    cache=normalizeCache(await api('/bootstrap'));
-    persistCache()
-  }catch(e){
-    if(!cache.products.length&&!cache.materials.length&&!cache.suppliers.length)throw e
-  }
+  // Inventory and purchasing data must never be silently replaced with stale browser sessionStorage.
+  // Only the D1 API is authoritative; failure is visible instead of rendering old stock.
+  const fresh=normalizeCache(await api('/bootstrap?fresh='+Date.now()));
+  cache=fresh;
+  lastCloudSync=Date.now();
+  persistCache();
+  setCloudSyncStatus(true);
 }
 function card(t,v,r){return '<div class="card kpi-link" onclick="go(\''+r+'\')"><span>'+t+'</span><b>'+Number(v||0).toLocaleString()+'</b></div>'}
 function render(){
@@ -946,7 +951,8 @@ function printOutbound(id){
 }
 async function delOutbound(id){if(!confirm('删除出库单？本次扣减的库存会自动恢复并生成撤销流水。'))return;await api('/outbound-orders/'+id,{method:'DELETE'});refresh()}
 async function migrateImages(){if(!confirm('把现有商品图片复制到 Cloudflare KV？完成后所有电脑都会直接从 Cloudflare 加载。'))return;let moved=0;for(let i=0;i<30;i++){const r=await api('/migrate-images?limit=6',{method:'POST'});moved+=Number(r.moved||0);if(!r.remaining||(!r.moved&&r.failed))break}toastMsg('已迁移 '+moved+' 张图片');refresh()}
-load().then(render).catch(e=>{root.innerHTML='<div class="panel"><div class="empty">尚未连接 Cloudflare D1：'+esc(e.message)+'</div></div>';renderNav()})
+root.innerHTML='<div class="panel"><div class="empty">正在读取云端库存、采购和包材数据…</div></div>';
+load().then(render).catch(e=>{setCloudSyncStatus(false,e.message);root.innerHTML='<div class="panel"><div class="empty" style="color:#b42318">云端数据加载失败：'+esc(e.message)+'<div class="small muted" style="margin-top:12px">为避免显示错误库存，已暂停使用浏览器旧缓存。请检查网络并点击刷新。</div><button class="btn" style="margin-top:12px" onclick="location.reload()">重新加载</button></div></div>';renderNav()})
 </script>
 </body>
 </html>
