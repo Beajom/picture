@@ -1,0 +1,166 @@
+/* Standalone printable A4 contract. DO NOT import the app's global CSS here. */
+@page { size: A4 portrait; margin: 0; }
+* { box-sizing: border-box; }
+html, body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  color: #111;
+  background: #fff;
+  font-family: "Microsoft YaHei", "Noto Sans CJK SC", "SimSun", sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.mpo-paper {
+  width: 100%;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 15mm 15mm 13mm;
+  background: #fff;
+  font-size: 10pt;
+  line-height: 1.55;
+  overflow: visible;
+}
+.mpo-doc-title {
+  display: block;
+  position: static;
+  width: 100%;
+  margin: 0 0 7mm;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+.mpo-doc-title h2 {
+  margin: 0;
+  font-size: 21pt;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 3pt;
+}
+.mpo-doc-title p {
+  margin: 1mm 0 0;
+  font-size: 10pt;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.mpo-contract-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr);
+  gap: 5mm;
+  margin: 0 0 4mm;
+  font-size: 9.2pt;
+}
+.mpo-contract-meta > div > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 1mm;
+  line-height: 1.85;
+}
+.mpo-contract-meta strong { flex: 0 0 auto; white-space: nowrap; font-weight: 700; }
+.mpo-contract-meta span { flex: 1; min-width: 0; overflow-wrap: anywhere; border-bottom: .2mm solid #8b8b8b; }
+.mpo-intro { margin: 3mm 0 2mm; font-size: 9.3pt; }
+.mpo-section-heading { margin: 0 0 2mm; font-size: 10pt; font-weight: 700; }
+.mpo-contract-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  line-height: 1.45;
+  font-size: 9pt;
+}
+.mpo-contract-table th, .mpo-contract-table td {
+  border: .27mm solid #202020;
+  padding: 2mm 1mm;
+  vertical-align: middle;
+  text-align: center;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.mpo-contract-table thead { display: table-header-group; }
+.mpo-contract-table th { background: #fff; font-weight: 700; }
+.mpo-contract-table .mpo-name { text-align: left; }
+.mpo-contract-table .mpo-product-row td { padding-top: 3mm; padding-bottom: 3mm; }
+.mpo-product-row { break-inside: avoid; page-break-inside: avoid; }
+.mpo-material-code { font-size: 7.7pt; color: #555; margin-top: 1mm; }
+.mpo-material-thumb { display: block; width: 16mm; height: 16mm; max-width: 100%; object-fit: contain; margin: 0 auto; }
+.mpo-remarks { font-size: 8pt; overflow-wrap: anywhere; }
+.mpo-contract-table .mpo-sum-row td,
+.mpo-contract-table .mpo-grand-total td { padding: 1.5mm 1mm; }
+.mpo-contract-table .mpo-money-words td { text-align: left; padding: 2mm 2.5mm; }
+.mpo-terms { border: .27mm solid #202020; border-top: 0; }
+.mpo-clause {
+  display: flex;
+  gap: 1mm;
+  padding: 2mm 2.5mm;
+  border-bottom: .27mm solid #202020;
+  font-size: 9pt;
+  line-height: 1.6;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.mpo-clause:last-child { border-bottom: 0; }
+.mpo-clause strong { flex: 0 0 auto; white-space: nowrap; }
+.mpo-clause span { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mpo-signatures {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 3mm;
+  margin: 5mm 0 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.mpo-sign-block {
+  position: relative;
+  border: .28mm solid #202020;
+  min-width: 0;
+  min-height: 78mm;
+  padding: 3mm 2.5mm 46mm;
+  overflow: hidden;
+  break-inside: avoid;
+}
+.mpo-sig-line {
+  display: grid;
+  grid-template-columns: 24mm minmax(0, 1fr);
+  gap: .5mm;
+  min-height: 5mm;
+  margin: 0 0 1mm;
+  font-size: 8.7pt;
+  line-height: 1.5;
+}
+.mpo-sig-line strong { white-space: nowrap; font-weight: 700; }
+.mpo-sig-line span { overflow-wrap: anywhere; word-break: break-word; }
+.mpo-seal-zone {
+  position: absolute;
+  left: 2.5mm;
+  right: 2.5mm;
+  bottom: 3mm;
+  height: 43mm;
+  font-size: 9pt;
+}
+.mpo-seal-zone > span:first-child { position: absolute; left: 0; bottom: 0; }
+.mpo-buyer-seal {
+  display: block;
+  position: absolute;
+  right: 1mm;
+  bottom: 0;
+  width: var(--mpo-print-seal, 42mm);
+  height: var(--mpo-print-seal, 42mm);
+  max-width: calc(100% - 5mm);
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  opacity: .98;
+  pointer-events: none;
+}
+.mpo-empty-seal { color: #777; }
+.mpo-document-footnote { margin: 2mm 0 0; font-size: 7.8pt; color: #555; }
+@media screen {
+  body { background: #e5e7eb; padding: 12px 0; }
+  .mpo-paper { box-shadow: 0 1px 9px #0002; }
+}
+@media print {
+  html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .mpo-paper { width: 100% !important; max-width: none !important; margin: 0 !important; box-shadow: none !important; }
+  .mpo-signatures { break-inside: avoid !important; page-break-inside: avoid !important; }
+}
