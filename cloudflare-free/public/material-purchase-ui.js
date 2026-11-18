@@ -90,6 +90,7 @@ window.newMaterialPO=function(materialId=''){
   if(!cache.suppliers.length){go('suppliers');toastMsg('请先添加供应商资料');return}
   const now=localDate(),invoiceNo='MP-'+now.replaceAll('-','')+'-'+String(Date.now()).slice(-5);
   const form='<form id="materialPOForm" class="form">'+
+    procurementTypeSwitch('material')+
     '<label>合同 / 采购单号<input class="field" name="order_no" value="'+invoiceNo+'" required></label>'+
     '<label>包装供应商<select class="field" name="supplier_id">'+opts(cache.suppliers,'id','company_name','')+'</select></label>'+
     '<label>订货日期<input class="field" type="date" name="order_date" value="'+now+'" required></label>'+
