@@ -224,7 +224,7 @@ window.previewMaterialPurchaseContract=async function(id){
   try{
     currentOrder=await getOrder(id);
     openModal('包材订货合同 · '+currentOrder.order_no,
-      '<div class="row" style="gap:9px;justify-content:flex-end;margin-bottom:12px">'+
+      '<div class="row" style="gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:12px">'+
       '<label class="mpo-seal-size-picker">公章尺寸 <select class="field" aria-label="公章打印尺寸" onchange="changeMaterialContractSealSize(this.value)">'+
       [24,26,28].map(size=>'<option value="'+size+'"'+(materialContractSealSize()===size?' selected':'')+'>'+({24:'小 · 24mm',26:'标准 · 26mm',28:'大 · 28mm'}[size])+'</option>').join('')+'</select></label>'+
       btn('甲方资料 / 公章管理','editMaterialContractProfile()')+
