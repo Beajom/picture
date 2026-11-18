@@ -119,6 +119,8 @@ jobs:
                grep -q "公章已保存到云端" /tmp/index.html &&
                grep -q "onchange=\"uploadMaterialContractStamp()\"" /tmp/index.html &&
                grep -q "mpo-buyer-seal" /tmp/index.html &&
+               grep -q "material-contract-print.css?v=a4-20261119-v3" /tmp/index.html &&
+               grep -q "标准 · 42mm" /tmp/index.html &&
                grep -q "采购类型" /tmp/index.html &&
                grep -q "cloudDataStatus" /tmp/index.html; then
               ok=1
@@ -149,6 +151,13 @@ jobs:
             echo "::error::Packaging procurement API not confirmed"
             exit 1
           fi
+          # The print stylesheet is served as a separate immutable application asset.
+          # Verify it exists in production before declaring PDF export healthy.
+          curl -fsS "$BASE/material-contract-print.css?check=$(date +%s)" -o /tmp/material-contract-print.css
+          grep -Fq '@page { size: A4 portrait; margin: 0; }' /tmp/material-contract-print.css
+          grep -Fq 'padding: 15mm 15mm 13mm' /tmp/material-contract-print.css
+          grep -Fq -- '--mpo-print-seal, 42mm' /tmp/material-contract-print.css
+          echo "Standalone A4 PDF stylesheet verified."
           echo "Packaging procurement API verified."
           curl -fsS "$BASE/api/material-contract-profile?ts=$(date +%s)" -o /tmp/material-contract-profile.json
           python - <<'PY'
