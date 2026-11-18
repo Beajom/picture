@@ -40,6 +40,7 @@
 .quote-import-warn{margin-top:10px;padding:9px 10px;border-radius:9px;background:#fffaeb;border:1px solid #fedf89;color:#7a2e0e;font-size:10.5px;line-height:1.55}
 .quote-import-note{font-size:10.5px;color:#667085;line-height:1.6;margin-top:9px}
 .modal.quote-wide{width:min(1180px,97vw)}
+@media(max-width:1080px){.paper{width:min(794px,100%);min-height:auto}.paper-wrap{padding:10px}}
 @media(max-width:760px){.quote-result-head{grid-template-columns:1fr}.quote-import-drop{padding:14px}}
 @media(max-width:620px){.supplier-license-upload{align-items:flex-start}.supplier-license-preview{width:96px;height:78px;flex-basis:96px}}
 .doc-logo{max-height:44px;max-width:120px;object-fit:contain}
@@ -527,7 +528,7 @@ input,select,textarea,button{max-width:100%}
   .supplier-license-preview{width:100%;height:150px;flex-basis:auto}
   .quote-import-drop{min-height:100px}
   .quote-result-head{grid-template-columns:1fr}
-  .paper{transform-origin:top left}
+  .paper{width:100%;min-height:auto;padding:22px 16px;font-size:11px;transform:none}.paper table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}.paper-meta{grid-template-columns:1fr}.paper-titlebar{align-items:flex-start;gap:8px;flex-direction:column}
 }
 @media(max-width:420px){
   .content{padding:6px}
@@ -1422,16 +1423,10 @@ function quoteGuessMeta(lines,text){
 }
 async function quotePdfModule(){
   if(window._quotePdfLib)return window._quotePdfLib;
-  try{
-    const lib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
-    lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-    window._quotePdfLib=lib;return lib;
-  }catch(modErr){
-    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',()=>!!window.pdfjsLib);
-    const lib=window.pdfjsLib;if(!lib)throw modErr;
-    lib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    window._quotePdfLib=lib;return lib;
-  }
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',()=>!!window.pdfjsLib);
+  const lib=window.pdfjsLib;if(!lib)throw new Error('PDF 组件加载失败');
+  lib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  window._quotePdfLib=lib;return lib;
 }
 async function quoteTesseract(){
   if(window.Tesseract)return window.Tesseract;
