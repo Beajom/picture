@@ -115,6 +115,8 @@ jobs:
             sleep 5
           done
           test "$ok" = "1"
-          curl -fsS "$BASE/material-purchase-ui.js" | grep -q "newMaterialPO"
-          curl -fsS "$BASE/material-purchase-ui.css" | grep -q "mpo-paper"
+          curl -fsS "$BASE/material-purchase-ui.js" -o /tmp/material-purchase-ui.js
+          curl -fsS "$BASE/material-purchase-ui.css" -o /tmp/material-purchase-ui.css
+          grep -q "newMaterialPO" /tmp/material-purchase-ui.js
+          grep -q "mpo-paper" /tmp/material-purchase-ui.css
           echo "Deployment verified."
