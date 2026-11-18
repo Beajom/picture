@@ -294,3 +294,26 @@
   .mpo-paper .mpo-terms .mpo-clause{break-inside:avoid;page-break-inside:avoid}
   .mpo-paper .mpo-document-footnote{font-size:8pt!important;margin-top:3mm!important;color:#555}
 }
+
+/* Seal preview tuned for 42mm print: leave a dedicated area beneath the company details. */
+.mpo-paper .mpo-signatures .mpo-sign-block {
+  min-height: 305px;
+  padding-bottom: 178px;
+}
+.mpo-paper .mpo-seal-zone {
+  bottom: 10px;
+  height: 142px;
+}
+.mpo-paper .mpo-buyer-seal {
+  width: var(--mpo-preview-seal, 126px);
+  height: var(--mpo-preview-seal, 126px);
+  right: 8px;
+  bottom: 4px;
+  max-width: calc(100% - 16px);
+}
+@media screen and (max-width:650px) {
+  .mpo-paper .mpo-signatures .mpo-sign-block {
+    min-height: 280px;
+    padding-bottom: 160px;
+  }
+}
