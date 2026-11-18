@@ -123,8 +123,14 @@ jobs:
             done
             exit 1
           fi
-          curl -fsS "$BASE/material-purchase-ui.js" -o /tmp/material-purchase-ui.js
-          curl -fsS "$BASE/material-purchase-ui.css" -o /tmp/material-purchase-ui.css
+          curl -fsS "$BASE/material-purchase-ui.js?build=$(date +%s)" -o /tmp/material-purchase-ui.js
+          curl -fsS "$BASE/material-purchase-ui.css?build=$(date +%s)" -o /tmp/material-purchase-ui.css
+          echo "static asset byte counts:"
+          wc -c /tmp/material-purchase-ui.js /tmp/material-purchase-ui.css
+          head -c 90 /tmp/material-purchase-ui.js || true
+          echo
+          head -c 90 /tmp/material-purchase-ui.css || true
+          echo
           curl -fsS "$BASE/api/material-purchase-orders" -o /tmp/material-purchase-api.json
           python - <<'PY'
           import json
@@ -132,7 +138,7 @@ jobs:
           assert isinstance(data.get("orders"),list),str(data)[:500]
           print("Packaging procurement API verified, records:",len(data["orders"]))
           PY
-          grep -q "newMaterialPO" /tmp/material-purchase-ui.js
-          grep -q "mpo-paper" /tmp/material-purchase-ui.css
+          if ! grep -q "newMaterialPO" /tmp/material-purchase-ui.js; then echo "::error::New material-purchase-ui.js not served"; exit 1; fi
+          if ! grep -q "mpo-paper" /tmp/material-purchase-ui.css; then echo "::error::New material-purchase-ui.css not served"; exit 1; fi
           echo "Deployment verified."
 
