@@ -203,7 +203,7 @@ async function createDailyBackup(env){
 export async function onRequest(ctx){
   const {request,env}=ctx, url=new URL(request.url), p=url.pathname.replace(/^\/api/,'')||'/', method=request.method;
   try{
-    if(p==='/material-purchase-orders'||p.startsWith('/material-purchase-orders/')){
+    if(p==='/material-contract-profile'||p==='/material-contract-profile/stamp'||p==='/material-purchase-orders'||p.startsWith('/material-purchase-orders/')){
       return materialPurchaseHandler({request,env,path:p,method});
     }
     if(p==='/bootstrap'&&method==='GET'){
