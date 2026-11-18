@@ -85,3 +85,7 @@
   .mpo-paper .mpo-contract-table th,.mpo-paper .mpo-contract-table td{font-size:10px}
   .mpo-paper .mpo-buyer-seal{width:33mm;height:33mm}
 }
+
+.mpo-stamp-status{font-size:12px;line-height:1.6;color:#475467;margin:4px 0 12px}
+.mpo-stamp-status.is-saved{color:#047857;font-weight:700}
+#mpoStampPreview:empty{display:none}
