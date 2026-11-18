@@ -1,9 +1,9 @@
 name = "amazon-supply-workbench-free"
-main = "src/worker.js"
+main = "cloudflare-free/src/worker.js"
 compatibility_date = "2026-09-20"
 
 [assets]
-directory = "./public"
+directory = "./cloudflare-free/public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 
