@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>佰益居 Supplier Portal</title>
+<style>
+:root{--blue:#155eef;--navy:#101828;--muted:#667085;--line:#e4e7ec;--bg:#f5f7fb;--ok:#067647;--warn:#b54708;--bad:#b42318}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--navy)}
+button,input,select,textarea{font:inherit}.hidden{display:none!important}
+.top{position:sticky;top:0;z-index:20;height:64px;background:#0d1b33;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 24px;box-shadow:0 2px 12px rgba(16,24,40,.12)}
+.brand{display:flex;align-items:center;gap:10px}.logo{width:36px;height:36px;border-radius:10px;background:#246bfe;display:grid;place-items:center;font-weight:900}.brand b{font-size:17px}.brand small{display:block;color:#9fb3d1;margin-top:2px}
+.top-actions{display:flex;gap:10px;align-items:center}.top button{border:1px solid #40506a;background:#152744;color:#fff;border-radius:9px;padding:8px 12px;cursor:pointer}
+.wrap{width:100%;max-width:none;margin:0;padding:24px 32px}
+.hero{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:18px;width:100%}.hero>div:first-child{max-width:760px}.hero h1{margin:0;font-size:25px}.hero p{margin:6px 0 0;color:var(--muted)}.summary{display:flex;gap:10px;flex-wrap:wrap}
+.chip{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:106px}.chip b{font-size:18px;display:block}.chip span{font-size:11px;color:var(--muted)}
+.card{background:#fff;border:1px solid #e1e6ef;border-radius:16px;box-shadow:0 4px 16px rgba(16,24,40,.04)}
+.toolbar{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.toolbar input{width:min(380px,100%);height:40px;border:1px solid #d0d5dd;border-radius:9px;padding:0 12px}.toolbar .hint{font-size:12px;color:var(--muted)}
+.table-wrap{overflow:auto;max-width:100%}table{width:100%;border-collapse:collapse;min-width:1480px}th{background:#f8fafc;color:#475467;font-size:11px;text-align:left;padding:11px 10px;border-bottom:1px solid var(--line);white-space:nowrap}td{padding:10px;border-bottom:1px solid #edf0f5;vertical-align:middle;font-size:12px}tr:last-child td{border-bottom:0}th:first-child,td:first-child{position:sticky;left:0;z-index:3;background:#fff}th:first-child{background:#f8fafc;z-index:4;min-width:220px;box-shadow:8px 0 14px rgba(16,24,40,.035)}td:first-child{box-shadow:8px 0 14px rgba(16,24,40,.025)}
+.prod{display:flex;align-items:center;gap:10px;min-width:190px}.prod img{width:48px;height:48px;object-fit:contain;border:1px solid var(--line);border-radius:9px;background:#fff}.prod b{display:block}.prod small{color:var(--muted);display:block;margin-top:3px}
+.field{width:88px;height:34px;border:1px solid #d0d5dd;border-radius:7px;padding:0 8px;background:#fff}.field.wide{width:116px}.field.note{width:150px}.dims{display:flex;align-items:center;gap:4px}.dims input{width:58px}.cbm{font-weight:700;color:#344054;white-space:nowrap}
+.btn{border:1px solid #d0d5dd;background:#fff;color:#344054;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn:disabled{opacity:.55;cursor:wait}
+.status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800}.status.pending{background:#f2f4f7;color:#475467}.status.submitted{background:#fff6ed;color:var(--warn)}.status.approved{background:#ecfdf3;color:var(--ok)}.status.rejected{background:#fef3f2;color:var(--bad)}
+.review-note{font-size:10px;color:var(--bad);margin-top:4px;max-width:150px}.empty{padding:54px;text-align:center;color:var(--muted)}
+.auth-shell{min-height:100vh;display:grid;place-items:center;padding:24px;background:linear-gradient(145deg,#eaf0ff,#f8fafc 55%,#edf7ff)}
+.auth-card{width:min(440px,100%);background:#fff;border:1px solid #dfe5ef;border-radius:20px;padding:28px;box-shadow:0 18px 55px rgba(16,24,40,.12)}.auth-head{text-align:center;margin-bottom:24px}.auth-head .logo{margin:0 auto 12px}.auth-head h1{font-size:22px;margin:0}.auth-head p{font-size:13px;color:var(--muted);line-height:1.6}.tabs{display:grid;grid-template-columns:1fr 1fr;background:#f2f4f7;padding:4px;border-radius:10px;margin-bottom:18px}.tabs button{border:0;background:transparent;border-radius:7px;padding:9px;cursor:pointer;font-weight:700;color:#667085}.tabs button.active{background:#fff;color:#175cd3;box-shadow:0 1px 4px rgba(16,24,40,.08)}
+.auth-field{margin-bottom:13px}.auth-field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px}.auth-field input{width:100%;height:43px;border:1px solid #d0d5dd;border-radius:9px;padding:0 12px}.auth-card .primary{width:100%;height:44px;margin-top:4px}.invite-note{background:#eff6ff;border:1px solid #b2ccff;color:#1849a9;border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:14px}.msg{font-size:12px;line-height:1.5;margin-top:12px}.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
+.no-access{max-width:620px;margin:80px auto;padding:28px;text-align:center}.no-access h2{margin-top:0}.invite-accept{display:flex;gap:8px;margin-top:18px}.invite-accept input{flex:1;height:40px;border:1px solid #d0d5dd;border-radius:8px;padding:0 10px}
+.toast{position:fixed;right:22px;bottom:22px;z-index:50;background:#101828;color:#fff;border-radius:10px;padding:12px 15px;box-shadow:0 12px 30px rgba(16,24,40,.25);font-size:12px;max-width:360px}
+.add-panel{margin-bottom:16px;padding:18px}.add-panel h3{margin:0 0 4px;font-size:17px}.add-panel p{margin:0 0 16px;color:var(--muted);font-size:12px}.add-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.add-field label{display:block;font-size:11px;font-weight:800;color:#475467;margin-bottom:6px}.add-field input,.add-field select,.add-field textarea{width:100%;border:1px solid #d0d5dd;border-radius:8px;background:#fff;padding:9px 10px}.add-field textarea{min-height:72px;resize:vertical}.add-field.span2{grid-column:span 2}.add-field.span4{grid-column:1/-1}.add-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.image-upload{border:1.5px dashed #b9c4d5;border-radius:12px;background:#f8fafc;min-height:132px;padding:14px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:.15s}.image-upload:hover,.image-upload.dragover{border-color:#155eef;background:#f2f6ff}.image-upload .preview{width:104px;height:104px;border-radius:10px;border:1px solid #e4e7ec;background:#fff;display:grid;place-items:center;overflow:hidden;flex:0 0 auto}.image-upload .preview img{width:100%;height:100%;object-fit:contain}.image-upload .preview span{font-size:11px;color:#98a2b3}.image-upload .upload-copy{min-width:0}.image-upload .upload-copy b{display:block;font-size:13px;color:#344054}.image-upload .upload-copy span{display:block;font-size:11px;color:#667085;line-height:1.6;margin-top:4px}.image-upload .upload-copy .upload-state{color:#155eef;font-weight:700}.image-url-backup{margin-top:8px}.source-tag{display:inline-flex;margin-top:5px;padding:2px 6px;border-radius:999px;font-size:9px;font-weight:800;background:#eef4ff;color:#3538cd}.source-tag.own{background:#ecfdf3;color:#067647}.hero-side{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;justify-content:flex-end}.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.empty .btn{margin-top:12px}@media(max-width:980px){.add-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.add-field.span4{grid-column:1/-1}}@media(max-width:620px){.add-grid{grid-template-columns:1fr}.add-field.span2,.add-field.span4{grid-column:auto}}
+@media(max-width:760px){.wrap{padding:14px}.hero{display:block}.summary{margin-top:14px}.top{padding:0 14px}.brand small{display:none}.toolbar{align-items:stretch;flex-direction:column}.toolbar input{width:100%}}
+</style>
+</head>
+<body>
+<div id="app">加载中...</div>
+<div id="toast" class="toast hidden"></div>
+<script>
+const SUPABASE_URL='https://lityhemildbulduhjeyw.supabase.co';
+const SUPABASE_KEY='sb_publishable_UPDKKVoXaScFPLafLQiC2A_9ifNv1z9';
+const STORE='tradedesk_supplier_session_v1';
+const INVITE_STORE='tradedesk_supplier_invite_v1';
+const $=s=>document.querySelector(s);
+let session=null,account=null,items=[],filterText='',authMode='login',showAddForm=false,editingId='';
+
+function toast(msg){const el=$('#toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),3200)}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
+function stored(){try{return JSON.parse(localStorage.getItem(STORE)||'null')}catch(e){return null}}
+function saveSession(v){session=v;v?localStorage.setItem(STORE,JSON.stringify(v)):localStorage.removeItem(STORE)}
+function jwtPayload(token=''){try{const p=token.split('.')[1];return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')))}catch(e){return {}}}
+function jwtExp(token=''){return Number(jwtPayload(token).exp||0)}
+async function raw(url,opts={}){const r=await fetch(url,opts);const txt=await r.text();let body=null;try{body=txt?JSON.parse(txt):null}catch(e){body=txt}if(!r.ok)throw new Error(body?.message||body?.error_description||body?.error||('HTTP '+r.status));return body}
+async function refresh(){let s=stored();if(!s?.access_token)return null;if(!s.user){const p=jwtPayload(s.access_token);if(p.sub){s.user={id:p.sub,email:p.email||''};saveSession(s)}}if(jwtExp(s.access_token)>Date.now()/1000+90){session=s;return s}if(!s.refresh_token){saveSession(null);return null}try{const d=await raw(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});s={...d,user:d.user||s.user};saveSession(s);session=s;return s}catch(e){saveSession(null);return null}}
+async function authHeaders(extra={}){const s=await refresh();return {apikey:SUPABASE_KEY,Authorization:'Bearer '+(s?.access_token||SUPABASE_KEY),'Content-Type':'application/json',...extra}}
+async function rest(table,query=''){const h=await authHeaders();return raw(SUPABASE_URL+'/rest/v1/'+table+(query?'?'+query:''),{headers:h})}
+async function rpc(name,payload={}){const h=await authHeaders();return raw(SUPABASE_URL+'/rest/v1/rpc/'+name,{method:'POST',headers:h,body:JSON.stringify(payload)})}
+async function signIn(email,password){const d=await raw(SUPABASE_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});session={...d,user:d.user};saveSession(session);return d}
+async function signUp(email,password){const redirect=location.origin+location.pathname;return raw(SUPABASE_URL+'/auth/v1/signup?redirect_to='+encodeURIComponent(redirect),{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})})}
+async function signOut(){try{if(session?.access_token)await raw(SUPABASE_URL+'/auth/v1/logout',{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+session.access_token}})}catch(e){}saveSession(null);session=null;account=null;items=[];renderAuth()}
+
+function captureAuthCallback(){try{const h=new URLSearchParams(location.hash.replace(/^#/,''));
+ const access=h.get('access_token'),refreshToken=h.get('refresh_token');
+ if(access){const userRaw=h.get('user');let user=null;try{user=userRaw?JSON.parse(decodeURIComponent(userRaw)):null}catch(e){}
+  const p=jwtPayload(access),s={access_token:access,refresh_token:refreshToken||'',token_type:h.get('token_type')||'bearer',expires_in:Number(h.get('expires_in')||0),user:user||stored()?.user||(p.sub?{id:p.sub,email:p.email||''}:null)};
+  saveSession(s);session=s;history.replaceState({},'',location.pathname+location.search);return s}
+ }catch(e){}return null}
+function normalizeInviteCode(v=''){const raw=String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');return raw.length===12?raw.slice(0,4)+'-'+raw.slice(4,8)+'-'+raw.slice(8):String(v||'').trim().toUpperCase()}
+function inviteToken(){const legacy=new URLSearchParams(location.search).get('invite');if(legacy){const code=normalizeInviteCode(legacy);localStorage.setItem(INVITE_STORE,code);return code}return normalizeInviteCode(localStorage.getItem(INVITE_STORE)||'')}
+function setAuthMode(mode){authMode=mode;renderAuth()}
+function renderAuth(message='',kind=''){
+ const inv=inviteToken();
+ document.getElementById('app').innerHTML=`<div class="auth-shell"><div class="auth-card"><div class="auth-head"><div class="logo">TD</div><h1>供应商工作台</h1><p>仅用于维护分配给您的产品报价、重量和装箱资料。</p></div>
+ <div class="tabs"><button class="${authMode==='login'?'active':''}" onclick="setAuthMode('login')">登录</button><button class="${authMode==='signup'?'active':''}" onclick="setAuthMode('signup')">首次注册</button></div>
+ <form onsubmit="submitAuth(event)"><div class="auth-field"><label>邮箱</label><input id="authEmail" type="email" required autocomplete="email" placeholder="supplier@example.com"></div><div class="auth-field"><label>密码</label><input id="authPassword" type="password" minlength="6" required autocomplete="${authMode==='login'?'current-password':'new-password'}" placeholder="至少 6 位"></div>
+ <div class="auth-field"><label>邀请码 <span style="font-weight:400;color:#98a2b3">（首次绑定必填）</span></label><input id="authInviteCode" value="${esc(inv)}" maxlength="14" autocomplete="off" placeholder="例如：7F3A-9C2D-B681" style="text-transform:uppercase;letter-spacing:1.2px"><div style="font-size:11px;color:#98a2b3;margin-top:5px">已经绑定过的账号，后续登录可以不填。</div></div>
+ <button class="btn primary" id="authBtn" type="submit">${authMode==='login'?'登录供应商工作台':'创建供应商账号'}</button></form>
+ <div id="authMsg" class="msg ${kind}">${esc(message)}</div></div></div>`;
+}
+async function submitAuth(e){e.preventDefault();const email=$('#authEmail').value.trim(),password=$('#authPassword').value,code=normalizeInviteCode($('#authInviteCode')?.value||'');if(code)localStorage.setItem(INVITE_STORE,code);const btn=$('#authBtn');btn.disabled=true;btn.textContent='处理中...';try{
+ if(authMode==='signup'){const d=await signUp(email,password);if(d.access_token){session={...d,user:d.user};saveSession(session);await afterAuth()}else{renderAuth('注册成功。请先到邮箱完成验证，然后返回此页面登录。','ok')}}
+ else{await signIn(email,password);await afterAuth()}
+ }catch(err){renderAuth(err.message||'操作失败','err')}}
+async function acceptInvite(token){if(!token)return null;const d=await rpc('accept_trade_supplier_invite',{p_token:token});localStorage.removeItem(INVITE_STORE);history.replaceState({},'',location.pathname);return d}
+async function afterAuth(){const token=inviteToken();if(token){try{await acceptInvite(token);toast('供应商账号已绑定')}catch(e){toast(e.message)}}await loadPortal()}
+
+async function loadPortal(){try{
+ const accounts=await rest('trade_supplier_accounts','select=*&auth_user_id=eq.'+encodeURIComponent(session.user.id)+'&limit=1');
+ account=accounts?.[0]||null;
+ if(!account){renderNoAccess();return}
+ if(account.status!=='active'){renderDisabled();return}
+ items=await rest('trade_supplier_product_inputs','select=*&supplier_id=eq.'+encodeURIComponent(account.supplier_id)+'&is_active=eq.true&order=sku.asc');
+ renderPortal();
+ }catch(e){document.getElementById('app').innerHTML='<div class="no-access card"><h2>加载失败</h2><p>'+esc(e.message)+'</p><button class="btn" onclick="location.reload()">重新加载</button></div>'}}
+function renderNoAccess(){document.getElementById('app').innerHTML=`<div class="top"><div class="brand"><div class="logo">TD</div><div><b>Supplier Portal</b><small>佰益居供应商工作台</small></div></div><button onclick="signOut()">退出</button></div><div class="no-access card"><h2>账号尚未绑定供应商</h2><p>请输入采购方提供的 12 位邀请码，绑定后即可看到分配给您的产品。</p><div class="invite-accept"><input id="manualInvite" maxlength="14" value="${esc(inviteToken())}" placeholder="例如：7F3A-9C2D-B681" style="text-transform:uppercase;letter-spacing:1.2px"><button class="btn primary" onclick="acceptManualInvite()">绑定账号</button></div></div>`}
+async function acceptManualInvite(){const t=normalizeInviteCode($('#manualInvite').value);if(!t)return toast('请输入邀请码');localStorage.setItem(INVITE_STORE,t);try{await acceptInvite(t);await loadPortal()}catch(e){toast(e.message)}}
+function renderDisabled(){document.getElementById('app').innerHTML=`<div class="top"><div class="brand"><div class="logo">TD</div><div><b>Supplier Portal</b><small>佰益居供应商工作台</small></div></div><button onclick="signOut()">退出</button></div><div class="no-access card"><h2>账号已暂停</h2><p>该供应商账号当前已被管理员停用。如需继续填写，请联系采购方。</p></div>`}
+
+function filteredItems(){const q=filterText.trim().toLowerCase();return q?items.filter(x=>(x.sku+' '+x.product_name).toLowerCase().includes(q)):items}
+function statusLabel(s){return {pending:'未填写',submitted:'待审核',approved:'已通过',rejected:'需修改'}[s]||s}
+function cbmOf(x){return num(x.carton_length_cm)*num(x.carton_width_cm)*num(x.carton_height_cm)/1000000}
+function renderPortal(){
+ const list=filteredItems(),submitted=items.filter(x=>x.status==='submitted').length,approved=items.filter(x=>x.status==='approved').length,own=items.filter(x=>x.source_type==='supplier').length;
+ document.getElementById('app').innerHTML=`<div class="top"><div class="brand"><div class="logo">TD</div><div><b>佰益居 Supplier</b><small>${esc(account.supplier_name||'供应商工作台')}</small></div></div><div class="top-actions"><span>${esc(account.email||session.user.email||'')}</span><button onclick="signOut()">退出</button></div></div>
+ <div class="wrap"><div class="hero"><div><h1>我的产品资料</h1><p>这里包含采购方分配给您的产品，以及您自主新增的产品。自主新增产品审核通过前不会进入采购方正式产品库。</p></div><div class="hero-side"><div class="summary"><div class="chip"><b>${items.length}</b><span>全部产品</span></div><div class="chip"><b>${own}</b><span>自主新增</span></div><div class="chip"><b>${submitted}</b><span>待审核</span></div><div class="chip"><b>${approved}</b><span>已通过</span></div></div><button class="btn primary" onclick="showAddForm=!showAddForm;renderPortal()">${showAddForm?'收起新增':'＋ 添加产品'}</button></div></div>
+ ${showAddForm?addProductFormHtml():''}
+ ${editingId?editProductFormHtml(items.find(x=>x.id===editingId)):''}
+ <div class="card"><div class="toolbar"><input placeholder="搜索 SKU / 产品名称" value="${esc(filterText)}" oninput="filterText=this.value;renderPortal()"><div class="toolbar-right"><div class="hint">箱规单位：cm · 重量单位：KG · CBM 自动计算</div><button class="btn primary" onclick="showAddForm=true;renderPortal();setTimeout(()=>document.getElementById('newSku')?.focus(),0)">＋ 添加产品</button></div></div>
+ ${list.length?`<div class="table-wrap"><table><thead><tr><th>产品</th><th>采购价</th><th>币种</th><th>净重/箱 KG</th><th>毛重/箱 KG</th><th>每箱数量</th><th>箱规 长 × 宽 × 高 cm</th><th>CBM</th><th>MOQ</th><th>交期/天</th><th>备注</th><th>状态</th><th>操作</th></tr></thead><tbody>
+ ${list.map(row=>`<tr data-id="${row.id}"><td><div class="prod">${row.image_url?'<img src="'+esc(row.image_url)+'" alt="">':'<div style="width:48px;height:48px;background:#f2f4f7;border-radius:9px"></div>'}<div><b>${esc(row.sku)}</b><small>${esc(row.product_name)}</small><span class="source-tag ${row.source_type==='supplier'?'own':''}">${row.source_type==='supplier'?'供应商自主新增':'采购方分配'}</span></div></div></td>
+ <td><input class="field" data-k="purchase_price" type="number" step="0.0001" min="0" value="${num(row.purchase_price)}"></td>
+ <td><select class="field" data-k="purchase_currency">${['CNY','USD','EUR','GBP'].map(c=>'<option '+(c===row.purchase_currency?'selected':'')+'>'+c+'</option>').join('')}</select></td>
+ <td><input class="field" data-k="net_weight" type="number" step="0.001" min="0" value="${num(row.net_weight)}"></td>
+ <td><input class="field" data-k="gross_weight" type="number" step="0.001" min="0" value="${num(row.gross_weight)}"></td>
+ <td><input class="field" data-k="pcs_carton" type="number" step="1" min="1" value="${num(row.pcs_carton)||1}"></td>
+ <td><div class="dims"><input class="field" data-k="carton_length_cm" type="number" step="0.1" min="0" value="${num(row.carton_length_cm)}" oninput="updateCbm(this)"><span>×</span><input class="field" data-k="carton_width_cm" type="number" step="0.1" min="0" value="${num(row.carton_width_cm)}" oninput="updateCbm(this)"><span>×</span><input class="field" data-k="carton_height_cm" type="number" step="0.1" min="0" value="${num(row.carton_height_cm)}" oninput="updateCbm(this)"></div></td>
+ <td class="cbm" data-cbm>${cbmOf(row).toFixed(6)}</td>
+ <td><input class="field" data-k="moq" type="number" step="1" min="1" value="${num(row.moq)||1}"></td>
+ <td><input class="field" data-k="lead_time_days" type="number" step="1" min="0" value="${num(row.lead_time_days)}"></td>
+ <td><input class="field note" data-k="note" value="${esc(row.note||'')}" placeholder="包装/报价说明"></td>
+ <td><span class="status ${esc(row.status)}">${statusLabel(row.status)}</span>${row.status==='rejected'&&row.review_note?'<div class="review-note">'+esc(row.review_note)+'</div>':''}</td>
+ <td>${row.source_type==='supplier'?`<button class="btn" onclick="editOwnProduct('${row.id}')">修改</button> `:''}<button class="btn primary" onclick="saveRow('${row.id}',this)">保存提交</button></td></tr>`).join('')}
+ </tbody></table></div>`:'<div class="empty">当前还没有产品。您可以自己添加产品资料，提交后由采购方审核。<br><button class="btn primary" onclick="showAddForm=true;renderPortal();setTimeout(()=>document.getElementById(\'newSku\')?.focus(),0)">添加第一个产品</button></div>'}</div></div>`;
+}
+
+
+function productImageUploaderHtml(prefix,currentUrl=''){
+ const has=!!String(currentUrl||'').trim();
+ return '<div class="image-upload" id="'+prefix+'ImageDrop" tabindex="0" onclick="document.getElementById(\''+prefix+'ImageFile\').click()" ondragover="imageDragOver(event,\''+prefix+'\')" ondragleave="imageDragLeave(event,\''+prefix+'\')" ondrop="imageDrop(event,\''+prefix+'\')">'+
+   '<div class="preview" id="'+prefix+'ImagePreview">'+(has?'<img src="'+esc(currentUrl)+'" alt="产品图片">':'<span>暂无图片</span>')+'</div>'+
+   '<div class="upload-copy"><b>拖拽图片到这里，或点击选择本地图片</b><span>支持 JPG / PNG / WebP，单张不超过 5MB</span><span class="upload-state" id="'+prefix+'ImageState">'+(has?'已加载当前图片':'')+'</span></div>'+
+   '<input id="'+prefix+'ImageFile" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="imageFileChosen(this,\''+prefix+'\')">'+
+   '</div>'+
+   '<div class="image-url-backup"><input id="'+prefix+'Image" value="'+esc(currentUrl||'')+'" placeholder="也可以粘贴图片 URL（备用）" oninput="syncImageUrlPreview(\''+prefix+'\',this.value)"></div>';
+}
+function imageDragOver(e,prefix){e.preventDefault();e.stopPropagation();document.getElementById(prefix+'ImageDrop')?.classList.add('dragover')}
+function imageDragLeave(e,prefix){e.preventDefault();e.stopPropagation();document.getElementById(prefix+'ImageDrop')?.classList.remove('dragover')}
+function imageDrop(e,prefix){
+ e.preventDefault();e.stopPropagation();document.getElementById(prefix+'ImageDrop')?.classList.remove('dragover');
+ const file=e.dataTransfer?.files?.[0];if(file)uploadProductImage(file,prefix);
+}
+function imageFileChosen(input,prefix){const file=input?.files?.[0];if(file)uploadProductImage(file,prefix)}
+function syncImageUrlPreview(prefix,url){
+ const box=document.getElementById(prefix+'ImagePreview');if(!box)return;
+ const v=String(url||'').trim();box.innerHTML=v?'<img src="'+esc(v)+'" alt="产品图片">':'<span>暂无图片</span>';
+}
+async function uploadProductImage(file,prefix){
+ const allowed=['image/jpeg','image/png','image/webp'];
+ if(!allowed.includes(file.type))return toast('仅支持 JPG、PNG、WebP 图片');
+ if(file.size>5*1024*1024)return toast('图片不能超过 5MB');
+ const stateEl=document.getElementById(prefix+'ImageState'),drop=document.getElementById(prefix+'ImageDrop');
+ if(stateEl)stateEl.textContent='上传中...';if(drop)drop.style.pointerEvents='none';
+ try{
+  const s=await refresh();if(!s?.access_token||!s?.user?.id)throw new Error('登录状态已失效，请重新登录');
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+  const rand=(globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2)).replace(/[^a-zA-Z0-9-]/g,'');
+  const path=s.user.id+'/supplier/'+Date.now()+'-'+rand+'.'+ext;
+  const url=SUPABASE_URL+'/storage/v1/object/product-images/'+path.split('/').map(encodeURIComponent).join('/');
+  const r=await fetch(url,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+s.access_token,'Content-Type':file.type,'x-upsert':'false'},body:file});
+  const txt=await r.text();let body=null;try{body=txt?JSON.parse(txt):null}catch(e){body=txt}
+  if(!r.ok)throw new Error(body?.message||body?.error||('上传失败 HTTP '+r.status));
+  const publicUrl=SUPABASE_URL+'/storage/v1/object/public/product-images/'+path.split('/').map(encodeURIComponent).join('/');
+  const input=document.getElementById(prefix+'Image');if(input)input.value=publicUrl;
+  syncImageUrlPreview(prefix,publicUrl);
+  if(stateEl)stateEl.textContent='上传成功';
+  toast('产品图片上传成功');
+ }catch(e){if(stateEl)stateEl.textContent='上传失败';toast(e.message||'图片上传失败')}
+ finally{if(drop)drop.style.pointerEvents=''}
+}
+function editOwnProduct(id){editingId=id;showAddForm=false;renderPortal();setTimeout(()=>document.getElementById('editSku')?.focus(),0)}
+function editProductFormHtml(row){
+ if(!row)return '';
+ const unit=String(row.unit||'PCS').toUpperCase(),cur=String(row.purchase_currency||'CNY').toUpperCase();
+ return '<div class="card add-panel"><h3>修改产品</h3><p>可修改供应商自主新增产品的完整资料。修改后重新提交审核，采购方通过后才会写入正式产品库。</p>'+
+ '<div class="add-grid">'+
+ '<div class="add-field"><label>供应商货号 / SKU *</label><input id="editSku" maxlength="80" value="'+esc(row.sku||'')+'"></div>'+
+ '<div class="add-field span2"><label>产品名称 *</label><input id="editName" maxlength="160" value="'+esc(row.product_name||'')+'"></div>'+
+ '<div class="add-field"><label>单位</label><select id="editUnit">'+['PCS','PAIR','SET','BOX'].map(v=>'<option '+(v===unit?'selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
+ '<div class="add-field span4"><label>产品图片</label>'+productImageUploaderHtml('edit',row.image_url||'')+'</div>'+
+ '<div class="add-field"><label>采购价</label><input id="editPrice" type="number" step="0.0001" min="0" value="'+num(row.purchase_price)+'"></div>'+
+ '<div class="add-field"><label>币种</label><select id="editCurrency">'+['CNY','USD','EUR','GBP'].map(v=>'<option '+(v===cur?'selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
+ '<div class="add-field"><label>净重 / 箱 KG</label><input id="editNet" type="number" step="0.001" min="0" value="'+num(row.net_weight)+'"></div>'+
+ '<div class="add-field"><label>毛重 / 箱 KG</label><input id="editGross" type="number" step="0.001" min="0" value="'+num(row.gross_weight)+'"></div>'+
+ '<div class="add-field"><label>每箱数量</label><input id="editPcs" type="number" step="1" min="1" value="'+(num(row.pcs_carton)||1)+'"></div>'+
+ '<div class="add-field"><label>MOQ</label><input id="editMoq" type="number" step="1" min="1" value="'+(num(row.moq)||1)+'"></div>'+
+ '<div class="add-field"><label>外箱长 cm</label><input id="editL" type="number" step="0.1" min="0" value="'+num(row.carton_length_cm)+'"></div>'+
+ '<div class="add-field"><label>外箱宽 cm</label><input id="editW" type="number" step="0.1" min="0" value="'+num(row.carton_width_cm)+'"></div>'+
+ '<div class="add-field"><label>外箱高 cm</label><input id="editH" type="number" step="0.1" min="0" value="'+num(row.carton_height_cm)+'"></div>'+
+ '<div class="add-field"><label>交期 / 天</label><input id="editLead" type="number" step="1" min="0" value="'+num(row.lead_time_days)+'"></div>'+
+ '<div class="add-field span4"><label>备注</label><textarea id="editNote" placeholder="材质、颜色、尺码、包装、报价说明等">'+esc(row.note||'')+'</textarea></div>'+
+ '</div><div class="add-actions"><button class="btn" onclick="editingId=\'\';renderPortal()">取消</button><button class="btn" onclick="saveOwnProductEdit(false,this)">保存修改</button><button class="btn primary" onclick="saveOwnProductEdit(true,this)">保存并重新提交</button></div></div>';
+}
+async function saveOwnProductEdit(submit,btn){
+ const row=items.find(x=>x.id===editingId);if(!row)return;
+ const sku=$('#editSku')?.value.trim()||'',name=$('#editName')?.value.trim()||'';
+ if(!sku)return toast('请填写供应商货号 / SKU');
+ if(!name)return toast('请填写产品名称');
+ btn.disabled=true;const old=btn.textContent;btn.textContent=submit?'提交中...':'保存中...';
+ try{
+  await rpc('supplier_update_own_trade_product_input',{
+   p_input_id:row.id,p_sku:sku,p_product_name:name,p_image_url:$('#editImage')?.value.trim()||'',p_unit:$('#editUnit')?.value||'PCS',
+   p_purchase_price:num($('#editPrice')?.value),p_purchase_currency:$('#editCurrency')?.value||'CNY',
+   p_net_weight:num($('#editNet')?.value),p_gross_weight:num($('#editGross')?.value),p_pcs_carton:num($('#editPcs')?.value)||1,
+   p_carton_length_cm:num($('#editL')?.value),p_carton_width_cm:num($('#editW')?.value),p_carton_height_cm:num($('#editH')?.value),
+   p_moq:num($('#editMoq')?.value)||1,p_lead_time_days:Math.round(num($('#editLead')?.value)),p_note:$('#editNote')?.value||'',p_submit:!!submit
+  });
+  editingId='';toast(submit?'修改已保存，并重新提交采购方审核':'修改已保存');await loadPortal();
+ }catch(e){toast(e.message||'修改失败');btn.disabled=false;btn.textContent=old}
+}
+function addProductFormHtml(){
+ return '<div class="card add-panel"><h3>新增产品</h3><p>您可以自主添加新产品。保存草稿不会进入审核；点击“保存并提交”后，采购方审核通过才会进入正式产品库。</p>'+
+ '<div class="add-grid">'+
+ '<div class="add-field"><label>供应商货号 / SKU *</label><input id="newSku" maxlength="80" placeholder="例如：3037-BEIGE-M"></div>'+
+ '<div class="add-field span2"><label>产品名称 *</label><input id="newName" maxlength="160" placeholder="请输入产品名称"></div>'+
+ '<div class="add-field"><label>单位</label><select id="newUnit"><option>PCS</option><option>PAIR</option><option>SET</option><option>BOX</option></select></div>'+
+ '<div class="add-field span4"><label>产品图片</label>'+productImageUploaderHtml('new','')+'</div>'+
+ '<div class="add-field"><label>采购价</label><input id="newPrice" type="number" step="0.0001" min="0" value="0"></div>'+
+ '<div class="add-field"><label>币种</label><select id="newCurrency"><option>CNY</option><option>USD</option><option>EUR</option><option>GBP</option></select></div>'+
+ '<div class="add-field"><label>净重 / 箱 KG</label><input id="newNet" type="number" step="0.001" min="0" value="0"></div>'+
+ '<div class="add-field"><label>毛重 / 箱 KG</label><input id="newGross" type="number" step="0.001" min="0" value="0"></div>'+
+ '<div class="add-field"><label>每箱数量</label><input id="newPcs" type="number" step="1" min="1" value="1"></div>'+
+ '<div class="add-field"><label>MOQ</label><input id="newMoq" type="number" step="1" min="1" value="1"></div>'+
+ '<div class="add-field"><label>外箱长 cm</label><input id="newL" type="number" step="0.1" min="0" value="0"></div>'+
+ '<div class="add-field"><label>外箱宽 cm</label><input id="newW" type="number" step="0.1" min="0" value="0"></div>'+
+ '<div class="add-field"><label>外箱高 cm</label><input id="newH" type="number" step="0.1" min="0" value="0"></div>'+
+ '<div class="add-field"><label>交期 / 天</label><input id="newLead" type="number" step="1" min="0" value="0"></div>'+
+ '<div class="add-field span4"><label>备注</label><textarea id="newNote" placeholder="材质、颜色、尺码、包装、报价说明等"></textarea></div>'+
+ '</div><div class="add-actions"><button class="btn" onclick="showAddForm=false;renderPortal()">取消</button><button class="btn" onclick="createOwnProduct(false,this)">保存草稿</button><button class="btn primary" onclick="createOwnProduct(true,this)">保存并提交</button></div></div>';
+}
+async function createOwnProduct(submit,btn){
+ const sku=$('#newSku')?.value.trim()||'',name=$('#newName')?.value.trim()||'';
+ if(!sku)return toast('请填写供应商货号 / SKU');
+ if(!name)return toast('请填写产品名称');
+ btn.disabled=true;const old=btn.textContent;btn.textContent=submit?'提交中...':'保存中...';
+ try{
+  await rpc('supplier_create_trade_product_input',{
+   p_sku:sku,p_product_name:name,p_image_url:$('#newImage')?.value.trim()||'',p_unit:$('#newUnit')?.value||'PCS',
+   p_purchase_price:num($('#newPrice')?.value),p_purchase_currency:$('#newCurrency')?.value||'CNY',
+   p_net_weight:num($('#newNet')?.value),p_gross_weight:num($('#newGross')?.value),p_pcs_carton:num($('#newPcs')?.value)||1,
+   p_carton_length_cm:num($('#newL')?.value),p_carton_width_cm:num($('#newW')?.value),p_carton_height_cm:num($('#newH')?.value),
+   p_moq:num($('#newMoq')?.value)||1,p_lead_time_days:Math.round(num($('#newLead')?.value)),p_note:$('#newNote')?.value||'',p_submit:!!submit
+  });
+  showAddForm=false;toast(submit?'产品已提交采购方审核':'草稿已保存');await loadPortal();
+ }catch(e){toast(e.message||'保存失败');btn.disabled=false;btn.textContent=old}
+}
+function updateCbm(el){const tr=el.closest('tr');const l=num(tr.querySelector('[data-k="carton_length_cm"]').value),w=num(tr.querySelector('[data-k="carton_width_cm"]').value),h=num(tr.querySelector('[data-k="carton_height_cm"]').value);tr.querySelector('[data-cbm]').textContent=(l*w*h/1000000).toFixed(6)}
+async function saveRow(id,btn){const tr=document.querySelector('tr[data-id="'+id+'"]');if(!tr)return;const v=k=>tr.querySelector('[data-k="'+k+'"]').value;btn.disabled=true;btn.textContent='保存中...';try{
+ const data=await rpc('supplier_update_trade_product_input',{
+  p_input_id:id,p_purchase_price:num(v('purchase_price')),p_purchase_currency:v('purchase_currency'),
+  p_net_weight:num(v('net_weight')),p_gross_weight:num(v('gross_weight')),p_pcs_carton:num(v('pcs_carton')),
+  p_carton_length_cm:num(v('carton_length_cm')),p_carton_width_cm:num(v('carton_width_cm')),p_carton_height_cm:num(v('carton_height_cm')),
+  p_moq:num(v('moq')),p_lead_time_days:Math.round(num(v('lead_time_days'))),p_note:v('note')
+ });
+ const idx=items.findIndex(x=>x.id===id);if(idx>=0){items[idx].status='submitted';items[idx].carton_cbm=data.carton_cbm;items[idx].supplier_updated_at=data.supplier_updated_at;items[idx].review_note=''}toast('已提交给采购方审核');renderPortal();
+ }catch(e){toast(e.message||'保存失败');btn.disabled=false;btn.textContent='保存提交'}}
+(async function init(){const q=new URLSearchParams(location.search).get('invite');if(q)localStorage.setItem(INVITE_STORE,q);captureAuthCallback();session=await refresh();if(!session)renderAuth();else await afterAuth()})();
+</script>
+</body>
+</html>
