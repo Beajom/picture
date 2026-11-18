@@ -50,6 +50,9 @@ jobs:
         shell: bash
         run: node cloudflare-free/scripts/patch-contract-editing.mjs
 
+      - name: Bundle packaging UI into main HTML
+        run: node cloudflare-free/scripts/bundle-material-purchase.mjs
+
       - name: Validate frontend JavaScript
         shell: bash
         run: |
@@ -108,7 +111,8 @@ jobs:
                grep -q "管理隐藏变体" /tmp/index.html &&
                grep -q "隐藏此颜色" /tmp/index.html &&
                grep -q "setColorVariantHiddenFromButton" /tmp/index.html &&
-               grep -q "material-purchase-ui.js" /tmp/index.html &&
+               grep -q "MATERIAL_PURCHASE_JS_BUNDLE_BEGIN" /tmp/index.html &&
+               grep -q "newMaterialPO" /tmp/index.html &&
                grep -q "cloudDataStatus" /tmp/index.html; then
               ok=1
               break
@@ -118,27 +122,26 @@ jobs:
           if [ "$ok" != "1" ]; then
             echo "::error::Production HTML did not pass verification"
             wc -c /tmp/index.html
-            for token in "load().then(render)" "商品 / ASIN" "库存中心" "管理隐藏变体" "隐藏此颜色" "setColorVariantHiddenFromButton" "material-purchase-ui.js"; do
+            for token in "load().then(render)" "商品 / ASIN" "库存中心" "管理隐藏变体" "隐藏此颜色" "setColorVariantHiddenFromButton" "MATERIAL_PURCHASE_JS_BUNDLE_BEGIN" "newMaterialPO"; do
               if grep -Fq "$token" /tmp/index.html; then echo "FOUND: $token"; else echo "MISSING: $token"; fi
             done
             exit 1
           fi
-          curl -fsS "$BASE/material-purchase-ui.js?build=$(date +%s)" -o /tmp/material-purchase-ui.js
-          curl -fsS "$BASE/material-purchase-ui.css?build=$(date +%s)" -o /tmp/material-purchase-ui.css
-          echo "static asset byte counts:"
-          wc -c /tmp/material-purchase-ui.js /tmp/material-purchase-ui.css
-          head -c 90 /tmp/material-purchase-ui.js || true
-          echo
-          head -c 90 /tmp/material-purchase-ui.css || true
-          echo
-          curl -fsS "$BASE/api/material-purchase-orders" -o /tmp/material-purchase-api.json
-          python - <<'PY'
-          import json
-          data=json.load(open("/tmp/material-purchase-api.json",encoding="utf-8"))
-          assert isinstance(data.get("orders"),list),str(data)[:500]
-          print("Packaging procurement API verified, records:",len(data["orders"]))
-          PY
-          if ! grep -q "newMaterialPO" /tmp/material-purchase-ui.js; then echo "::error::New material-purchase-ui.js not served"; exit 1; fi
-          if ! grep -q "mpo-paper" /tmp/material-purchase-ui.css; then echo "::error::New material-purchase-ui.css not served"; exit 1; fi
+          # API can be served by a different edge for a short time after deployment.
+          api_ok=0
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if curl -fsS "$BASE/api/material-purchase-orders?check=$(date +%s)-$i" -o /tmp/material-purchase-api.json; then
+              if python -c 'import json; d=json.load(open("/tmp/material-purchase-api.json")); assert isinstance(d.get("orders"),list)'; then
+                api_ok=1
+                break
+              fi
+            fi
+            sleep 5
+          done
+          if [ "$api_ok" != "1" ]; then
+            echo "::error::Packaging procurement API not confirmed"
+            exit 1
+          fi
+          echo "Packaging procurement API verified."
           echo "Deployment verified."
 
