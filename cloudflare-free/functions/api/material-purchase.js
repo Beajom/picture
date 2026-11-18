@@ -62,9 +62,23 @@ export async function materialPurchaseHandler({request,env,path,method}){
       if(!order)return resp({error:"采购单不存在"},404);
       if(method==="PUT"&&action==="contract"){
         const d=await request.json();
-        await env.DB.prepare("UPDATE material_purchase_orders SET delivery_date=?,delivery_address=?,payment_terms=?,quality_terms=?,packaging_terms=?,other_terms=?,sign_location=?,buyer_company=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(
+        const batch=[env.DB.prepare("UPDATE material_purchase_orders SET delivery_date=?,delivery_address=?,payment_terms=?,quality_terms=?,packaging_terms=?,other_terms=?,sign_location=?,buyer_company=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(
           validDate(d.delivery_date)?d.delivery_date:null,shortText(d.delivery_address,1000),shortText(d.payment_terms,2000),shortText(d.quality_terms,2000),shortText(d.packaging_terms,2000),shortText(d.other_terms,3000),shortText(d.sign_location,100)||"浙江义乌",shortText(d.buyer_company,150)||"义乌市时盈电子商务有限公司",shortText(d.notes,1000),id
-        ).run();
+        )];
+        if(Array.isArray(d.items)){
+          const old=await detail(env.DB,id),items=new Map(old.items.map(x=>[x.id,x]));
+          if(d.items.length!==items.size)return resp({error:"合同商品行数与采购单不一致"},400);
+          const visited=new Set();
+          for(const it of d.items){
+            const prev=items.get(String(it.id||"")),qty=Number(it.quantity),price=Number(it.unit_price);
+            if(!prev||visited.has(prev.id)||!Number.isInteger(qty)||qty<=0||qty<number(prev.received_qty)||!finiteNonneg(price))return resp({error:"合同数量或价格有误，或小于已入库数量"},400);
+            visited.add(prev.id);
+            batch.push(env.DB.prepare("UPDATE material_purchase_order_items SET quantity=?,unit_price=?,material_grade=?,material_spec=?,remarks=? WHERE id=? AND order_id=?").bind(
+              qty,price,shortText(it.material_grade,200),shortText(it.material_spec,300),shortText(it.remarks,300),prev.id,id
+            ));
+          }
+        }
+        await env.DB.batch(batch);
         return resp({ok:true,order:await detail(env.DB,id)});
       }
       if(method==="POST"&&action==="receive"){
