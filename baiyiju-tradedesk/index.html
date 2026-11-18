@@ -1282,27 +1282,56 @@ function quoteParseNumber(v){
 }
 function quoteDetectCurrency(text=''){
   const s=String(text||'');
-  if(/[￥¥]|人民币|CNY|RMB/i.test(s))return 'CNY';
-  if(/£|GBP/i.test(s))return 'GBP';
-  if(/€|EUR/i.test(s))return 'EUR';
-  if(/\$|USD/i.test(s))return 'USD';
+  if(/人民币|CNY|RMB|￥|¥|价税|含税|未税|单价\s*[（(]?元|金额\s*[（(]?元|\b元\b/i.test(s))return 'CNY';
+  if(/GBP|英镑|£/i.test(s))return 'GBP';
+  if(/EUR|欧元|€/i.test(s))return 'EUR';
+  if(/USD|美元/i.test(s))return 'USD';
+  if(/(?:^|\s)\$\s*\d/.test(s))return 'USD';
   return 'CNY';
 }
+function quoteMetaLine(s=''){return quoteCleanText(s).replace(/\s+/g,'').replace(/[：﹕]/g,':')}
 function quoteGuessSupplier(lines,text){
   const all=[...(lines||[]).map(x=>x.text||x),...(String(text||'').split(/\n/))].map(x=>quoteCleanText(x)).filter(Boolean);
-  const direct=String(text||'').match(/(?:供方|供应商|卖方|销售方)[：:\s]*([^\n]{2,80}?(?:有限公司|公司))/);
-  if(direct?.[1]&&!/佰益居/.test(direct[1]))return direct[1].trim();
-  for(const line of all.slice(0,30)){
+  for(const raw of all.slice(0,45)){
+    const line=quoteMetaLine(raw);
+    const direct=line.match(/(?:供方|供应商|卖方|销售方)[:：]?([^:：]{2,80}?(?:有限公司|公司))/);
+    if(direct?.[1]&&!/佰益居/.test(direct[1]))return direct[1].trim();
+  }
+  for(const raw of all.slice(0,35)){
+    const line=quoteMetaLine(raw);
     const m=line.match(/([\u4e00-\u9fa5A-Za-z0-9（）()·\-]{4,80}(?:有限公司|公司))/);
-    if(m?.[1]&&!/佰益居/.test(m[1])&&!/客户/.test(line))return m[1].trim();
+    if(m?.[1]&&!/佰益居/.test(m[1])&&!/客户|需方/.test(line))return m[1].trim();
   }
   return '';
 }
+function quoteNormalizeDate(raw=''){
+  const m=String(raw).match(/(20\d{2})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})(?!\d)/);
+  if(!m)return '';
+  const y=m[1],mo=String(Number(m[2])).padStart(2,'0'),d=String(Number(m[3])).padStart(2,'0');
+  return y+'-'+mo+'-'+d;
+}
 function quoteGuessMeta(lines,text){
-  const s=String(text||'');
-  const no=(s.match(/(?:单据编号|报价单号|报价编号|订单编号|单号)[：:\s]*([A-Za-z0-9_\-]+)/i)||[])[1]||'';
-  const dm=s.match(/20\d{2}[\/\-.年]\d{1,2}[\/\-.月]\d{1,2}/);
-  const date=dm?dm[0].replace(/[年月]/g,'-').replace(/日/g,'').replace(/[/.]/g,'-'):'';
+  const s=String(text||''),all=[...(lines||[]).map(x=>x.text||x),...s.split(/\n/)].map(x=>quoteCleanText(x)).filter(Boolean);
+  let no='',date='';
+  for(const raw of all.slice(0,60)){
+    const line=quoteMetaLine(raw);
+    if(!no){
+      const m=line.match(/(?:订单编号|订单号|单据编号|报价单号|报价编号|单号)[:：]?([A-Za-z0-9_\-]{5,40})/i);
+      if(m?.[1])no=m[1];
+    }
+    if(!date&&/(?:日期|单据日期|订单日期)/.test(line)){
+      const dm=line.match(/20\d{2}[\/\-.年]\d{1,2}[\/\-.月]\d{1,2}(?!\d)/);
+      if(dm)date=quoteNormalizeDate(dm[0]);
+    }
+  }
+  if(!no){
+    const m=s.match(/\b(?:SO|PO|XSBJ)[-_]?20\d{2}[-_][A-Za-z0-9_-]{3,30}\b/i);
+    if(m)no=m[0];
+  }
+  if(!date){
+    const candidates=[...s.matchAll(/20\d{2}[\/\-.年]\d{1,2}[\/\-.月]\d{1,2}(?!\d)/g)].map(m=>m[0]);
+    for(const raw of candidates){const d=quoteNormalizeDate(raw);if(d){date=d;break}}
+  }
   return {supplierName:quoteGuessSupplier(lines,text),quoteNo:no,date,currency:quoteDetectCurrency(s)};
 }
 async function quotePdfModule(){
@@ -1331,12 +1360,46 @@ async function quoteTesseractWorker(){
       quoteSetProgress('OCR 识别第 '+ctx.page+' / '+ctx.total+' 页 · '+Math.round(p*100)+'%',pct);
     }
   }});
+  await window._quoteTessWorker.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'});
   return window._quoteTessWorker;
 }
-function quoteWordsFromBlocks(blocks){
-  const out=[];
-  for(const block of (blocks||[]))for(const par of (block.paragraphs||[]))for(const line of (par.lines||[]))for(const word of (line.words||[]))out.push(word);
-  return out;
+function quoteRowsFromBlocks(blocks,pageNo){
+  const words=[];
+  for(const block of (blocks||[])){
+    for(const par of (block.paragraphs||[])){
+      for(const line of (par.lines||[])){
+        for(const word of (line.words||[])){
+          const txt=quoteCleanText(word.text||'');if(!txt)continue;
+          const b=word.bbox||line.bbox||{};
+          const x0=Number(b.x0||0),x1=Number(b.x1||x0),y0=Number(b.y0||0),y1=Number(b.y1||y0);
+          words.push({text:txt,x:x0,y:(y0+y1)/2,h:Math.max(1,y1-y0)});
+        }
+      }
+    }
+  }
+  if(!words.length)return [];
+  const heights=words.map(w=>w.h).sort((a,b)=>a-b),median=heights[Math.floor(heights.length/2)]||14,tol=Math.max(7,median*.72);
+  words.sort((a,b)=>a.y-b.y||a.x-b.x);
+  const groups=[];
+  for(const w of words){
+    let best=null,dist=Infinity;
+    for(let i=Math.max(0,groups.length-8);i<groups.length;i++){
+      const d=Math.abs(groups[i].y-w.y);
+      if(d<dist&&d<=tol){best=groups[i];dist=d}
+    }
+    if(!best){best={y:w.y,cells:[],page:pageNo,count:0};groups.push(best)}
+    best.cells.push({text:w.text,x:w.x});best.y=(best.y*best.count+w.y)/(best.count+1);best.count++;
+  }
+  return groups.sort((a,b)=>a.y-b.y).map(g=>{
+    g.cells.sort((a,b)=>a.x-b.x);
+    const merged=[];
+    for(const cell of g.cells){
+      const prev=merged[merged.length-1];
+      if(prev&&cell.x-prev.x<18){prev.text=quoteCleanText(prev.text+cell.text)}
+      else merged.push({...cell});
+    }
+    return {page:g.page,y:g.y,cells:merged,text:quoteCleanText(merged.map(x=>x.text).join(' '))};
+  });
 }
 function quoteGroupPdfItems(items,pageNo){
   const groups=[];
@@ -1352,21 +1415,6 @@ function quoteGroupPdfItems(items,pageNo){
     return {page:g.page,text:g.cells.map(x=>x.text).join(' '),cells:g.cells};
   });
 }
-function quoteGroupOcrWords(words,pageNo){
-  const map=new Map();
-  for(const w of (words||[])){
-    const txt=quoteCleanText(w.text||'');if(!txt)continue;
-    const key=[w.block_num||0,w.par_num||0,w.line_num||0].join('-');
-    if(!map.has(key))map.set(key,[]);
-    map.get(key).push({text:txt,x:Number(w.bbox?.x0||0),y:Number(w.bbox?.y0||0)});
-  }
-  const rows=[];
-  for(const cells of map.values()){
-    cells.sort((a,b)=>a.x-b.x);
-    rows.push({page:pageNo,text:cells.map(x=>x.text).join(' '),cells:cells.map(x=>({text:x.text,x:x.x})),y:Math.min(...cells.map(x=>x.y))});
-  }
-  return rows.sort((a,b)=>a.y-b.y);
-}
 async function quoteExtractPdf(file){
   const pdfjs=await quotePdfModule(),buf=await file.arrayBuffer(),pdf=await pdfjs.getDocument({data:buf}).promise;
   const rows=[];let text='';
@@ -1377,12 +1425,17 @@ async function quoteExtractPdf(file){
   }
   return {rows,text:quoteCleanText(text),pageCount:pdf.numPages,pdf};
 }
+function quoteEnhanceCanvas(canvas){
+  const out=document.createElement('canvas');out.width=canvas.width;out.height=canvas.height;
+  const ctx=out.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,out.width,out.height);
+  ctx.filter='grayscale(1) contrast(1.35)';ctx.drawImage(canvas,0,0);ctx.filter='none';
+  return out;
+}
 async function quoteOcrCanvas(canvas,pageNo,totalPages){
   window._quoteOcrCtx={page:pageNo,total:totalPages};
-  const worker=await quoteTesseractWorker();
-  const result=await worker.recognize(canvas,{}, {blocks:true});
-  const words=quoteWordsFromBlocks(result?.data?.blocks||[]);
-  const rows=quoteGroupOcrWords(words,pageNo);
+  const worker=await quoteTesseractWorker(),enhanced=quoteEnhanceCanvas(canvas);
+  const result=await worker.recognize(enhanced,{}, {blocks:true});
+  const rows=quoteRowsFromBlocks(result?.data?.blocks||[],pageNo);
   const text=quoteCleanText(result?.data?.text||rows.map(x=>x.text).join('\n'));
   return {rows,text};
 }
@@ -1390,7 +1443,7 @@ async function quoteOcrPdf(file,pageCount){
   const pdfjs=await quotePdfModule(),buf=await file.arrayBuffer(),pdf=await pdfjs.getDocument({data:buf}).promise;
   const max=Math.min(pdf.numPages,8),rows=[];let text='';
   for(let n=1;n<=max;n++){
-    const page=await pdf.getPage(n),viewport=page.getViewport({scale:1.8}),canvas=document.createElement('canvas');
+    const page=await pdf.getPage(n),viewport=page.getViewport({scale:2.5}),canvas=document.createElement('canvas');
     canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
     await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
     const r=await quoteOcrCanvas(canvas,n,max);rows.push(...r.rows);text+=r.text+'\n';
@@ -1398,10 +1451,24 @@ async function quoteOcrPdf(file,pageCount){
   return {rows,text:quoteCleanText(text),pageCount:max};
 }
 async function quoteOcrImage(file){
-  const bitmap=await createImageBitmap(file),scale=Math.min(2,2200/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
+  const bitmap=await createImageBitmap(file),scale=Math.min(2.6,3000/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
   canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
   canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);if(bitmap.close)bitmap.close();
   return quoteOcrCanvas(canvas,1,1);
+}
+async function quoteOcrPdfTableRegions(file){
+  const pdfjs=await quotePdfModule(),buf=await file.arrayBuffer(),pdf=await pdfjs.getDocument({data:buf}).promise;
+  const max=Math.min(pdf.numPages,8),rows=[];let text='';
+  for(let n=1;n<=max;n++){
+    quoteSetProgress('正在增强识别表格区域 '+n+' / '+max+' 页',90);
+    const page=await pdf.getPage(n),viewport=page.getViewport({scale:3}),full=document.createElement('canvas');
+    full.width=Math.ceil(viewport.width);full.height=Math.ceil(viewport.height);
+    await page.render({canvasContext:full.getContext('2d'),viewport}).promise;
+    const y=Math.floor(full.height*.15),h=Math.floor(full.height*.58),crop=document.createElement('canvas');
+    crop.width=full.width;crop.height=h;crop.getContext('2d').drawImage(full,0,y,full.width,h,0,0,full.width,h);
+    const r=await quoteOcrCanvas(crop,n,max);rows.push(...r.rows);text+=r.text+'\n';
+  }
+  return {rows,text:quoteCleanText(text),pageCount:max};
 }
 function quoteFindHeader(rows){
   let best=null,bestScore=0;
@@ -1439,6 +1506,37 @@ function quoteParseTableRows(rows){
     if(quoteItemValid(x))items.push(x);
   }
   return items;
+}
+function quoteParseSkuRows(rows){
+  const out=[];
+  for(const row of (rows||[])){
+    let t=quoteCleanText(row.text||'').replace(/[—–−]/g,'-');
+    if(/合计|小计|订单编号|销售订单/.test(t))continue;
+    const m=t.match(/\b([A-Z0-9]{2,12}[-_][A-Z0-9]{2,12}[-_][A-Z0-9]{3,12})\b/i);
+    if(!m)continue;
+    const sku=m[1].toUpperCase(),after=quoteCleanText(t.slice((m.index||0)+m[0].length));
+    const tokens=after.split(/\s+/).filter(Boolean);
+    const unitIdx=tokens.findIndex(v=>/^(个|件|套|卷|米|公斤|kg|kgs|pcs?|pair|set|箱|包)$/i.test(v));
+    let name=(unitIdx>0?tokens.slice(0,unitIdx):tokens.slice(0,Math.min(tokens.length,4))).join('');
+    name=name.replace(/^\d+/,'').trim();
+    const tail=unitIdx>=0?tokens.slice(unitIdx+1):tokens.slice(Math.min(tokens.length,4));
+    const qtyToken=tail.find(v=>/^\d+(?:\.\d+)?$/.test(v));
+    const qty=qtyToken?Number(qtyToken):1;
+    const numeric=tail.filter(v=>/^\d+(?:\.\d+)?$/.test(v)).map(Number);
+    const percentIdx=tail.findIndex(v=>/%$/.test(v));
+    let price=0,total=0;
+    if(percentIdx>=0){
+      const afterTax=tail.slice(percentIdx+1).filter(v=>/^\d+(?:\.\d+)?$/.test(v)).map(Number);
+      price=afterTax[0]||0;total=afterTax[afterTax.length-1]||0;
+    }else if(numeric.length){
+      price=numeric.length>=2?numeric[Math.max(0,numeric.length-2)]:numeric[0];
+      total=numeric[numeric.length-1]||price;
+    }
+    if(!name&&sku)name=sku;
+    const item={sku,name,spec:'',desc:'',unit:unitIdx>=0?tokens[unitIdx]:'PCS',qty,price,total};
+    if(quoteItemValid(item))out.push(item);
+  }
+  return out;
 }
 function quoteFallbackItems(lines){
   const out=[],clean=(lines||[]).map(x=>quoteCleanText(x.text||x)).filter(Boolean);
@@ -1556,9 +1654,17 @@ window.runQuoteRecognition=async()=>{
     quoteSetProgress('正在解析供应商和产品表格...',88);
     const meta=quoteGuessMeta(extracted.rows,extracted.text);
     let items=quoteParseTableRows(extracted.rows);
+    if(!items.length)items=quoteParseSkuRows(extracted.rows);
+    if(!items.length&&file.type==='application/pdf'){
+      const region=await quoteOcrPdfTableRegions(file);
+      items=quoteParseTableRows(region.rows);
+      if(!items.length)items=quoteParseSkuRows(region.rows);
+      extracted={...extracted,rows:[...extracted.rows,...region.rows],text:quoteCleanText(extracted.text+'\n'+region.text)};
+    }
     if(!items.length)items=quoteFallbackItems(extracted.rows);
     if(!items.length)items=quoteFallbackItems(String(extracted.text||'').split(/\n/).map(text=>({text,cells:[]})));
-    quoteRenderResult({...meta,items,rawText:extracted.text,file,pageCount:extracted.pageCount||1});
+    const finalMeta=quoteGuessMeta(extracted.rows,extracted.text);
+    quoteRenderResult({...finalMeta,items,rawText:extracted.text,file,pageCount:extracted.pageCount||1});
     quoteSetProgress('识别完成',100);
   }catch(e){
     quoteSetProgress('识别失败',0);toast('报价单识别失败','err',niceError(e));
