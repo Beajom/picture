@@ -1281,7 +1281,7 @@ window.printMaterialPurchaseContract=function(){
   const cssText=[...document.querySelectorAll('style')].map(x=>x.textContent||'').join('\n');
   const extra='<style>@page{size:A4;margin:12mm}html,body{background:white!important;margin:0;padding:0;font-family:"Microsoft YaHei","SimSun",sans-serif}.mpo-paper{box-sizing:border-box;max-width:none;width:100%;padding:0;border:0;box-shadow:none;margin:0}.mpo-material-thumb{max-height:17mm}.mpo-signatures{break-inside:avoid}.mpo-product-row{break-inside:avoid}</style>';
   w.document.open();
-  w.document.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+safe(currentOrder.order_no)+' 订货合同</title><style>'+cssText+'</style>'+extra+'</head><body>'+paperMarkup(currentOrder)+'</body></html>');
+  w.document.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="'+safe(location.origin)+'/"><title>'+safe(currentOrder.order_no)+' 订货合同</title><style>'+cssText+'</style>'+extra+'</head><body>'+paperMarkup(currentOrder)+'</body></html>');
   w.document.close();
   const printWhenReady=async()=>{
     try{await Promise.all([...w.document.images].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve})));}catch(_){}
