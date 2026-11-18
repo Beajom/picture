@@ -94,11 +94,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID="$(cat .cloudflare-account-id)" \
             npx wrangler deploy --config wrangler.deploy.toml --no-x-provision
 
-      - name: Inventory reconciliation preflight
-        working-directory: cloudflare-free
-        env:
-          APPLY_STOCK_RECONCILIATION: "no"
-        run: node scripts/reconcile-inventory-20261118.mjs
       - name: Verify deployed production page
         shell: bash
         run: |
@@ -113,7 +108,8 @@ jobs:
                grep -q "管理隐藏变体" /tmp/index.html &&
                grep -q "隐藏此颜色" /tmp/index.html &&
                grep -q "setColorVariantHiddenFromButton" /tmp/index.html &&
-               grep -q "material-purchase-ui.js" /tmp/index.html; then
+               grep -q "material-purchase-ui.js" /tmp/index.html &&
+               grep -q "cloudDataStatus" /tmp/index.html; then
               ok=1
               break
             fi
@@ -129,15 +125,14 @@ jobs:
           fi
           curl -fsS "$BASE/material-purchase-ui.js" -o /tmp/material-purchase-ui.js
           curl -fsS "$BASE/material-purchase-ui.css" -o /tmp/material-purchase-ui.css
+          curl -fsS "$BASE/api/material-purchase-orders" -o /tmp/material-purchase-api.json
+          python - <<'PY'
+          import json
+          data=json.load(open("/tmp/material-purchase-api.json",encoding="utf-8"))
+          assert isinstance(data.get("orders"),list),str(data)[:500]
+          print("Packaging procurement API verified, records:",len(data["orders"]))
+          PY
           grep -q "newMaterialPO" /tmp/material-purchase-ui.js
           grep -q "mpo-paper" /tmp/material-purchase-ui.css
           echo "Deployment verified."
 
-      - name: Archive reconciliation snapshot
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: inventory-reconciliation-20261118
-          path: /tmp/stock-reconciliation-20261118.json
-          if-no-files-found: ignore
-          retention-days: 14
