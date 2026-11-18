@@ -1320,6 +1320,24 @@ async function quoteTesseract(){
   });
   return window.Tesseract;
 }
+async function quoteTesseractWorker(){
+  if(window._quoteTessWorker)return window._quoteTessWorker;
+  const T=await quoteTesseract();
+  window._quoteTessWorker=await T.createWorker('chi_sim+eng',1,{logger:m=>{
+    if(m.status==='recognizing text'){
+      const ctx=window._quoteOcrCtx||{page:1,total:1},p=Number(m.progress||0);
+      const base=40+(ctx.page-1)/Math.max(1,ctx.total)*45;
+      const pct=base+(p*45/Math.max(1,ctx.total));
+      quoteSetProgress('OCR 识别第 '+ctx.page+' / '+ctx.total+' 页 · '+Math.round(p*100)+'%',pct);
+    }
+  }});
+  return window._quoteTessWorker;
+}
+function quoteWordsFromBlocks(blocks){
+  const out=[];
+  for(const block of (blocks||[]))for(const par of (block.paragraphs||[]))for(const line of (par.lines||[]))for(const word of (line.words||[]))out.push(word);
+  return out;
+}
 function quoteGroupPdfItems(items,pageNo){
   const groups=[];
   for(const it of (items||[])){
@@ -1360,15 +1378,11 @@ async function quoteExtractPdf(file){
   return {rows,text:quoteCleanText(text),pageCount:pdf.numPages,pdf};
 }
 async function quoteOcrCanvas(canvas,pageNo,totalPages){
-  const T=await quoteTesseract();
-  const result=await T.recognize(canvas,'chi_sim+eng',{logger:m=>{
-    if(m.status==='recognizing text'){
-      const base=40+(pageNo-1)/Math.max(1,totalPages)*45;
-      const pct=base+(Number(m.progress||0)*45/Math.max(1,totalPages));
-      quoteSetProgress('OCR 识别第 '+pageNo+' / '+totalPages+' 页 · '+Math.round(Number(m.progress||0)*100)+'%',pct);
-    }
-  }});
-  const rows=quoteGroupOcrWords(result?.data?.words||[],pageNo);
+  window._quoteOcrCtx={page:pageNo,total:totalPages};
+  const worker=await quoteTesseractWorker();
+  const result=await worker.recognize(canvas,{}, {blocks:true});
+  const words=quoteWordsFromBlocks(result?.data?.blocks||[]);
+  const rows=quoteGroupOcrWords(words,pageNo);
   const text=quoteCleanText(result?.data?.text||rows.map(x=>x.text).join('\n'));
   return {rows,text};
 }
