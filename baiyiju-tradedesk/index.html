@@ -1840,10 +1840,22 @@ window.setQuoteImportFile=file=>{
   const kind=uploadFileKind(file);
   if(!['pdf','jpeg','png','webp'].includes(kind))return toast('仅支持 PDF / JPG / PNG / WebP','warn');
   if(file.size>20*1024*1024)return toast('报价单文件不能超过 20MB','warn');
-  window._quoteImportDraft={file};
+  const q=window._quoteImportDraft={file};
   const box=$('#quoteFileName');if(box)box.innerHTML='<span class="quote-file-pill">📎 '+esc(file.name)+' · '+(file.size/1024/1024).toFixed(2)+'MB</span>';
-  quoteSetProgress('文件已选择，点击“开始识别”',0);const host=$('#quoteImportResult');if(host)host.innerHTML='';
+  quoteSetProgress(window._quoteImportSupplierId?'正在先归档原始报价单...':'文件已选择，点击“开始识别”',0);const host=$('#quoteImportResult');if(host)host.innerHTML='';
   const btn=$('#modalSaveBtn');if(btn){btn.textContent='开始识别';btn.setAttribute('onclick','window.runQuoteRecognition()');btn.disabled=false}
+  if(window._quoteImportSupplierId){
+    if(btn)btn.disabled=true;
+    archiveSupplierFile(file,window._quoteImportSupplierId,'supplier_quote','原始报价单 · 待识别').then(att=>{
+      if(window._quoteImportDraft!==q)return;
+      q.archivedAttachment=att;quoteSetProgress('原始报价单已归档，可以开始识别',3);if(btn)btn.disabled=false;
+      toast('原始报价单已保存','ok',file.name);
+    }).catch(e=>{
+      if(window._quoteImportDraft!==q)return;
+      quoteSetProgress('原始报价单归档失败，请重试',0);if(btn)btn.disabled=false;
+      toast('原始报价单保存失败','err',niceError(e));
+    });
+  }
 };
 window.runQuoteRecognition=async()=>{
   const draft=window._quoteImportDraft||{},file=draft.file;if(!file)return toast('请先选择报价单文件','warn');
