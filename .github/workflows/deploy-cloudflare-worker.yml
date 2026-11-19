@@ -119,7 +119,8 @@ jobs:
                grep -q "公章已保存到云端" /tmp/index.html &&
                grep -q "onchange=\"uploadMaterialContractStamp()\"" /tmp/index.html &&
                grep -q "mpo-buyer-seal" /tmp/index.html &&
-               grep -q "material-contract-print.css?v=a4-20261119-v3" /tmp/index.html &&
+               grep -q "material-contract-print.css?v=a4-20261119-v4" /tmp/index.html &&
+               grep -q "mpoPrintNow" /tmp/index.html &&
                grep -q "标准 · 42mm" /tmp/index.html &&
                grep -q "采购类型" /tmp/index.html &&
                grep -q "cloudDataStatus" /tmp/index.html; then
@@ -157,6 +158,9 @@ jobs:
           grep -Fq '@page { size: A4 portrait; margin: 0; }' /tmp/material-contract-print.css
           grep -Fq 'padding: 15mm 15mm 13mm' /tmp/material-contract-print.css
           grep -Fq -- '--mpo-print-seal, 42mm' /tmp/material-contract-print.css
+          grep -Fq 'mpo-print-toolbar' /tmp/material-contract-print.css
+          grep -Fq 'height:297mm!important' /tmp/material-contract-print.css
+          grep -Fq '.mpo-print-primary' /tmp/material-contract-print.css
           echo "Standalone A4 PDF stylesheet verified."
           echo "Packaging procurement API verified."
           curl -fsS "$BASE/api/material-contract-profile?ts=$(date +%s)" -o /tmp/material-contract-profile.json
