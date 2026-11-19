@@ -153,7 +153,7 @@ function materialContractSealSize(){
   try{
     const size=Number(localStorage.getItem('mpoSealPrintSize'));
     return [38,42,45].includes(size)?size:42;
-  }catch(_){return 26}
+  }catch(_){return 42}
 }
 window.changeMaterialContractSealSize=function(value){
   const size=Number(value);
@@ -236,40 +236,63 @@ window.previewMaterialPurchaseContract=async function(id){
 window.printMaterialPurchaseContract=function(){
   if(!currentOrder)return;
   const popup=window.open('','_blank');
-  if(!popup){toastMsg('浏览器阻止了PDF打印窗口，请允许弹出窗口');return}
-  // A standalone stylesheet: no application styles can shift the A4 content.
-  // Internal paper padding protects against the browser ignoring @page margins.
-  const cssURL=new URL('/material-contract-print.css?v=a4-20261119-v3',location.origin).href;
+  if(!popup){toastMsg('浏览器阻止了打印窗口，请允许此网站打开弹出窗口');return}
+  const cssURL=new URL('/material-contract-print.css?v=a4-20261119-v4',location.origin).href;
   const home=new URL('/',location.origin).href;
-  const contract=paperMarkup(currentOrder);
+  const toolbar='<div class="mpo-print-toolbar" id="mpoPrintToolbar">'+
+    '<div class="mpo-print-toolbar-info"><strong>订货合同 · A4打印</strong><span id="mpoPrintStatus">正在加载打印样式…</span></div>'+
+    '<div class="mpo-print-toolbar-actions">'+
+    '<button type="button" id="mpoPrintNow" class="mpo-print-primary">打印 / 保存为 PDF</button>'+
+    '<button type="button" id="mpoPrintClose" class="mpo-print-secondary">关闭</button>'+
+    '</div></div>';
   popup.document.open();
   popup.document.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'+
     '<meta name="viewport" content="width=device-width,initial-scale=1">'+
     '<base href="'+safe(home)+'"><title>'+safe(currentOrder.order_no)+' 订货合同（A4）</title>'+
     '<link id="contractPrintCSS" rel="stylesheet" href="'+safe(cssURL)+'"></head><body>'+
-    contract+'</body></html>');
+    toolbar+paperMarkup(currentOrder)+'</body></html>');
   popup.document.close();
-  let fired=false;
-  const openPrint=async()=>{
-    if(fired)return;
-    fired=true;
+  const status=popup.document.getElementById('mpoPrintStatus');
+  const printNow=()=>{
+    if(popup.closed)return;
+    popup.focus();
+    popup.print();
+  };
+  popup.document.getElementById('mpoPrintNow').addEventListener('click',printNow);
+  popup.document.getElementById('mpoPrintClose').addEventListener('click',()=>popup.close());
+  const link=popup.document.getElementById('contractPrintCSS');
+  const styleReady=new Promise(resolve=>{
+    let done=false;
+    const finish=ok=>{if(done)return;done=true;resolve(ok)};
+    if(link.sheet){finish(true);return}
+    link.addEventListener('load',()=>finish(true),{once:true});
+    link.addEventListener('error',()=>finish(false),{once:true});
+    popup.setTimeout(()=>finish(!!link.sheet),15000);
+  });
+  (async()=>{
     try{
-      if(popup.closed)return;
-      const stylesheet=popup.document.getElementById('contractPrintCSS');
-      if(!stylesheet?.sheet){
-        popup.document.body.insertAdjacentHTML('afterbegin',
-          '<p style="padding:16px;color:#b42318;font:14px Arial">A4打印样式尚未加载，请检查网络后刷新此窗口。</p>');
-        toastMsg('A4打印样式加载失败，请检查网络后重试');
+      const loaded=await styleReady;
+      if(!loaded){
+        if(status)status.textContent='打印样式加载失败，请检查网络后点击刷新';
         return;
       }
+      if(status)status.textContent='A4纵向 · 单页排版 · 公章42mm · 可打印或保存PDF';
       if(popup.document.fonts?.ready)await popup.document.fonts.ready;
       await Promise.all([...popup.document.images].map(img=>img.complete?Promise.resolve():
         new Promise(resolve=>{img.onload=resolve;img.onerror=resolve})));
-      if(!popup.closed){popup.focus();popup.print()}
-    }catch(err){toastMsg('打开A4打印预览失败：'+(err?.message||err))}
-  };
-  if(popup.document.readyState==='complete')openPrint();
-  else popup.addEventListener('load',openPrint,{once:true});
+      if(popup.closed)return;
+      const paper=popup.document.querySelector('.mpo-paper');
+      if(paper&&paper.classList.contains('mpo-short-contract')){
+        paper.style.height='297mm';
+        paper.style.minHeight='297mm';
+        paper.style.overflow='hidden';
+      }
+      // Open the native print dialog after the stylesheet and all images are ready.
+      popup.setTimeout(printNow,250);
+    }catch(err){
+      if(status)status.textContent='打印准备失败：'+(err?.message||err);
+    }
+  })();
 };
 window.editMaterialPurchaseContract=async function(id){
   try{
