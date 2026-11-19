@@ -1206,7 +1206,7 @@ function supplierDetailPage(){
   const purchases=db.purchaseContracts.filter(x=>x.supplierId===s.id).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const totals=supplierPurchaseCurrencyTotals(purchases);
   const quoteProducts=products.filter(p=>p.sourceMeta?.supplierQuote);
-  const recentPrices=[...quoteProducts].sort((a,b)=>String(b.sourceMeta?.supplierQuote?.importedAt||'').localeCompare(String(a.sourceMeta?.supplierQuote?.importedAt||''))).slice(0,8);
+  const recentPrices=quoteProducts.flatMap(p=>(Array.isArray(p.sourceMeta?.supplierQuoteHistory)&&p.sourceMeta.supplierQuoteHistory.length?p.sourceMeta.supplierQuoteHistory:[p.sourceMeta?.supplierQuote].filter(Boolean)).map(q=>({...q,sku:p.sku,name:p.nameCn||p.name}))).sort((a,b)=>String(b.importedAt||'').localeCompare(String(a.importedAt||''))).slice(0,12);
   const license=s.businessLicensePath;
   const licenseHtml=license?'<div class="supplier-license-card"><div class="supplier-license-icon">📄</div><div class="supplier-license-info"><b>营业执照已归档</b><span>'+esc(license.split('/').pop())+'</span><small>私有存储 · 仅授权账号可查看</small></div><button class="btn small" onclick="window.openSupplierLicenseFile(\''+s.id+'\')">查看原件</button></div>':'<div class="supplier-empty-inline">尚未上传营业执照 <button class="btn small" onclick="window.supplierModal(\''+s.id+'\')">上传营业执照</button></div>';
   return '<div class="supplier-detail-page">'+
@@ -1227,7 +1227,7 @@ function supplierDetailPage(){
       '<section class="card supplier-panel"><div class="section-head"><div><h3>营业执照</h3><p>主体资质原件</p></div></div>'+licenseHtml+'</section>'+
       '<section class="card supplier-panel"><div class="section-head"><div><h3>原始报价单</h3><p>保留上传时的原始文件</p></div><button class="btn small primary" onclick="window.openSupplierQuoteFromDocs(\''+s.id+'\')">＋ 上传并识别</button></div>'+supplierDocListHtml(quotes,'暂无报价单')+'</section>'+
       '<section class="card supplier-panel"><div class="section-head"><div><h3>工厂目录册</h3><p>产品目录、选型手册、宣传册</p></div><button class="btn small" onclick="window.openSupplierCatalogPicker(\''+s.id+'\')">＋ 上传目录册</button></div>'+supplierDocListHtml(catalogs,'暂无目录册')+'</section>'+
-      '<section class="card supplier-panel"><div class="section-head"><div><h3>最近报价价格</h3><p>从报价单导入产品的记录</p></div></div>'+(recentPrices.length?recentPrices.map(p=>'<div class="supplier-price-row"><div><b>'+esc(p.sku)+'</b><span>'+esc(p.nameCn||p.name||'')+'</span></div><strong>'+money(p.sourceMeta.supplierQuote.quotedUnitPrice,p.sourceMeta.supplierQuote.recognizedCurrency||p.purchaseCurrency)+'</strong><small>'+esc(p.sourceMeta.supplierQuote.quoteDate||'-')+'</small></div>').join(''):'<div class="supplier-empty-inline">暂无报价价格记录</div>')+'</section>'+
+      '<section class="card supplier-panel"><div class="section-head"><div><h3>最近报价价格</h3><p>从报价单导入产品的记录</p></div></div>'+(recentPrices.length?recentPrices.map(p=>'<div class="supplier-price-row"><div><b>'+esc(p.sku)+'</b><span>'+esc(p.name||'')+'</span></div><strong>'+money(p.quotedUnitPrice,p.recognizedCurrency||'CNY')+'</strong><small>'+esc(p.quoteDate||'-')+(p.quoteNo?' · '+esc(p.quoteNo):'')+'</small></div>').join(''):'<div class="supplier-empty-inline">暂无报价价格记录</div>')+'</section>'+
     '</aside></div></div>';
 }
 function suppliers(){const s=state.supplierSearch.toLowerCase(),base=db.suppliers.filter(x=>[x.company,x.contact,x.phone,x.email,x.taxId,x.orderUrl].join(' ').toLowerCase().includes(s)),sort=state.sorting.suppliers,all=sort?sortRowsBy(base,'suppliers',sort.field):base,list=pagedRows(all,'suppliers'),canEdit=can('suppliers'),canDelete=['owner','admin'].includes(state.userRole);return `<div class="card"><div class="section-head"><div><h3>供应商资料</h3><p>国内供应商、1688下单链接、税号、银行账户、付款条件和采购关联</p></div>${canEdit?'<div class="row"><button class="btn" onclick="window.supplierReviewCenter()">✓ 产品审核</button><button class="btn primary" onclick="window.supplierModal()">＋ 新增供应商</button></div>':''}</div><div class="toolbar"><input class="search" placeholder="搜索公司 / 联系人 / 电话 / 税号 / 网址" value="${esc(state.supplierSearch)}" oninput="window.searchSuppliers(this.value)"><span class="muted" style="font-size:11px">共 ${all.length} 个供应商</span></div>${tableBulkBar('suppliers',list.map(x=>x.id))}${list.length?`<div class="table-wrap"><table class="table" data-config-key="suppliers"><tr><th>✓</th>${sortHead('供应商','suppliers','company')}${sortHead('联系人','suppliers','contact')}<th>电话 / 邮箱</th><th>税号</th><th>银行账户</th><th>1688 / 下单</th><th>关联产品</th><th>操作</th></tr>${list.map(x=>`<tr><td>${rowCheck('suppliers',x.id)}</td><td><button class="customer-link" onclick="window.openSupplierDetail('${x.id}')"><b>${esc(x.company)}</b></button><br><span class="muted">${esc(x.address||'')}</span></td><td>${esc(x.contact||'-')}</td><td>${esc(x.phone||'')}<br>${esc(x.email||'')}</td><td>${esc(x.taxId||'-')}</td><td>${esc(x.bankName||'')}<br><span class="muted">${esc(x.bankAccount||'')}</span></td><td>${x.orderUrl?`<button class="btn small" onclick="window.openSupplierUrl('${x.id}')">打开下单链接 ↗</button>`:'<span class="muted">未设置</span>'}</td><td>${db.products.filter(p=>p.supplierId===x.id).length}</td><td>${canEdit?`<button class="btn small" onclick="window.supplierModal('${x.id}')">编辑</button> <button class="btn small primary" onclick="window.openSupplierDetail('${x.id}')">档案详情</button> <button class="btn small" onclick="window.supplierPortalModal('${x.id}')">账号 / 单个审核</button> <button class="btn small" onclick="window.newPurchase('${x.id}')">采购合同</button>`:''} ${canDelete?`<button class="btn small danger" onclick="window.delSupplier('${x.id}')">删除</button>`:''}</td></tr>`).join('')}</table></div>`:'<div class="empty">暂无供应商，先新增供应商后即可建立国内采购合同。</div>'}${paginationBar(all.length,'suppliers')}</div>`}
@@ -1995,16 +1995,18 @@ window.importRecognizedQuoteProducts=async()=>{
     let added=0,updated=0,skipped=0;
     for(const row of rows){
       const existing=db.products.find(p=>String(p.sku||'').toLowerCase()===row.sku.toLowerCase());
-      const meta={supplierQuote:{fileName:q.file?.name||'',quoteNo:q.quoteNo||'',quoteDate:q.date||'',supplierName:q.supplierName||'',recognizedCurrency:q.currency||'CNY',spec:quoteCleanSpec(row.spec),quotedQty:row.qty,quotedUnitPrice:row.price,sourcePath,attachmentId:sourceAttachment?.id||'',importedAt:new Date().toISOString()}};
+      const quoteEntry={supplierId,fileName:q.file?.name||'',quoteNo:q.quoteNo||'',quoteDate:q.date||'',supplierName:q.supplierName||'',recognizedCurrency:q.currency||'CNY',spec:quoteCleanSpec(row.spec),quotedQty:row.qty,quotedUnitPrice:row.price,sourcePath,attachmentId:sourceAttachment?.id||'',importedAt:new Date().toISOString(),sku:row.sku,name:row.name};
+      const meta={supplierQuote:quoteEntry};
       if(row.action==='update'){
         if(!existing){skipped++;continue}
-        const sourceMeta={...(existing.sourceMeta||{}),...meta};
+        const history=Array.isArray(existing.sourceMeta?.supplierQuoteHistory)?existing.sourceMeta.supplierQuoteHistory:[];
+        const sourceMeta={...(existing.sourceMeta||{}),...meta,supplierQuoteHistory:[...history,quoteEntry].slice(-50)};
         const patch={name:row.name,name_cn:row.name,unit:row.unit,purchase_price:row.price,purchase_currency:q.currency||'CNY',supplier_id:supplierId||null,source_meta:sourceMeta,updated_at:new Date().toISOString()};
         const res=await supabase.from('trade_products').update(patch).eq('id',existing.id).eq('user_id',state.dataOwnerId||u.id).select('*').single();
         if(res.error)throw res.error;updated++;
       }else{
         if(existing){skipped++;continue}
-        const payload={user_id:state.dataOwnerId||u.id,sku:row.sku,name:row.name,name_cn:row.name,hs_code:'',unit:row.unit,sale_price:0,price:0,purchase_price:row.price,currency:'USD',purchase_currency:q.currency||'CNY',supplier_id:supplierId||null,moq:1,pcs_carton:1,net_weight:0,gross_weight:0,carton_size:'',image_url:'',image_urls:[],source_platform:'supplier_quote',source_url:'',source_offer_id:'',source_meta:meta,updated_at:new Date().toISOString()};
+        const payload={user_id:state.dataOwnerId||u.id,sku:row.sku,name:row.name,name_cn:row.name,hs_code:'',unit:row.unit,sale_price:0,price:0,purchase_price:row.price,currency:'USD',purchase_currency:q.currency||'CNY',supplier_id:supplierId||null,moq:1,pcs_carton:1,net_weight:0,gross_weight:0,carton_size:'',image_url:'',image_urls:[],source_platform:'supplier_quote',source_url:'',source_offer_id:'',source_meta:{...meta,supplierQuoteHistory:[quoteEntry]},updated_at:new Date().toISOString()};
         const res=await supabase.from('trade_products').insert(payload).select('*').single();
         if(res.error)throw res.error;added++;
       }
@@ -2576,8 +2578,8 @@ window.openSupplierLicenseFile=async supplierId=>{
   if(window._supplierLicensePreviewUrl)window.viewSupplierLicense();else toast('营业执照打开失败','err');
 };
 window.openSupplierCatalogPicker=supplierId=>{
-  const input=document.createElement('input');input.type='file';input.accept='.pdf,.jpg,.jpeg,.png,.webp,.xls,.xlsx,.doc,.docx,.ppt,.pptx,application/pdf,image/*';
-  input.onchange=()=>window.uploadSupplierCatalog(supplierId,input);input.click();
+  const input=document.createElement('input');input.type='file';input.accept='.pdf,.jpg,.jpeg,.png,.webp,.xls,.xlsx,.doc,.docx,.ppt,.pptx,application/pdf,image/*';input.style.display='none';document.body.appendChild(input);
+  input.onchange=()=>{window.uploadSupplierCatalog(supplierId,input);input.remove()};input.click();
 };
 window.openSupplierEditFromDocs=supplierId=>{state.modal='';render();setTimeout(()=>window.supplierModal(supplierId),0)};
 window.openSupplierQuoteFromDocs=supplierId=>{state.modal='';render();setTimeout(()=>window.quoteImportModal(supplierId),0)};
