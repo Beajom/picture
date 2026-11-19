@@ -115,8 +115,9 @@ html, body {
   position: relative;
   border: .28mm solid #202020;
   min-width: 0;
-  min-height: 78mm;
-  padding: 3mm 2.5mm 46mm;
+  /* The authentic seal overlays the text: no dedicated 46mm blank stamp area. */
+  min-height: 47mm;
+  padding: 3mm 2.5mm 5mm;
   overflow: hidden;
   break-inside: avoid;
 }
@@ -135,9 +136,10 @@ html, body {
   position: absolute;
   left: 2.5mm;
   right: 2.5mm;
-  bottom: 3mm;
-  height: 43mm;
+  bottom: 2.5mm;
+  height: 6mm;
   font-size: 9pt;
+  pointer-events: none;
 }
 .mpo-seal-zone > span:first-child { position: absolute; left: 0; bottom: 0; }
 .mpo-buyer-seal {
@@ -150,7 +152,8 @@ html, body {
   max-width: calc(100% - 5mm);
   object-fit: contain;
   mix-blend-mode: multiply;
-  opacity: .98;
+  opacity: .88;
+  z-index: 2;
   pointer-events: none;
 }
 .mpo-empty-seal { color: #777; }
