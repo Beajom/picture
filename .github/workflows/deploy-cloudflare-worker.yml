@@ -123,7 +123,11 @@ jobs:
                grep -q "mpoPrintNow" /tmp/index.html &&
                grep -q "标准 · 42mm" /tmp/index.html &&
                grep -q "采购类型" /tmp/index.html &&
-               grep -q "cloudDataStatus" /tmp/index.html; then
+               grep -q "cloudDataStatus" /tmp/index.html &&
+               grep -q "DASHBOARD_UI_V2_BEGIN" /tmp/index.html &&
+               grep -q "renderDashboardHome()" /tmp/index.html &&
+               grep -q "dashboard-metrics" /tmp/index.html &&
+               grep -q "mobileNavBtn" /tmp/index.html; then
               ok=1
               break
             fi
