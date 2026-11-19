@@ -295,25 +295,43 @@
   .mpo-paper .mpo-document-footnote{font-size:8pt!important;margin-top:3mm!important;color:#555}
 }
 
-/* Seal preview tuned for 42mm print: leave a dedicated area beneath the company details. */
+/* Contract seal overlays the buyer wording instead of reserving a blank stamp zone. */
 .mpo-paper .mpo-signatures .mpo-sign-block {
-  min-height: 305px;
-  padding-bottom: 178px;
+  min-height: 185px;
+  padding: 11px 10px 18px;
 }
 .mpo-paper .mpo-seal-zone {
-  bottom: 10px;
-  height: 142px;
+  bottom: 8px;
+  height: 16px;
+  pointer-events: none;
 }
 .mpo-paper .mpo-buyer-seal {
   width: var(--mpo-preview-seal, 126px);
   height: var(--mpo-preview-seal, 126px);
   right: 8px;
-  bottom: 4px;
+  bottom: 2px;
   max-width: calc(100% - 16px);
+  opacity: .88;
+  z-index: 2;
 }
 @media screen and (max-width:650px) {
   .mpo-paper .mpo-signatures .mpo-sign-block {
-    min-height: 280px;
-    padding-bottom: 160px;
+    min-height: 185px;
+    padding: 11px 10px 18px;
+  }
+}
+@media print {
+  .mpo-paper .mpo-signatures .mpo-sign-block {
+    min-height: 47mm !important;
+    padding: 3mm 2.5mm 5mm !important;
+  }
+  .mpo-paper .mpo-seal-zone {
+    height: 6mm !important;
+    bottom: 2.5mm !important;
+  }
+  .mpo-paper .mpo-buyer-seal {
+    width: var(--mpo-print-seal,42mm) !important;
+    height: var(--mpo-print-seal,42mm) !important;
+    opacity: .88 !important;
   }
 }
