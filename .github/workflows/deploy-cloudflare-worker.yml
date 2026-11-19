@@ -156,7 +156,7 @@ jobs:
           # Verify it exists in production before declaring PDF export healthy.
           curl -fsS "$BASE/material-contract-print.css?check=$(date +%s)" -o /tmp/material-contract-print.css
           grep -Fq '@page { size: A4 portrait; margin: 0; }' /tmp/material-contract-print.css
-          grep -Fq 'padding: 15mm 15mm 13mm' /tmp/material-contract-print.css
+          grep -Fq 'padding: 12mm 14mm 10mm' /tmp/material-contract-print.css
           grep -Fq -- '--mpo-print-seal, 42mm' /tmp/material-contract-print.css
           grep -Fq 'mpo-print-toolbar' /tmp/material-contract-print.css
           grep -Fq 'height:297mm!important' /tmp/material-contract-print.css
