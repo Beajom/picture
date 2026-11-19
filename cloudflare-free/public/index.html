@@ -792,8 +792,95 @@ async function runImageMigrationInBackground(){
     }
   }catch(e){}finally{imageMigrationRunning=false}
 }
+
+function dashboardMetric(t,v,u,note,route,symbol,tone=''){
+  return '<button class="dashboard-metric '+tone+'" type="button" onclick="go(\''+route+'\')">'+
+    '<span class="dashboard-metric-head"><span>'+esc(t)+'</span><span class="dashboard-metric-icon" aria-hidden="true">'+esc(symbol)+'</span></span>'+
+    '<strong class="dashboard-metric-value">'+esc(v)+(u?'<small>'+esc(u)+'</small>':'')+'</strong>'+
+    '<span class="dashboard-metric-foot">'+esc(note)+'</span></button>';
+}
+function dashboardTask(x){
+  return '<div class="dashboard-task"><span class="dashboard-task-dot '+x.tone+'"></span><div class="dashboard-task-info">'+
+    '<b>'+esc(x.title)+'</b><span>'+esc(x.description)+'</span></div>'+
+    '<button type="button" onclick="go(\''+x.route+'\')">'+esc(x.action)+'</button></div>';
+}
+function dashboardLedger(){
+  const recent=[...cache.ledger].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,5);
+  return recent.length?'<div class="dashboard-ledger">'+recent.map(x=>{
+    const change=Number(x.qty_change||0);
+    return '<div class="dashboard-ledger-row"><div><strong>'+esc(x.sku||x.reference_no||'库存变动')+'</strong>'+
+      '<small>'+esc(String(x.created_at||'').replace('T',' ').slice(0,16)||'—')+'</small></div>'+
+      '<span class="dashboard-ledger-middle dashboard-note">'+esc(x.business_type||'库存流水')+'</span>'+
+      '<b class="dashboard-ledger-change '+(change<0?'minus':'')+'">'+(change>0?'+':'')+change.toLocaleString()+'</b></div>'
+  }).join('')+'</div>':'<div class="dashboard-empty"><strong>暂无库存流水</strong>办理入库或出库后，这里会显示最近记录。</div>';
+}
+function renderDashboardHome(){
+  const sum=cache.inventory.reduce((v,x)=>v+Number(x.available_qty||0),0),low=lowStockRows();
+  const po=cache.purchase_orders.filter(x=>!['已入库','已取消'].includes(x.status));
+  const prod=cache.production_orders.filter(x=>!['已入库','已取消'].includes(x.status));
+  const ready=cache.production_orders.filter(x=>x.status==='生产完成');
+  const costKnown=cache.products.filter(x=>Number(x.untaxed_price||0)>0).length;
+  const synced=lastCloudSync?new Date(lastCloudSync).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false}):'等待同步';
+  const tasks=[];
+  low.slice(0,4).forEach(x=>tasks.push({title:(x.qty<=0?'缺货':'低库存')+' · '+[model(x.p)||x.p.internal_code||'未设置型号',x.p.color,x.p.size].filter(Boolean).join(' / '),
+    description:'现有 '+x.qty.toLocaleString()+' 双'+(x.safety>0?' · 安全库存 '+x.safety.toLocaleString()+' 双':' · 未设置安全库存'),
+    tone:'red',route:'inventory',action:'查看库存'}));
+  ready.slice(0,2).forEach(x=>tasks.push({title:'生产完成 · 待确认入库',description:(x.production_no||'生产任务')+' · '+(x.supplier_name||'核对生产数量'),tone:'blue',route:'production',action:'办理入库'}));
+  po.slice(0,3).forEach(x=>tasks.push({title:'待跟进采购 · '+(x.order_no||'采购单'),description:'当前状态：'+(x.status||'待确认')+(x.expected_date?' · 预计 '+x.expected_date:''),tone:'blue',route:'purchase',action:'查看采购'}));
+  const topTasks=tasks.slice(0,7);
+  const grouped=new Map();
+  cache.products.forEach(p=>{const key=model(p)||'其他型号';grouped.set(key,(grouped.get(key)||0)+inventoryQty(p.id))});
+  const models=[...grouped].filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+  let bars=models.slice(0,6).map(([key,qty])=>
+    '<div class="dashboard-model-row"><div class="dashboard-model-line"><b>'+esc(key)+'</b>'+
+    '<span>'+qty.toLocaleString()+' 双 · '+(sum?((qty/sum)*100).toFixed(1):'0.0')+'%</span></div>'+
+    '<div class="dashboard-meter"><span style="width:'+(sum?Math.min(qty/sum*100,100).toFixed(2):'0')+'%"></span></div></div>').join('');
+  const remainder=models.slice(6).reduce((v,x)=>v+x[1],0);
+  if(remainder)bars+='<div class="dashboard-model-row"><div class="dashboard-model-line"><b>其他型号</b><span>'+remainder.toLocaleString()+' 双</span></div><div class="dashboard-meter"><span style="width:'+(sum?Math.min(remainder/sum*100,100).toFixed(2):'0')+'%"></span></div></div>';
+  const metrics=dashboardMetric('国内成品库存',sum.toLocaleString(),'双','现有成品库存总双数','inventory','▤')+
+    dashboardMetric('低库存预警',low.length.toLocaleString(),'个 SKU',low.length?'不含已隐藏变体':'当前没有低库存预警','inventory','!',low.length?'alert':'')+
+    dashboardMetric('待跟进采购',po.length.toLocaleString(),'单','不含已入库及已取消','purchase','⌕')+
+    dashboardMetric('生产任务',prod.length.toLocaleString(),'单','未关闭的生产任务','production','▣')+
+    dashboardMetric('生产完成待入库',ready.length.toLocaleString(),'单','需要核对实际到货数量','production','⇣')+
+    dashboardMetric('库存货值（估算）',costKnown?money(inventoryValueTotal()):'—','','按已填写SKU不含税成本估算'+(costKnown<cache.products.length?' · 成本信息不完整':''),'inventory','¥');
+  return '<div class="dashboard">'+
+    '<section class="dashboard-hero"><div><div class="dashboard-eyebrow">AMAZON SUPPLY / OPERATIONS</div><h1>供应链运营总览</h1>'+
+    '<p>优先处理库存风险，再跟进采购与生产。所有库存数量来自云端数据库，下单不会自动入库。</p>'+
+    '<div class="dashboard-sync"><span class="dashboard-sync-dot"></span>最近云端同步：'+esc(synced)+'</div></div>'+
+    '<div class="dashboard-hero-actions"><button type="button" class="btn" onclick="go(\'inventory\')">库存明细</button>'+
+    '<button type="button" class="btn" onclick="newMaterialPO()">＋ 包材采购</button>'+
+    '<button type="button" class="btn primary" onclick="newPO()">＋ 成品采购</button></div></section>'+
+    '<section class="dashboard-metrics" aria-label="实时供应链指标">'+metrics+'</section>'+
+    '<div class="dashboard-grid"><section class="dashboard-panel"><div class="dashboard-panel-head"><div><h2>待处理事项</h2>'+
+    '<p>根据低库存、生产状态及成品采购单自动汇总</p></div><button type="button" class="dashboard-panel-link" onclick="go(\'purchase\')">采购中心 ›</button></div>'+
+    (topTasks.length?topTasks.map(dashboardTask).join('')+(tasks.length>7?'<div class="dashboard-note" style="padding:12px 20px">仅展示前 7 项，完整情况请查看对应模块。</div>':''):
+      '<div class="dashboard-empty"><strong>目前没有需要优先处理的事项</strong>成品采购、生产任务及低库存暂无预警。</div>')+
+    '</section><section class="dashboard-panel"><div class="dashboard-panel-head"><div><h2>成品库存结构</h2><p>按型号汇总 · 单位：双</p></div>'+
+    '<button type="button" class="dashboard-panel-link" onclick="go(\'inventory\')">库存明细 ›</button></div>'+
+    (bars?'<div class="dashboard-models">'+bars+'</div>':'<div class="dashboard-empty"><strong>暂无可用成品库存</strong>请到库存中心核对数据。</div>')+'</section></div>'+
+    '<section><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">'+
+    '<b style="font-size:15px;color:#223754">快捷操作</b><span class="dashboard-note">常用操作直达对应页面</span></div>'+
+    '<div class="dashboard-shortcuts">'+
+    '<button type="button" class="dashboard-shortcut" onclick="newPO()"><i>＋</i><b>成品采购</b><span>选商品、供应商并创建采购单</span></button>'+
+    '<button type="button" class="dashboard-shortcut" onclick="newMaterialPO()"><i>▤</i><b>包材采购</b><span>包装盒、标签和其他辅料</span></button>'+
+    '<button type="button" class="dashboard-shortcut" onclick="newOutbound()"><i>⇥</i><b>新建出库</b><span>生成出库单并保留库存流水</span></button>'+
+    '<button type="button" class="dashboard-shortcut" onclick="go(\'inventory\')"><i>⌕</i><b>库存核对</b><span>查看各 SKU 库存与库存状态</span></button></div></section>'+
+    '<div class="dashboard-grid"><section class="dashboard-panel"><div class="dashboard-panel-head"><div><h2>最近库存流水</h2>'+
+    '<p>最近的库存变化记录</p></div><button type="button" class="dashboard-panel-link" onclick="go(\'ledger\')">全部流水 ›</button></div>'+
+    dashboardLedger()+'</section><section class="dashboard-panel"><div class="dashboard-panel-head"><div><h2>常用管理入口</h2><p>商品、供应商及报表</p></div></div>'+
+    '<div style="padding:17px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px">'+
+    '<button type="button" class="btn" onclick="go(\'products\')">商品 / ASIN</button>'+
+    '<button type="button" class="btn" onclick="go(\'suppliers\')">供应商档案</button>'+
+    '<button type="button" class="btn" onclick="go(\'materials\')">辅料 / 包材</button>'+
+    '<button type="button" class="btn" onclick="go(\'materialPurchase\')">包材采购</button>'+
+    '<button type="button" class="btn" onclick="go(\'outbound\')">出库单</button>'+
+    '<button type="button" class="btn" onclick="go(\'inventoryReports\')">库存报告</button></div>'+
+    '<div class="dashboard-note" style="padding:0 17px 17px">涉及库存数量变化的操作仍在对应模块完成，本页不会修改数据库。</div></section></div>'+
+    '</div>';
+}
+
 const views={
-dashboard(){const total=cache.inventory.reduce((s,x)=>s+Number(x.available_qty||0),0),low=cache.inventory.filter(x=>Number(x.available_qty||0)<=Number(x.safety_stock||0)).length,prod=cache.production_orders.filter(x=>!['已入库','已取消'].includes(x.status)).length,po=cache.purchase_orders.filter(x=>!['已入库','已取消'].includes(x.status)).length;return '<div class="title"><div><h1>经营总览</h1><p>采购、生产、库存、出库日常驾驶舱</p></div></div><div class="cards">'+card('商品SKU',cache.products.length,'products')+card('国内库存',total,'inventory')+card('待跟进采购',po,'purchase')+card('生产任务',prod,'production')+card('低库存SKU',low,'inventory')+'</div><div class="quick"><button onclick="newPO()"><b>新建采购单</b><span>选择父体 → 颜色/尺码 → 数量</span></button><button onclick="newOutbound()"><b>新建出库单</b><span>自动扣减库存并保留流水</span></button><button onclick="editMaterial()"><b>新增辅料</b><span>包装、标签、纸箱</span></button><button onclick="adjustStock()"><b>库存调整</b><span>盘点、退货、期初录入</span></button></div>'},
+dashboard(){return renderDashboardHome()},
 products(){return '<div class="title"><div><h1>商品 / ASIN</h1><p>默认只展示父体，点击卡片后才加载子SKU和图片</p></div><button class="btn primary" onclick="editProduct()">＋ 新增商品</button></div><div class="toolbar" style="display:block"><input class="field" style="width:100%" placeholder="输入父ASIN / 子ASIN / SKU；最多10个，可用空格、逗号或换行分隔" oninput="filterCards(this.value)"><div id="productSearchHint" class="small muted" style="margin-top:7px">支持一次输入最多 <b>10 个</b>父ASIN、子ASIN或SKU，可用空格、逗号或换行分隔；搜索后自动展开对应子体。</div></div><div id="plist">'+parentGroups().map(g=>'<div class="panel pcard" data-parent="'+esc(g.parent)+'" data-search="'+esc((g.parent+' '+parentSkuOf(g.parent,g.rows)+' '+g.model+' '+g.name+' '+g.rows.map(x=>x.sku+' '+x.child_asin).join(' ')).toLowerCase())+'"><div class="ph" onclick="toggleProductGroup(\''+esc(g.parent)+'\',this)"><div class="row">'+smartImg(bestParentImage(g.rows),'thumb')+'<div><div><b style="font-size:17px">'+esc(g.model)+'</b> <span class="tag">'+g.rows.length+' 个子体</span></div><div>'+esc(g.name)+'</div><div class="small muted">'+esc(g.parent)+'</div><div class="small" style="margin-top:3px;color:#475467;font-weight:600">父SKU：<span class="mono">'+esc(parentSkuOf(g.parent,g.rows))+'</span></div></div></div><div class="row" style="gap:8px"><span class="small muted">点击展开</span><button class="btn" onclick="event.stopPropagation();uploadParentImage(\''+esc(g.parent)+'\')">父体图片</button></div></div><div hidden class="table product-children" data-loaded="0"></div></div>').join('')+'</div>'},
 suppliers(){return '<div class="title"><div><h1>供应商</h1><p>供应商资料、联系人、付款与收款账户</p></div><button class="btn primary" onclick="editSupplier()">＋ 新增供应商</button></div>'+table(cache.suppliers,['company_name','contact_name','phone','payment_method','bank_type'],['公司名称','联系人','电话','付款方式','账户类型'],s=>'<button class="link" onclick="editSupplier(\''+s.id+'\')">编辑</button>')},
 purchase(){return '<div class="title"><div><h1>采购中心</h1><p>成品、辅料 / 包材均可采购，合同与库存独立管理；下方为成品采购单</p></div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="go(\'materialPurchase\')">查看包材采购单</button><button class="btn" onclick="newMaterialPO()">＋ 新建辅料采购单</button><button class="btn primary" onclick="newPO()">＋ 新建采购单</button></div></div>'+table(cache.purchase_orders,['order_no','order_date','supplier_name','total_qty','status'],['采购单号','日期','供应商','总数量','状态'],o=>'<button class="link" onclick="viewPO(\''+o.id+'\')">查看</button><button class="btn" style="padding:5px 10px;margin:0 6px;color:#2563eb;border-color:#bfdbfe;background:#eff6ff" onclick="previewPOPDF(\''+o.id+'\')">PDF预览</button><button class="link red" onclick="delPO(\''+o.id+'\')">删除</button>')},
