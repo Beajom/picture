@@ -11,6 +11,114 @@
 
 /* 2026-11: always-visible inventory controls, responsive variants */
 .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.variant-hide-btn{min-height:34px;min-width:90px;border-color:#bfdbfe;color:#1d4ed8}.variant-toolbar{position:relative;z-index:1}.inventory-visibility-toolbar{border:1px solid #93c5fd;background:#eff6ff}.inventory-visibility-toolbar b{color:#1e40af}.color-side img{object-fit:contain!important;object-position:center!important}.inventory-head img,.thumb{object-fit:contain!important}.color-card .size-list{min-width:0}@media(max-width:1050px){.inventory-colors{grid-template-columns:1fr}}@media(max-width:600px){.color-card{grid-template-columns:90px 1fr}.color-side{padding:8px 4px}.color-side img{width:58px;height:58px}.variant-toolbar{flex-wrap:wrap}}
+
+/* DASHBOARD_UI_V2_BEGIN — layout only; figures come from /api/bootstrap */
+:root{--dash-ink:#14243c;--dash-line:#e4eaf2;--dash-surface:#fff;--dash-soft:#f6f9fd;--dash-accent:#245cd6}
+body{background:#f4f7fb}
+.app .side{box-shadow:5px 0 28px #0c183210}
+.app .side .brand{padding:4px 8px 20px}
+.app .side .brandmark{background:linear-gradient(135deg,#2d64dc,#426fd9)}
+.app .navsec{margin:21px 10px 7px;color:#8191aa;font-size:10px;font-weight:700;letter-spacing:.12em}
+.app .nav button{min-height:40px;margin:3px 0;transition:background-color .15s,color .15s;border-radius:9px}
+.app .nav button.on{background:#244b91;box-shadow:inset 3px 0 #8db3ff}
+.app .main>header{background:#fffffff5;backdrop-filter:blur(12px)}
+.app .content{max-width:1540px;padding:26px 30px 42px}
+.app .btn{min-height:35px;transition:background-color .16s,border-color .16s,transform .16s}
+.app .btn:focus-visible,.app .nav button:focus-visible,.app .dashboard button:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+.app .btn.primary{background:#235acf;border-color:#235acf}
+.app .btn.primary:hover{background:#1e4cb3;border-color:#1e4cb3}
+.app .panel,.app .card{box-shadow:0 1px 4px #16243e07}
+.dashboard{display:flex;flex-direction:column;gap:19px}
+.dashboard-hero{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:26px 28px;border:1px solid #dbe5f4;border-radius:17px;background:linear-gradient(113deg,#fff 10%,#f3f8ff 66%,#e9f2ff 100%);box-shadow:0 4px 24px #23498a0b}
+.dashboard-eyebrow{color:#486ca7;letter-spacing:.12em;font-size:10px;font-weight:750;text-transform:uppercase;margin-bottom:8px}
+.dashboard-hero h1{color:#172e54;font-size:26px;line-height:1.3;margin:0 0 8px;letter-spacing:-.02em}
+.dashboard-hero p{max-width:650px;font-size:13px;line-height:1.7;color:#61738f;margin:0}
+.dashboard-hero-actions{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+.dashboard-sync{display:inline-flex;align-items:center;gap:6px;color:#4f6484;font-size:11px;margin-top:12px}
+.dashboard-sync-dot{width:7px;height:7px;border-radius:100%;background:#22a06b;box-shadow:0 0 0 3px #e0f7ed}
+.dashboard-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dashboard-metric{display:block;text-align:left;width:100%;border:1px solid var(--dash-line);border-radius:14px;background:var(--dash-surface);padding:18px 19px;cursor:pointer;min-width:0;transition:transform .16s,border-color .16s,box-shadow .16s;box-shadow:0 1px 4px #17253d07}
+.dashboard-metric:hover{transform:translateY(-2px);border-color:#b2c8ec;box-shadow:0 10px 24px #18396613}
+.dashboard-metric-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#667995;font-size:12px;font-weight:650}
+.dashboard-metric-icon{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:10px;background:#eff5ff;color:#2459c8;font-size:16px}
+.dashboard-metric-value{display:block;margin:14px 0 6px;font-size:28px;font-weight:760;line-height:1.15;color:#162a48;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.dashboard-metric-value small{font-size:13px;font-weight:600;margin-left:4px;color:#65748a}
+.dashboard-metric-foot{display:block;font-size:11px;color:#8090a5;line-height:1.5}
+.dashboard-metric.alert{background:#fffaf9;border-color:#f3d1cb}
+.dashboard-metric.alert .dashboard-metric-icon{background:#feefec;color:#bf4937}
+.dashboard-metric.alert .dashboard-metric-value{color:#b53f36}
+.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;align-items:start}
+.dashboard-panel{background:#fff;border:1px solid var(--dash-line);border-radius:15px;min-width:0;overflow:hidden;box-shadow:0 1px 5px #17253b08}
+.dashboard-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid #eef1f6}
+.dashboard-panel-head h2{font-size:15px;color:#172e4e;margin:0 0 4px}
+.dashboard-panel-head p{font-size:11px;color:#8190a4;margin:0}
+.dashboard-panel-link{border:0;background:none;color:#2257c0;cursor:pointer;font-size:12px;padding:3px 0;white-space:nowrap}
+.dashboard-task{display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid #f0f3f8}
+.dashboard-task:last-child{border-bottom:0}
+.dashboard-task-dot{flex:none;width:9px;height:9px;background:#e0a54b;border-radius:100%}
+.dashboard-task-dot.red{background:#db6b60}
+.dashboard-task-dot.blue{background:#618cdc}
+.dashboard-task-info{min-width:0;flex:1}
+.dashboard-task-info b{display:block;font-size:12px;font-weight:700;color:#203453;overflow-wrap:anywhere}
+.dashboard-task-info span{display:block;margin-top:4px;font-size:11px;color:#7b8ba0;overflow-wrap:anywhere}
+.dashboard-task button{flex:none;border:1px solid #d6e2f5;background:#f8fbff;color:#2457bb;border-radius:8px;min-height:30px;padding:5px 9px;cursor:pointer;font-size:11px}
+.dashboard-empty{padding:29px 20px;font-size:12px;color:#73839a;text-align:center;line-height:1.7}
+.dashboard-empty strong{display:block;color:#315178;font-size:13px;margin-bottom:6px}
+.dashboard-models{padding:12px 20px 18px}
+.dashboard-model-row{padding:10px 0;border-bottom:1px solid #f1f3f7}
+.dashboard-model-row:last-child{border-bottom:0}
+.dashboard-model-line{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin-bottom:8px}
+.dashboard-model-line b{color:#233956}
+.dashboard-model-line span{font-variant-numeric:tabular-nums;color:#64748b}
+.dashboard-meter{height:7px;background:#eff3f9;border-radius:50px;overflow:hidden}
+.dashboard-meter span{display:block;height:100%;background:linear-gradient(90deg,#789ee5,#3268d1);border-radius:50px}
+.dashboard-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.dashboard-shortcut{border:1px solid #e0e8f2;background:#fff;padding:16px;border-radius:13px;text-align:left;cursor:pointer;min-width:0;transition:border-color .15s,transform .15s}
+.dashboard-shortcut:hover{border-color:#9db8ea;transform:translateY(-1px)}
+.dashboard-shortcut i{display:inline-grid;place-items:center;width:35px;height:35px;font-style:normal;background:#edf4ff;color:#2b5eca;border-radius:10px;font-size:17px;margin-bottom:11px}
+.dashboard-shortcut b{display:block;font-size:12px;color:#233753}
+.dashboard-shortcut span{display:block;font-size:11px;line-height:1.5;color:#8290a5;margin-top:5px}
+.dashboard-ledger{padding:0 20px}
+.dashboard-ledger-row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:10px;padding:13px 0;align-items:center;border-bottom:1px solid #f0f3f7}
+.dashboard-ledger-row:last-child{border-bottom:0}
+.dashboard-ledger-row strong{font-size:12px;color:#253751;font-weight:700;display:block;overflow-wrap:anywhere}
+.dashboard-ledger-row small{display:block;margin-top:3px;font-size:10px;color:#8390a2}
+.dashboard-ledger-change{font-size:13px;font-weight:750;font-variant-numeric:tabular-nums;color:#167047;white-space:nowrap}
+.dashboard-ledger-change.minus{color:#b54736}
+.dashboard-note{color:#8592a5;font-size:11px;line-height:1.55}
+#mobileNavBtn{display:none}
+#mobileNavBackdrop{display:none}
+@media(max-width:1220px){.dashboard-grid{grid-template-columns:1fr}.dashboard-hero{align-items:flex-start}.dashboard-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){
+  .app .content{padding:16px}
+  .dashboard-hero{padding:21px 18px;display:block}
+  .dashboard-hero h1{font-size:22px}
+  .dashboard-hero-actions{justify-content:flex-start;margin-top:16px}
+  .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #mobileNavBtn{display:inline-flex;align-items:center;justify-content:center;min-width:38px;margin-right:9px;font-size:20px}
+  .app .side{display:block;position:fixed;left:0;top:0;bottom:0;width:245px;z-index:82;transform:translateX(-105%);transition:transform .22s ease;box-shadow:12px 0 32px #0002}
+  body.mobile-menu-open .app .side{transform:translateX(0)}
+  body.mobile-menu-open #mobileNavBackdrop{display:block;position:fixed;inset:0;background:#0e1c3380;z-index:81}
+  .app .main{margin-left:0;width:100%}
+  .app .main>header{padding:0 14px}
+  .app .main .crumb span{font-size:10px}
+}
+@media(max-width:520px){
+  .dashboard-metrics{gap:8px}
+  .dashboard-metric{padding:13px 12px}
+  .dashboard-metric-value{font-size:22px}
+  .dashboard-shortcuts{gap:8px}
+  .dashboard-shortcut{padding:13px}
+  .dashboard-panel-head{padding:15px}
+  .dashboard-task{padding:12px 15px}
+  .dashboard-models,.dashboard-ledger{padding-left:15px;padding-right:15px}
+  .dashboard-ledger-row{grid-template-columns:minmax(0,1fr) auto}
+  .dashboard-ledger-row .dashboard-ledger-middle{display:none}
+  .app .top-actions .btn{padding:8px 9px}
+}
+@media print{#mobileNavBackdrop{display:none!important}}
+/* DASHBOARD_UI_V2_END */
+
 /* MATERIAL_PURCHASE_CSS_BUNDLE_BEGIN */
 /* 包材采购：独立于成品采购，原有库存/采购数据不受影响 */
 .mpo-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 16px}
@@ -356,13 +464,14 @@
 
 </head>
 <body>
+<div id="mobileNavBackdrop" onclick="closeMobileMenu()" aria-hidden="true"></div>
 <div class="app">
 <aside class="side">
   <div class="brand"><div class="brandmark">AS</div><div><b>Amazon Supply</b><span>供应链工作台 · Cloudflare</span></div></div>
   <div class="nav" id="nav"></div>
 </aside>
 <main class="main">
-  <header><div class="crumb"><b id="pageTitle">经营总览</b><span>Cloudflare D1 + Workers KV · <span id="cloudDataStatus" style="color:#667085">等待同步</span></span></div><div class="top-actions"><button id="topInventoryVisibilityBtn" class="btn" style="display:none;border-color:#93c5fd;color:#1d4ed8;background:#eff6ff" onclick="openInventoryVisibilityManager()">⚙ 变体显示管理</button><button class="btn" onclick="refresh()">刷新</button><button class="btn primary" onclick="quick()">＋ 新建</button></div></header>
+  <header><div style="display:flex;align-items:center;min-width:0"><button id="mobileNavBtn" class="btn" aria-label="打开导航菜单" aria-expanded="false" onclick="toggleMobileMenu()">☰</button><div class="crumb"><b id="pageTitle">经营总览</b><span>Cloudflare D1 + Workers KV · <span id="cloudDataStatus" style="color:#667085">等待同步</span></span></div></div><div class="top-actions"><button id="topInventoryVisibilityBtn" class="btn" style="display:none;border-color:#93c5fd;color:#1d4ed8;background:#eff6ff" onclick="openInventoryVisibilityManager()">⚙ 变体显示管理</button><button class="btn" onclick="refresh()">刷新</button><button class="btn primary" onclick="quick()">＋ 新建</button></div></header>
   <div class="content" id="root"></div>
 </main>
 </div>
@@ -417,7 +526,11 @@ async function api(path,opt={}){
   throw last||new Error('请求失败')
 }
 function renderNav(){let last='';nav.innerHTML=navs.map(n=>{let s='';if(n[2]!=last){last=n[2];s='<div class="navsec">'+last+'</div>'}return s+'<button class="'+(route===n[0]?'on':'')+'" onclick="go(\''+n[0]+'\')"><span class="ico">'+n[3]+'</span>'+n[1]+'</button>'}).join('')}
-function go(r){route=normalizeRoute(r);location.hash=route;render()}
+function closeMobileMenu(){document.body.classList.remove('mobile-menu-open');const btn=document.getElementById('mobileNavBtn');if(btn)btn.setAttribute('aria-expanded','false')}
+function toggleMobileMenu(){const next=!document.body.classList.contains('mobile-menu-open');document.body.classList.toggle('mobile-menu-open',next);const btn=document.getElementById('mobileNavBtn');if(btn)btn.setAttribute('aria-expanded',String(next))}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileMenu()});
+window.addEventListener('resize',()=>{if(window.innerWidth>800)closeMobileMenu()});
+function go(r){closeMobileMenu();route=normalizeRoute(r);location.hash=route;render()}
 window.onhashchange=()=>{route=normalizeRoute(location.hash.slice(1)||'dashboard');render()}
 let lastCloudSync=0;
 function setCloudSyncStatus(ok,message=''){
