@@ -164,3 +164,75 @@ html, body {
   .mpo-paper { width: 100% !important; max-width: none !important; margin: 0 !important; box-shadow: none !important; }
   .mpo-signatures { break-inside: avoid !important; page-break-inside: avoid !important; }
 }
+
+/* Visible print controls live outside the paper and never print onto the contract. */
+.mpo-print-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(210mm, calc(100% - 24px));
+  min-height: 58px;
+  margin: 0 auto 12px;
+  padding: 9px 14px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #101828;
+  color: #fff;
+  box-shadow: 0 4px 16px #0002;
+  font-family: "Microsoft YaHei", sans-serif;
+}
+.mpo-print-toolbar-info { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.mpo-print-toolbar-info strong { font-size:14px; line-height:1.4; }
+.mpo-print-toolbar-info span { color:#d0d5dd; font-size:11px; line-height:1.4; }
+.mpo-print-toolbar-actions { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+.mpo-print-toolbar button {
+  appearance:none;
+  border:1px solid #667085;
+  border-radius:7px;
+  padding:9px 14px;
+  min-height:36px;
+  font-size:13px;
+  font-weight:650;
+  cursor:pointer;
+}
+.mpo-print-primary { background:#2563eb; border-color:#2563eb!important; color:#fff; }
+.mpo-print-secondary { background:#fff; color:#344054; }
+.mpo-paper { width:210mm; max-width:210mm; }
+.mpo-paper.mpo-short-contract { min-height:297mm; }
+@media screen {
+  body { padding:0 0 24px; }
+  .mpo-paper { margin:0 auto; }
+}
+@media print {
+  @page { size:A4 portrait; margin:0; }
+  html, body {
+    width:210mm!important;
+    min-width:210mm!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+  }
+  .mpo-print-toolbar { display:none!important; }
+  .mpo-paper {
+    width:210mm!important;
+    max-width:210mm!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+  .mpo-paper.mpo-short-contract {
+    height:297mm!important;
+    min-height:297mm!important;
+    overflow:hidden!important;
+    break-after:avoid!important;
+    page-break-after:avoid!important;
+  }
+}
+@media screen and (max-width:700px) {
+  .mpo-print-toolbar { align-items:flex-start; flex-direction:column; }
+  .mpo-print-toolbar-actions { width:100%; }
+  .mpo-print-toolbar-actions button { flex:1; }
+}
