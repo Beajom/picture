@@ -40,6 +40,17 @@ async function all(db,sql,...args){return (await db.prepare(sql).bind(...args).a
 async function one(db,sql,...args){return await db.prepare(sql).bind(...args).first()}
 async function exec(db,sql,...args){return await db.prepare(sql).bind(...args).run()}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
+function cleanMaterialText(v,max){return String(v??'').trim().slice(0,max)}
+async function ensureMaterialDetailFields(env){
+  // Existing production D1 tables are migrated in place; no stock updates or resets.
+  const fields=await all(env.DB,"PRAGMA table_info(materials)");
+  const existing=new Set(fields.map(x=>x.name));
+  for(const name of ['material_grade','material_spec']){
+    if(existing.has(name))continue;
+    try{await exec(env.DB,'ALTER TABLE materials ADD COLUMN '+name+" TEXT NOT NULL DEFAULT ''")}
+    catch(e){if(!/duplicate column name/i.test(String(e?.message||e)))throw e}
+  }
+}
 
 function csvCell(v){
   const s=String(v??'');
@@ -209,6 +220,7 @@ export async function onRequest(ctx){
     if(p==='/bootstrap'&&method==='GET'){
       await ensureOutboundMetaTables(env);
       await ensureProductVisibilityTable(env);
+      await ensureMaterialDetailFields(env);
       const [products,inventory,suppliers,materials,purchase_orders,production_orders,outbound_orders,ledger]=await Promise.all([
         all(env.DB,`SELECT p.*,
           COALESCE((SELECT pv.hidden FROM product_visibility pv WHERE pv.product_id=p.id),0) AS hidden,
@@ -336,16 +348,28 @@ export async function onRequest(ctx){
     }
 
     if(p==='/materials'&&method==='POST'){
-      const d=await request.json(), mid=String(d.id||id());
-      await exec(env.DB,`INSERT INTO materials(id,material_code,name,unit,applicable_model,purchase_price,current_stock,safety_stock,target_stock,finished_units_per_material,notes)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?)`,mid,d.material_code,d.name,d.unit||'个',d.applicable_model||'',num(d.purchase_price),num(d.current_stock),num(d.safety_stock),num(d.target_stock),Math.max(num(d.finished_units_per_material),0.0001),d.notes||'');
+      const d=await request.json(),mid=String(d.id||id());
+      await ensureMaterialDetailFields(env);
+      await exec(env.DB,`INSERT INTO materials(id,material_code,name,material_grade,material_spec,unit,applicable_model,purchase_price,current_stock,safety_stock,target_stock,finished_units_per_material,notes)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        mid,d.material_code,d.name,cleanMaterialText(d.material_grade,200),cleanMaterialText(d.material_spec,300),
+        d.unit||'个',d.applicable_model||'',num(d.purchase_price),num(d.current_stock),num(d.safety_stock),num(d.target_stock),
+        Math.max(num(d.finished_units_per_material),0.0001),d.notes||'');
       return json({id:mid});
     }
     m=p.match(/^\/materials\/([^/]+)$/);
     if(m&&method==='PUT'){
       const d=await request.json();
-      await exec(env.DB,`UPDATE materials SET material_code=?,name=?,unit=?,applicable_model=?,purchase_price=?,current_stock=?,safety_stock=?,target_stock=?,finished_units_per_material=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-        d.material_code,d.name,d.unit||'个',d.applicable_model||'',num(d.purchase_price),num(d.current_stock),num(d.safety_stock),num(d.target_stock),Math.max(num(d.finished_units_per_material),0.0001),d.notes||'',m[1]);
+      await ensureMaterialDetailFields(env);
+      // When older clients update a material, keep previously stored specification fields.
+      const old=await one(env.DB,'SELECT material_grade,material_spec FROM materials WHERE id=?',m[1]);
+      if(!old)return err('辅料不存在，请刷新页面',404);
+      const grade=Object.prototype.hasOwnProperty.call(d,'material_grade')?cleanMaterialText(d.material_grade,200):old.material_grade;
+      const spec=Object.prototype.hasOwnProperty.call(d,'material_spec')?cleanMaterialText(d.material_spec,300):old.material_spec;
+      await exec(env.DB,`UPDATE materials SET material_code=?,name=?,material_grade=?,material_spec=?,unit=?,applicable_model=?,purchase_price=?,current_stock=?,safety_stock=?,target_stock=?,finished_units_per_material=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+        d.material_code,d.name,grade,spec,d.unit||'个',d.applicable_model||'',
+        num(d.purchase_price),num(d.current_stock),num(d.safety_stock),num(d.target_stock),
+        Math.max(num(d.finished_units_per_material),0.0001),d.notes||'',m[1]);
       return json({id:m[1]});
     }
 
