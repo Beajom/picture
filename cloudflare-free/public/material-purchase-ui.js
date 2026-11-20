@@ -26,11 +26,33 @@ function displayPurchaseList(){
     '<div class="mpo-kpi"><small>未全部到货</small><strong>'+pending+'</strong><small>累计到货 '+received.toLocaleString()+' 件</small></div></div>';
   const table=purchaseOrders.length?
     '<div class="mpo-listbox"><table class="mpo-table"><thead><tr><th>采购单号</th><th>日期 / 交期</th><th>供应商</th><th>采购数量</th><th>订单金额</th><th>已入库</th><th>状态</th><th>操作</th></tr></thead><tbody>'+
-    purchaseOrders.map(o=>'<tr><td><b>'+safe(o.order_no)+'</b></td><td>'+safe(o.order_date)+'<div class="small muted">'+safe(o.delivery_date||'未填交期')+'</div></td><td>'+safe(o.supplier_name||'-')+'</td><td>'+n(o.total_qty).toLocaleString()+'</td><td>'+yuan(o.total_amount)+'</td><td>'+n(o.received_qty).toLocaleString()+'</td><td>'+statusTag(o.status)+'</td><td><div class="mpo-inline-actions">'+btn('查看合同',"previewMaterialPurchaseContract('"+safe(o.id)+"')")+btn('编辑合同',"editMaterialPurchaseContract('"+safe(o.id)+"')")+((o.status==='已入库')?'':btn('收货入库',"receiveMaterialPurchase('"+safe(o.id)+"')",true))+'</div></td></tr>').join('')+
+    purchaseOrders.map(o=>'<tr><td><b>'+safe(o.order_no)+'</b></td><td>'+safe(o.order_date)+'<div class="small muted">'+safe(o.delivery_date||'未填交期')+'</div></td><td>'+safe(o.supplier_name||'-')+'</td><td>'+n(o.total_qty).toLocaleString()+'</td><td>'+yuan(o.total_amount)+'</td><td>'+n(o.received_qty).toLocaleString()+'</td><td>'+statusTag(o.status)+'</td><td><div class="mpo-inline-actions">'+btn('查看合同',"previewMaterialPurchaseContract('"+safe(o.id)+"')")+btn('编辑合同',"editMaterialPurchaseContract('"+safe(o.id)+"')")+((o.status==='已入库')?'':btn('收货入库',"receiveMaterialPurchase('"+safe(o.id)+"')",true))+
+    ((n(o.received_qty)>0||o.status!=='已下单')?
+      '<button type="button" class="btn mpo-delete-disabled" disabled title="已发生入库或状态不允许删除">不可删除</button>':
+      '<button type="button" class="btn danger mpo-delete-btn" onclick="deleteMaterialPurchaseOrder(\''+safe(o.id)+'\')">删除</button>')+'</div></td></tr>').join('')+
     '</tbody></table></div>':
     '<div class="panel" style="padding:32px;text-align:center;color:#64748b">尚无包材采购单。先在「辅料 / 包材」建立纸盒、标签、纸箱等物料，再点击右上角「新建包材采购单」。</div>';
   wrap.innerHTML=summary+table;
 }
+window.deleteMaterialPurchaseOrder=async function(id){
+  const item=purchaseOrders.find(o=>String(o.id)===String(id));
+  const no=item?.order_no||(currentOrder?.id===id?currentOrder?.order_no:'这张合同');
+  const received=n(item?.received_qty)||n(currentOrder?.items?.reduce((total,it)=>total+n(it.received_qty),0));
+  if(received>0||(['部分到货','已入库'].includes(item?.status)||['部分到货','已入库'].includes(currentOrder?.status))){
+    toastMsg('该合同已收货入库，不能直接删除，请先核对入库记录');return;
+  }
+  if(!confirm('确定删除包材采购合同「'+no+'」吗？\n\n仅删除未发生收货入库的合同及订单明细。\n不会删除包材档案，也不会改变成品或包材库存。\n系统会保留删除审计快照。'))return;
+  const buttons=[...document.querySelectorAll('.mpo-delete-btn')];buttons.forEach(button=>button.disabled=true);
+  try{
+    await api('/material-purchase-orders/'+encodeURIComponent(id),{method:'DELETE'});
+    if(currentOrder?.id===id){currentOrder=null;closeModal()}
+    await loadPurchaseOrders();
+    toastMsg('已删除错误的采购合同，库存未变');
+  }catch(err){
+    toastMsg('删除失败：'+err.message);
+    buttons.forEach(button=>button.disabled=false);
+  }
+};
 async function loadPurchaseOrders(){
   try{const result=await api('/material-purchase-orders');purchaseOrders=result.orders||[];displayPurchaseList()}
   catch(e){const w=el('materialPurchaseOrders');if(w)w.innerHTML='<div class="mpo-note">加载包材采购单失败：'+safe(e.message)+'。请点击刷新重试。</div>'}
@@ -39,7 +61,7 @@ views.materialPurchase=function(){
   setTimeout(loadPurchaseOrders,0);
   return '<div class="title"><div><h1>包装辅料采购</h1><p>包材采购单 → 订货合同 → 收货入库。与成品采购单独立管理。</p></div>'+
     '<div class="row" style="gap:8px;flex-wrap:wrap">'+btn('刷新列表','loadMaterialPurchaseOrders()')+btn('甲方资料 / 公章管理','editMaterialContractProfile()')+btn('管理包材',"go('materials')")+btn('＋ 新建包材采购单','newMaterialPO()',true)+'</div></div>'+
-    '<div class="mpo-note" style="margin-bottom:12px">支持彩盒、白卡纸盒、包装袋、吊牌、贴纸、标签、纸箱等辅料；一个采购单可包含多种材料。合同可编辑材质、规格、数量、价格、交货和付款条款。只有确认到货时才增加包材库存，绝不会改变成品 SKU 库存。</div>'+
+    '<div class="mpo-note" style="margin-bottom:12px">支持彩盒、白卡纸盒、包装袋、吊牌、贴纸、标签、纸箱等辅料；一个采购单可包含多种材料。合同可编辑材质、规格、数量、价格、交货和付款条款。只有确认到货时才增加包材库存，绝不会改变成品 SKU 库存。未发生收货的错误合同可删除，已入库合同需先办理冲销。</div>'+
     '<div id="materialPurchaseOrders"><div class="panel" style="padding:24px">正在加载包材采购单…</div></div>'
 };
 window.loadMaterialPurchaseOrders=loadPurchaseOrders;
@@ -235,6 +257,8 @@ window.previewMaterialPurchaseContract=async function(id){
       [38,42,45].map(size=>'<option value="'+size+'"'+(materialContractSealSize()===size?' selected':'')+'>'+({38:'小 · 38mm',42:'标准 · 42mm',45:'大 · 45mm'}[size])+'</option>').join('')+'</select></label>'+
       btn('甲方资料 / 公章管理','editMaterialContractProfile()')+
       btn('修改合同内容',"editMaterialPurchaseContract('"+safe(id)+"')")+
+      (n(currentOrder.items?.reduce((q,it)=>q+n(it.received_qty),0))===0&&currentOrder.status==='已下单'?
+        '<button type="button" class="btn danger mpo-delete-btn" onclick="deleteMaterialPurchaseOrder(\''+safe(id)+'\')">删除合同</button>':'')+
       btn('A4打印 / 保存PDF','printMaterialPurchaseContract()',true)+'</div>'+
       paperMarkup(currentOrder));
   }catch(e){toastMsg('获取合同失败：'+e.message)}
