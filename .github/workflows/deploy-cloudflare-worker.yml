@@ -124,6 +124,9 @@ jobs:
                grep -q "标准 · 42mm" /tmp/index.html &&
                grep -q "采购类型" /tmp/index.html &&
                grep -q "cloudDataStatus" /tmp/index.html &&
+               grep -q 'name="material_grade"' /tmp/index.html &&
+               grep -q 'name="material_spec"' /tmp/index.html &&
+               grep -q "grade.value=m.material_grade" /tmp/index.html &&
                grep -q "DASHBOARD_UI_V2_BEGIN" /tmp/index.html &&
                grep -q "renderDashboardHome()" /tmp/index.html &&
                grep -q "dashboard-metrics" /tmp/index.html &&
@@ -166,6 +169,17 @@ jobs:
           grep -Fq 'height:297mm!important' /tmp/material-contract-print.css
           grep -Fq '.mpo-print-primary' /tmp/material-contract-print.css
           echo "Standalone A4 PDF stylesheet verified."
+          # Reading bootstrap triggers safe, additive D1 material-field migration.
+          curl -fsS "$BASE/api/bootstrap?material_fields_check=$(date +%s)" -o /tmp/material-fields-bootstrap.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/material-fields-bootstrap.json'))
+          materials=data.get('materials',[])
+          assert isinstance(materials,list)
+          for m in materials:
+              assert 'material_grade' in m and 'material_spec' in m
+          print('Material grade and specification fields verified on production D1')
+          PY
           echo "Packaging procurement API verified."
           curl -fsS "$BASE/api/material-contract-profile?ts=$(date +%s)" -o /tmp/material-contract-profile.json
           python - <<'PY'
