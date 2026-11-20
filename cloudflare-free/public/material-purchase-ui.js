@@ -52,7 +52,13 @@ function updateLine(row, resetPrice){
   if(img){img.src=m.resolved_image_url||m.image_url||'';img.style.display=img.src?'block':'none'}
   const stock=row.querySelector('.mpo-stock');
   if(stock)stock.textContent='现有库存：'+n(m.current_stock).toLocaleString()+' '+(m.unit||'个')+'；目标库存：'+n(m.target_stock).toLocaleString();
-  if(resetPrice)row.querySelector('.mpo-price').value=n(m.purchase_price).toFixed(2);
+  if(resetPrice){
+    row.querySelector('.mpo-price').value=n(m.purchase_price).toFixed(2);
+    // Default from the materials master record; users may override per purchase order.
+    const grade=row.querySelector('.mpo-grade'),spec=row.querySelector('.mpo-spec');
+    if(grade)grade.value=m.material_grade||'';
+    if(spec)spec.value=m.material_spec||'';
+  }
   calculateTotal()
 }
 function calculateTotal(){
