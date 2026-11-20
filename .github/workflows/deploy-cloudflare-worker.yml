@@ -182,7 +182,8 @@ jobs:
               assert 'material_grade' in m and 'material_spec' in m
           print('Material grade and specification fields verified on production D1')
           PY
-          # The real delete action is intentionally not executed against production data.\n          echo "Packaging procurement API verified."
+          # The real delete action is intentionally not executed against production data.
+          echo "Packaging procurement API verified."
           curl -fsS "$BASE/api/material-contract-profile?ts=$(date +%s)" -o /tmp/material-contract-profile.json
           python - <<'PY'
           import json
