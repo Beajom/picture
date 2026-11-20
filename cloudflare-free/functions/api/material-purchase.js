@@ -21,6 +21,8 @@ async function ensureTables(db){
     db.prepare("CREATE TABLE IF NOT EXISTS material_purchase_contract_details(order_id TEXT PRIMARY KEY REFERENCES material_purchase_orders(id) ON DELETE CASCADE,buyer_address TEXT NOT NULL DEFAULT '',buyer_phone TEXT NOT NULL DEFAULT '',buyer_representative TEXT NOT NULL DEFAULT '',supplier_address TEXT NOT NULL DEFAULT '',supplier_phone TEXT NOT NULL DEFAULT '',supplier_representative TEXT NOT NULL DEFAULT '',buyer_sign_date TEXT NOT NULL DEFAULT '',supplier_sign_date TEXT NOT NULL DEFAULT '',seal_enabled INTEGER NOT NULL DEFAULT 1)"),
     db.prepare("INSERT OR IGNORE INTO material_contract_profile(id,company_name,address,phone,representative) VALUES('buyer','义乌市时盈电子商务有限公司','浙江省义乌市北苑街道柳青10区49幢3单元102室（自主申报）','15027223216','陈崇飞')"),
     db.prepare("CREATE TABLE IF NOT EXISTS material_receipt_requests(id TEXT PRIMARY KEY,order_id TEXT NOT NULL REFERENCES material_purchase_orders(id),received_total INTEGER NOT NULL,notes TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
+    // Deleted contracts are removed from the working list, but a snapshot is retained for audit and recovery.
+    db.prepare("CREATE TABLE IF NOT EXISTS material_purchase_order_deletions(id TEXT PRIMARY KEY,order_no TEXT NOT NULL,order_snapshot TEXT NOT NULL,deleted_reason TEXT NOT NULL DEFAULT '',deleted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     // Database-level guard: a simultaneous receive or contract edit must never over-receive.
     db.prepare("CREATE TRIGGER IF NOT EXISTS trg_material_po_received_guard BEFORE UPDATE OF received_qty,quantity ON material_purchase_order_items WHEN NEW.received_qty < 0 OR NEW.received_qty > NEW.quantity BEGIN SELECT RAISE(ABORT,'received quantity exceeds ordered quantity'); END")
   ]);
@@ -131,6 +133,26 @@ export async function materialPurchaseHandler({request,env,path,method}){
       if(method==="GET"&&!action){const result=await detail(env.DB,id);return result?resp({order:result}):resp({error:"采购单不存在"},404)}
       const order=await first(env.DB,"SELECT * FROM material_purchase_orders WHERE id=?",id);
       if(!order)return resp({error:"采购单不存在"},404);
+      if(method==="DELETE"&&!action){
+        const existing=await detail(env.DB,id);
+        if(!existing)return resp({error:"采购合同不存在或已被删除"},404);
+        const qtyReceived=existing.items.reduce((sum,item)=>sum+number(item.received_qty),0);
+        const receipt=await first(env.DB,"SELECT id FROM material_receipt_requests WHERE order_id=? LIMIT 1",id);
+        const ledger=await first(env.DB,"SELECT id FROM material_movements WHERE reference_no=? AND movement_type='包材采购入库' LIMIT 1",order.order_no);
+        if(order.status!=="已下单"||qtyReceived>0||receipt||ledger)
+          return resp({error:"此采购单已发生收货或入库，不能直接删除。请先核对库存流水并办理冲销。"},409);
+        const reason=shortText(request.headers.get("x-delete-reason")||"录入错误，删除未入库合同",200);
+        // D1 batch is atomic: archive then delete, with SQL-level guards against concurrent receipt.
+        const safeWhere="id=? AND status='已下单' AND NOT EXISTS(SELECT 1 FROM material_purchase_order_items WHERE order_id=? AND received_qty>0) AND NOT EXISTS(SELECT 1 FROM material_receipt_requests WHERE order_id=?) AND NOT EXISTS(SELECT 1 FROM material_movements WHERE reference_no=? AND movement_type='包材采购入库')";
+        const archive=env.DB.prepare("INSERT INTO material_purchase_order_deletions(id,order_no,order_snapshot,deleted_reason) SELECT id,order_no,?,? FROM material_purchase_orders WHERE "+safeWhere)
+          .bind(JSON.stringify(existing),reason,id,id,id,order.order_no);
+        const remove=env.DB.prepare("DELETE FROM material_purchase_orders WHERE "+safeWhere)
+          .bind(id,id,id,order.order_no);
+        const result=await env.DB.batch([archive,remove]);
+        if(number(result[1]?.meta?.changes)!==1)
+          return resp({error:"合同状态已变化或已发生入库，未执行删除，请刷新后重试。"},409);
+        return resp({ok:true,deleted_id:id,order_no:order.order_no,archived:true});
+      }
       if(method==="PUT"&&action==="contract"){
         const d=await request.json();
         const batch=[env.DB.prepare("UPDATE material_purchase_orders SET delivery_date=?,delivery_address=?,payment_terms=?,quality_terms=?,packaging_terms=?,other_terms=?,sign_location=?,buyer_company=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(
