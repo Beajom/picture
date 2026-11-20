@@ -37,8 +37,9 @@ function displayPurchaseList(){
 window.deleteMaterialPurchaseOrder=async function(id){
   const item=purchaseOrders.find(o=>String(o.id)===String(id));
   const no=item?.order_no||(currentOrder?.id===id?currentOrder?.order_no:'这张合同');
-  const received=n(item?.received_qty)||n(currentOrder?.items?.reduce((total,it)=>total+n(it.received_qty),0));
-  if(received>0||(['部分到货','已入库'].includes(item?.status)||['部分到货','已入库'].includes(currentOrder?.status))){
+  const inPreview=currentOrder?.id===id?currentOrder:null;
+  const received=n(item?.received_qty)||n(inPreview?.items?.reduce((total,it)=>total+n(it.received_qty),0));
+  if(received>0||(['部分到货','已入库'].includes(item?.status)||['部分到货','已入库'].includes(inPreview?.status))){
     toastMsg('该合同已收货入库，不能直接删除，请先核对入库记录');return;
   }
   if(!confirm('确定删除包材采购合同「'+no+'」吗？\n\n仅删除未发生收货入库的合同及订单明细。\n不会删除包材档案，也不会改变成品或包材库存。\n系统会保留删除审计快照。'))return;
