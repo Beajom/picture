@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS materials(
   id TEXT PRIMARY KEY,
   material_code TEXT UNIQUE,
   name TEXT NOT NULL,
+  material_grade TEXT NOT NULL DEFAULT '',
+  material_spec TEXT NOT NULL DEFAULT '',
   unit TEXT NOT NULL DEFAULT '个',
   applicable_model TEXT,
   purchase_price REAL NOT NULL DEFAULT 0,
