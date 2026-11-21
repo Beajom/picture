@@ -463,6 +463,56 @@ body{background:#f4f7fb}
   }
 }
 
+
+/* RETURNED_CONTRACT_ARCHIVE_UI */
+.mpo-return-panel{background:#fff;border:1px solid #dbe6f4;border-radius:13px;padding:17px 18px;margin:0 0 17px;box-shadow:0 1px 4px #11274707}
+.mpo-return-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:14px}
+.mpo-return-head h2{font-size:15px;color:#18345b;font-weight:750;margin:0 0 5px}
+.mpo-return-head p{margin:0;color:#667c9c;font-size:12px;line-height:1.65}
+.mpo-return-counts{display:flex;align-items:center;flex-wrap:wrap;gap:10px;white-space:nowrap}
+.mpo-return-counts span{background:#f4f8ff;border:1px solid #dfeaf8;color:#466181;border-radius:8px;padding:7px 10px;font-size:11px}
+.mpo-return-counts b{font-size:15px;color:#2052b4;margin:0 3px}
+.mpo-return-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.mpo-return-entry{display:flex;align-items:center;gap:9px;min-width:0;padding:10px 11px;background:#f9fbfe;border:1px solid #e7edf6;border-radius:10px}
+.mpo-return-entry-title{display:flex;flex:1;flex-direction:column;min-width:0;gap:3px}
+.mpo-return-entry-title strong{font-size:12px;color:#23405f;overflow-wrap:anywhere}
+.mpo-return-entry-title small{font-size:11px;color:#71849b;line-height:1.5;overflow-wrap:anywhere}
+.mpo-return-entry button{font-size:11px;flex:none}
+.mpo-return-label{display:inline-flex;align-items:center;justify-content:center;flex:none;white-space:nowrap;background:#fff7ed;color:#a35e22;border:1px solid #fed7aa;padding:5px 7px;font-weight:700;font-size:10px;border-radius:7px}
+.mpo-return-label.complete{background:#ecfdf3;color:#147d55;border-color:#b5e9ce}
+.mpo-return-status{border:1px solid #c7d9f8;border-radius:7px;background:#f4f8ff;color:#2858ae;cursor:pointer;padding:6px 9px;font-size:11px;white-space:nowrap;font-weight:650}
+.mpo-return-status.complete{background:#ecfdf3;color:#16784d;border-color:#bce8cb}
+.mpo-return-status:hover{border-color:#1d58cc}
+.mpo-return-manager{display:flex;flex-direction:column;gap:16px}
+.mpo-return-manager-title{display:flex;align-items:center;justify-content:space-between;gap:15px;border-bottom:1px solid #e8edf6;padding:0 0 12px}
+.mpo-return-manager-title h3{font-size:16px;color:#1c3459;margin:0 0 4px}
+.mpo-return-manager-title p{margin:0;font-size:12px;color:#6b7d94}
+.mpo-return-upload{display:grid;grid-template-columns:1fr 1fr;gap:13px;background:#f7faff;border:1px solid #dce7f9;border-radius:11px;padding:15px}
+.mpo-return-upload>label{display:flex;flex-direction:column;gap:7px;color:#435a7a;font-size:12px;min-width:0}
+.mpo-return-upload>label:first-child{grid-column:1/-1}
+.mpo-return-upload>label:nth-child(2){grid-column:1/-1}
+.mpo-return-upload .field{max-width:100%}
+.mpo-return-help{grid-column:1/-1;margin:0;font-size:11px;color:#677b95;line-height:1.65}
+.mpo-return-upload-actions{grid-column:1/-1;display:flex;justify-content:flex-end;align-items:center;gap:12px}
+.mpo-return-upload-actions span{font-size:11px;color:#365e9d}
+.mpo-return-list-title{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #e3eaf4;padding-bottom:9px}
+.mpo-return-list-title b{font-size:13px;color:#1d365b}
+.mpo-return-list-title small{font-size:11px;color:#73839a}
+.mpo-return-file-list{display:flex;flex-direction:column;gap:8px}
+.mpo-return-file{display:flex;align-items:center;gap:10px;border:1px solid #e3eaf4;border-radius:9px;padding:12px;background:#fff}
+.mpo-return-file.is-void{background:#fafafa;opacity:.78}
+.mpo-return-icon{display:grid;place-items:center;border-radius:8px;background:#eef3ff;color:#2455a4;font-weight:800;font-size:10px;width:40px;height:42px;flex:none}
+.mpo-return-file-text{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.mpo-return-file-text strong{overflow-wrap:anywhere;color:#283e5b;font-size:12px}
+.mpo-return-file-text span,.mpo-return-file-text small{font-size:11px;color:#728299}
+.mpo-return-file-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.mpo-return-file-actions .btn{font-size:11px}
+.mpo-return-void{font-size:11px;color:#64748b}
+.mpo-return-empty{font-size:12px;text-align:center;padding:19px;color:#7b8da7;margin:0}
+.mpo-return-warning{padding:9px 11px;background:#fffbf2;color:#946724;border:1px solid #fde8bb;border-radius:7px;font-size:11px;line-height:1.6}
+@media(max-width:1050px){.mpo-return-grid{grid-template-columns:1fr}.mpo-return-head{display:block}.mpo-return-counts{margin-top:11px}}
+@media(max-width:650px){.mpo-return-panel{padding:13px}.mpo-return-entry{flex-wrap:wrap}.mpo-return-manager-title{flex-wrap:wrap}.mpo-return-file{align-items:flex-start;flex-wrap:wrap}.mpo-return-file-actions{margin-left:50px;justify-content:flex-start}.mpo-return-upload{grid-template-columns:1fr}.mpo-return-counts{white-space:normal}}
+
 /* MATERIAL_PURCHASE_CSS_BUNDLE_END */
 </style>
 
@@ -1537,14 +1587,23 @@ function displayPurchaseList(){
   const total=purchaseOrders.reduce((v,x)=>v+n(x.total_amount),0);
   const received=purchaseOrders.reduce((v,x)=>v+n(x.received_qty),0);
   const pending=purchaseOrders.filter(x=>x.status!=='已入库').length;
+  const uploaded=purchaseOrders.filter(o=>n(o.returned_count)>0).length;
+  const fileTotal=purchaseOrders.reduce((v,o)=>v+n(o.returned_count),0);
   const summary='<div class="mpo-kpis">'+
     '<div class="mpo-kpi"><small>包材采购单</small><strong>'+purchaseOrders.length+'</strong></div>'+
     '<div class="mpo-kpi"><small>合同金额</small><strong>'+yuan(total)+'</strong></div>'+
-    '<div class="mpo-kpi"><small>未全部到货</small><strong>'+pending+'</strong><small>累计到货 '+received.toLocaleString()+' 件</small></div></div>';
+    '<div class="mpo-kpi"><small>未全部到货</small><strong>'+pending+'</strong><small>累计到货 '+received.toLocaleString()+' 件</small></div></div>'+
+    '<section class="mpo-return-panel"><div class="mpo-return-head"><div><h2>回传合同归档</h2><p>供应商签字 / 盖章回传的原始文件，按采购单号归档保存，可随时查看和补传。</p></div>'+
+    '<div class="mpo-return-counts"><span>已回传 <b>'+uploaded+'</b> 单</span><span>待回传 <b>'+(purchaseOrders.length-uploaded)+'</b> 单</span><span>有效文件 <b>'+fileTotal+'</b> 份</span></div></div>'+
+    (purchaseOrders.length?'<div class="mpo-return-grid">'+purchaseOrders.slice(0,6).map(o=>
+      '<div class="mpo-return-entry"><span class="mpo-return-label '+(n(o.returned_count)>0?'complete':'')+'">'+(n(o.returned_count)>0?'已回传':'待上传')+'</span>'+
+      '<span class="mpo-return-entry-title"><strong>'+safe(o.order_no)+'</strong><small>'+safe(o.supplier_name||'未设置供应商')+' · '+n(o.returned_count)+' 份文件</small></span>'+
+      '<button type="button" class="btn" onclick="manageReturnedContracts(\''+safe(o.id)+'\')">'+(n(o.returned_count)>0?'查看 / 补传':'上传回传合同')+'</button></div>'
+    ).join('')+'</div>':'<p class="mpo-return-empty">创建采购单后即可归档供应商回传合同。</p>')+'</section>';
   const table=purchaseOrders.length?
-    '<div class="mpo-listbox"><table class="mpo-table"><thead><tr><th>采购单号</th><th>日期 / 交期</th><th>供应商</th><th>采购数量</th><th>订单金额</th><th>已入库</th><th>状态</th><th>操作</th></tr></thead><tbody>'+
-    purchaseOrders.map(o=>'<tr><td><b>'+safe(o.order_no)+'</b></td><td>'+safe(o.order_date)+'<div class="small muted">'+safe(o.delivery_date||'未填交期')+'</div></td><td>'+safe(o.supplier_name||'-')+'</td><td>'+n(o.total_qty).toLocaleString()+'</td><td>'+yuan(o.total_amount)+'</td><td>'+n(o.received_qty).toLocaleString()+'</td><td>'+statusTag(o.status)+'</td><td><div class="mpo-inline-actions">'+btn('查看合同',"previewMaterialPurchaseContract('"+safe(o.id)+"')")+btn('编辑合同',"editMaterialPurchaseContract('"+safe(o.id)+"')")+((o.status==='已入库')?'':btn('收货入库',"receiveMaterialPurchase('"+safe(o.id)+"')",true))+
-    ((n(o.received_qty)>0||o.status!=='已下单')?
+    '<div class="mpo-listbox"><table class="mpo-table"><thead><tr><th>采购单号</th><th>日期 / 交期</th><th>供应商</th><th>采购数量</th><th>订单金额</th><th>已入库</th><th>回传合同</th><th>状态</th><th>操作</th></tr></thead><tbody>'+
+    purchaseOrders.map(o=>'<tr><td><b>'+safe(o.order_no)+'</b></td><td>'+safe(o.order_date)+'<div class="small muted">'+safe(o.delivery_date||'未填交期')+'</div></td><td>'+safe(o.supplier_name||'-')+'</td><td>'+n(o.total_qty).toLocaleString()+'</td><td>'+yuan(o.total_amount)+'</td><td>'+n(o.received_qty).toLocaleString()+'</td><td><button type="button" class="mpo-return-status '+(n(o.returned_count)>0?'complete':'')+'" onclick="manageReturnedContracts(\''+safe(o.id)+'\')">'+(n(o.returned_count)>0?'已回传 '+n(o.returned_count)+' 份':'＋ 上传回传')+'</button></td><td>'+statusTag(o.status)+'</td><td><div class="mpo-inline-actions">'+btn('查看合同',"previewMaterialPurchaseContract('"+safe(o.id)+"')")+btn('编辑合同',"editMaterialPurchaseContract('"+safe(o.id)+"')")+((o.status==='已入库')?'':btn('收货入库',"receiveMaterialPurchase('"+safe(o.id)+"')",true))+
+    ((n(o.received_qty)>0||n(o.returned_count)>0||o.status!=='已下单')?
       '<button type="button" class="btn mpo-delete-disabled" disabled title="已发生入库或状态不允许删除">不可删除</button>':
       '<button type="button" class="btn danger mpo-delete-btn" onclick="deleteMaterialPurchaseOrder(\''+safe(o.id)+'\')">删除</button>')+'</div></td></tr>').join('')+
     '</tbody></table></div>':
@@ -1556,6 +1615,7 @@ window.deleteMaterialPurchaseOrder=async function(id){
   const no=item?.order_no||(currentOrder?.id===id?currentOrder?.order_no:'这张合同');
   const inPreview=currentOrder?.id===id?currentOrder:null;
   const received=n(item?.received_qty)||n(inPreview?.items?.reduce((total,it)=>total+n(it.received_qty),0));
+  if(n(item?.returned_count)>0){toastMsg('已有回传合同的订单不能直接删除，请先核对归档文件');return}
   if(received>0||(['部分到货','已入库'].includes(item?.status)||['部分到货','已入库'].includes(inPreview?.status))){
     toastMsg('该合同已收货入库，不能直接删除，请先核对入库记录');return;
   }
@@ -1571,6 +1631,95 @@ window.deleteMaterialPurchaseOrder=async function(id){
     buttons.forEach(button=>button.disabled=false);
   }
 };
+
+const returnedContractURL=(orderId,fileId)=>'/api/material-purchase-orders/'+encodeURIComponent(orderId)+'/returned-contracts/'+encodeURIComponent(fileId);
+const returnedFileSize=bytes=>Number(bytes)>=1024*1024?(Number(bytes)/1024/1024).toFixed(1)+' MB':Math.max(1,Math.ceil(Number(bytes)/1024))+' KB';
+window.manageReturnedContracts=async function(orderId){
+  const order=purchaseOrders.find(o=>o.id===orderId)||(currentOrder?.id===orderId?currentOrder:null);
+  if(!order){toastMsg('采购单不存在，请先刷新列表');return}
+  try{
+    const response=await api('/material-purchase-orders/'+encodeURIComponent(orderId)+'/returned-contracts');
+    const files=Array.isArray(response.files)?response.files:[],active=files.filter(f=>!Number(f.is_void));
+    const fileRows=files.length?files.map(file=>{
+      const voided=!!Number(file.is_void),type=String(file.content_type||''),preview=!voided&&(/^(application\/pdf|image\/)/).test(type);
+      const url=returnedContractURL(orderId,file.id);
+      return '<div class="mpo-return-file '+(voided?'is-void':'')+'">'+
+        '<span class="mpo-return-icon">'+(type==='application/pdf'?'PDF':type.startsWith('image/')?'图像':'DOC')+'</span>'+
+        '<div class="mpo-return-file-text"><strong>'+safe(file.original_name)+'</strong><span>'+
+        returnedFileSize(file.byte_size)+' · '+safe(String(file.uploaded_at||'').replace('T',' ').slice(0,16))+
+        (voided?' · 已作废':'')+'</span>'+
+        (file.description?'<small>'+safe(file.description)+'</small>':'')+'</div>'+
+        '<div class="mpo-return-file-actions">'+
+        (preview?'<a class="btn" target="_blank" rel="noopener noreferrer" href="'+safe(url)+'">预览</a>':'')+
+        '<button type="button" class="btn" data-file-action="download" data-file-id="'+safe(file.id)+'">下载</button>'+
+        (voided?'<span class="mpo-return-void">作废归档</span>':
+          '<button type="button" class="btn danger" data-file-action="void" data-file-id="'+safe(file.id)+'">标记作废</button>')+
+        '</div></div>'
+    }).join(''):'<p class="mpo-return-empty">暂无回传文件，请上传供应商签字、盖章后的原始合同。</p>';
+    openModal('回传合同归档 · '+order.order_no,
+      '<div class="mpo-return-manager">'+
+      '<div class="mpo-return-manager-title"><div><h3>供应商回传合同</h3><p>'+safe(order.supplier_name||'供应商未设置')+' · 采购单 '+safe(order.order_no)+'</p></div>'+
+      '<span class="mpo-return-label '+(active.length?'complete':'')+'">'+(active.length?'已回传 '+active.length+' 份':'尚未回传')+'</span></div>'+
+      '<form id="mpoReturnedUpload" class="mpo-return-upload">'+
+      '<label>选择原始合同文件<input type="file" class="field" name="file" id="mpoReturnedFile" required accept=".pdf,.jpg,.jpeg,.png,.webp,.docx"></label>'+
+      '<label>备注（选填）<input type="text" class="field" name="description" maxlength="240" placeholder="如：供应商已盖章 / 双方签字确认 / 第二次回传"></label>'+
+      '<p class="mpo-return-help">支持 PDF、JPG、PNG、WebP、DOCX，单个文件最大 20MB。可多次上传，每次均保留原始文件。</p>'+
+      '<div class="mpo-return-upload-actions"><span id="mpoReturnedUploadStatus" aria-live="polite"></span><button type="submit" id="mpoReturnedUploadSubmit" class="btn primary">上传并保存到云端</button></div></form>'+
+      '<div class="mpo-return-list-title"><b>回传文件记录</b><small>总计 '+files.length+' 份 · 有效 '+active.length+' 份</small></div>'+
+      '<div id="mpoReturnedFiles" class="mpo-return-file-list">'+fileRows+'</div>'+
+      '<div class="mpo-return-warning">文件储存在 Workers KV 的非公开存储路径，但目前系统尚未配置严格的用户登录权限。正式使用时请启用 Cloudflare Access，避免他人访问合同。</div>'+
+      '</div>');
+    const form=el('mpoReturnedUpload');
+    form.onsubmit=async e=>{
+      e.preventDefault();
+      const file=el('mpoReturnedFile')?.files?.[0];
+      const status=el('mpoReturnedUploadStatus'),button=el('mpoReturnedUploadSubmit');
+      if(!file)return;
+      if(file.size>20*1024*1024){toastMsg('单个文件不能超过20MB');return}
+      button.disabled=true;button.textContent='正在上传…';
+      if(status)status.textContent='正在上传，请勿关闭窗口';
+      try{
+        const fd=new FormData(form);
+        const res=await fetch('/api/material-purchase-orders/'+encodeURIComponent(orderId)+'/returned-contracts',{method:'POST',body:fd,cache:'no-store'});
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok)throw Error(data.error||'上传失败');
+        await loadPurchaseOrders();
+        await manageReturnedContracts(orderId);
+        toastMsg('供应商回传合同已保存到云端');
+      }catch(err){
+        if(status)status.textContent='上传失败：'+err.message;
+        toastMsg('上传失败：'+err.message)
+      }finally{button.disabled=false;button.textContent='上传并保存到云端'}
+    };
+    el('mpoReturnedFiles')?.addEventListener('click',async e=>{
+      const target=e.target.closest('button[data-file-action]');
+      if(!target)return;
+      const fileId=target.dataset.fileId;
+      const record=files.find(f=>f.id===fileId);
+      if(!record)return;
+      if(target.dataset.fileAction==='download'){
+        try{
+          const res=await fetch(returnedContractURL(orderId,fileId),{cache:'no-store'});
+          if(!res.ok)throw Error('文件读取失败');
+          const url=URL.createObjectURL(await res.blob()),a=document.createElement('a');
+          a.href=url;a.download=record.original_name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();
+          setTimeout(()=>URL.revokeObjectURL(url),1000);
+        }catch(err){toastMsg('下载失败：'+err.message)}
+      }
+      if(target.dataset.fileAction==='void'){
+        if(!confirm('将「'+record.original_name+'」标记作废？原始文件和上传记录会继续保留，方便追溯。'))return;
+        target.disabled=true;
+        try{
+          await api(returnedContractURL(orderId,fileId),{method:'DELETE'});
+          await loadPurchaseOrders();
+          await manageReturnedContracts(orderId);
+          toastMsg('已作废该版本，原始文件仍在云端归档');
+        }catch(err){target.disabled=false;toastMsg('操作失败：'+err.message)}
+      }
+    });
+  }catch(err){toastMsg('加载回传合同失败：'+err.message)}
+};
+
 async function loadPurchaseOrders(){
   try{const result=await api('/material-purchase-orders');purchaseOrders=result.orders||[];displayPurchaseList()}
   catch(e){const w=el('materialPurchaseOrders');if(w)w.innerHTML='<div class="mpo-note">加载包材采购单失败：'+safe(e.message)+'。请点击刷新重试。</div>'}
@@ -1579,7 +1728,7 @@ views.materialPurchase=function(){
   setTimeout(loadPurchaseOrders,0);
   return '<div class="title"><div><h1>包装辅料采购</h1><p>包材采购单 → 订货合同 → 收货入库。与成品采购单独立管理。</p></div>'+
     '<div class="row" style="gap:8px;flex-wrap:wrap">'+btn('刷新列表','loadMaterialPurchaseOrders()')+btn('甲方资料 / 公章管理','editMaterialContractProfile()')+btn('管理包材',"go('materials')")+btn('＋ 新建包材采购单','newMaterialPO()',true)+'</div></div>'+
-    '<div class="mpo-note" style="margin-bottom:12px">支持彩盒、白卡纸盒、包装袋、吊牌、贴纸、标签、纸箱等辅料；一个采购单可包含多种材料。合同可编辑材质、规格、数量、价格、交货和付款条款。只有确认到货时才增加包材库存，绝不会改变成品 SKU 库存。未发生收货的错误合同可删除，已入库合同需先办理冲销。</div>'+
+    '<div class="mpo-note" style="margin-bottom:12px">支持彩盒、白卡纸盒、包装袋、吊牌、贴纸、标签、纸箱等辅料；一个采购单可包含多种材料。合同可编辑材质、规格、数量、价格、交货和付款条款。只有确认到货时才增加包材库存，绝不会改变成品 SKU 库存。未发生收货、也未保存回传文件的错误合同可删除，已归档或入库订单不能直接删除。</div>'+
     '<div id="materialPurchaseOrders"><div class="panel" style="padding:24px">正在加载包材采购单…</div></div>'
 };
 window.loadMaterialPurchaseOrders=loadPurchaseOrders;
@@ -1774,6 +1923,7 @@ window.previewMaterialPurchaseContract=async function(id){
       '<label class="mpo-seal-size-picker">公章尺寸 <select class="field" aria-label="公章打印尺寸" onchange="changeMaterialContractSealSize(this.value)">'+
       [38,42,45].map(size=>'<option value="'+size+'"'+(materialContractSealSize()===size?' selected':'')+'>'+({38:'小 · 38mm',42:'标准 · 42mm',45:'大 · 45mm'}[size])+'</option>').join('')+'</select></label>'+
       btn('甲方资料 / 公章管理','editMaterialContractProfile()')+
+      btn('回传合同 / 归档',"manageReturnedContracts('"+safe(id)+"')")+
       btn('修改合同内容',"editMaterialPurchaseContract('"+safe(id)+"')")+
       (n(currentOrder.items?.reduce((q,it)=>q+n(it.received_qty),0))===0&&currentOrder.status==='已下单'?
         '<button type="button" class="btn danger mpo-delete-btn" onclick="deleteMaterialPurchaseOrder(\''+safe(id)+'\')">删除合同</button>':'')+
