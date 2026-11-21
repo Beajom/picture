@@ -20,14 +20,23 @@ function displayPurchaseList(){
   const total=purchaseOrders.reduce((v,x)=>v+n(x.total_amount),0);
   const received=purchaseOrders.reduce((v,x)=>v+n(x.received_qty),0);
   const pending=purchaseOrders.filter(x=>x.status!=='已入库').length;
+  const uploaded=purchaseOrders.filter(o=>n(o.returned_count)>0).length;
+  const fileTotal=purchaseOrders.reduce((v,o)=>v+n(o.returned_count),0);
   const summary='<div class="mpo-kpis">'+
     '<div class="mpo-kpi"><small>包材采购单</small><strong>'+purchaseOrders.length+'</strong></div>'+
     '<div class="mpo-kpi"><small>合同金额</small><strong>'+yuan(total)+'</strong></div>'+
-    '<div class="mpo-kpi"><small>未全部到货</small><strong>'+pending+'</strong><small>累计到货 '+received.toLocaleString()+' 件</small></div></div>';
+    '<div class="mpo-kpi"><small>未全部到货</small><strong>'+pending+'</strong><small>累计到货 '+received.toLocaleString()+' 件</small></div></div>'+
+    '<section class="mpo-return-panel"><div class="mpo-return-head"><div><h2>回传合同归档</h2><p>供应商签字 / 盖章回传的原始文件，按采购单号归档保存，可随时查看和补传。</p></div>'+
+    '<div class="mpo-return-counts"><span>已回传 <b>'+uploaded+'</b> 单</span><span>待回传 <b>'+(purchaseOrders.length-uploaded)+'</b> 单</span><span>有效文件 <b>'+fileTotal+'</b> 份</span></div></div>'+
+    (purchaseOrders.length?'<div class="mpo-return-grid">'+purchaseOrders.slice(0,6).map(o=>
+      '<div class="mpo-return-entry"><span class="mpo-return-label '+(n(o.returned_count)>0?'complete':'')+'">'+(n(o.returned_count)>0?'已回传':'待上传')+'</span>'+
+      '<span class="mpo-return-entry-title"><strong>'+safe(o.order_no)+'</strong><small>'+safe(o.supplier_name||'未设置供应商')+' · '+n(o.returned_count)+' 份文件</small></span>'+
+      '<button type="button" class="btn" onclick="manageReturnedContracts(\''+safe(o.id)+'\')">'+(n(o.returned_count)>0?'查看 / 补传':'上传回传合同')+'</button></div>'
+    ).join('')+'</div>':'<p class="mpo-return-empty">创建采购单后即可归档供应商回传合同。</p>')+'</section>';
   const table=purchaseOrders.length?
-    '<div class="mpo-listbox"><table class="mpo-table"><thead><tr><th>采购单号</th><th>日期 / 交期</th><th>供应商</th><th>采购数量</th><th>订单金额</th><th>已入库</th><th>状态</th><th>操作</th></tr></thead><tbody>'+
-    purchaseOrders.map(o=>'<tr><td><b>'+safe(o.order_no)+'</b></td><td>'+safe(o.order_date)+'<div class="small muted">'+safe(o.delivery_date||'未填交期')+'</div></td><td>'+safe(o.supplier_name||'-')+'</td><td>'+n(o.total_qty).toLocaleString()+'</td><td>'+yuan(o.total_amount)+'</td><td>'+n(o.received_qty).toLocaleString()+'</td><td>'+statusTag(o.status)+'</td><td><div class="mpo-inline-actions">'+btn('查看合同',"previewMaterialPurchaseContract('"+safe(o.id)+"')")+btn('编辑合同',"editMaterialPurchaseContract('"+safe(o.id)+"')")+((o.status==='已入库')?'':btn('收货入库',"receiveMaterialPurchase('"+safe(o.id)+"')",true))+
-    ((n(o.received_qty)>0||o.status!=='已下单')?
+    '<div class="mpo-listbox"><table class="mpo-table"><thead><tr><th>采购单号</th><th>日期 / 交期</th><th>供应商</th><th>采购数量</th><th>订单金额</th><th>已入库</th><th>回传合同</th><th>状态</th><th>操作</th></tr></thead><tbody>'+
+    purchaseOrders.map(o=>'<tr><td><b>'+safe(o.order_no)+'</b></td><td>'+safe(o.order_date)+'<div class="small muted">'+safe(o.delivery_date||'未填交期')+'</div></td><td>'+safe(o.supplier_name||'-')+'</td><td>'+n(o.total_qty).toLocaleString()+'</td><td>'+yuan(o.total_amount)+'</td><td>'+n(o.received_qty).toLocaleString()+'</td><td><button type="button" class="mpo-return-status '+(n(o.returned_count)>0?'complete':'')+'" onclick="manageReturnedContracts(\''+safe(o.id)+'\')">'+(n(o.returned_count)>0?'已回传 '+n(o.returned_count)+' 份':'＋ 上传回传')+'</button></td><td>'+statusTag(o.status)+'</td><td><div class="mpo-inline-actions">'+btn('查看合同',"previewMaterialPurchaseContract('"+safe(o.id)+"')")+btn('编辑合同',"editMaterialPurchaseContract('"+safe(o.id)+"')")+((o.status==='已入库')?'':btn('收货入库',"receiveMaterialPurchase('"+safe(o.id)+"')",true))+
+    ((n(o.received_qty)>0||n(o.returned_count)>0||o.status!=='已下单')?
       '<button type="button" class="btn mpo-delete-disabled" disabled title="已发生入库或状态不允许删除">不可删除</button>':
       '<button type="button" class="btn danger mpo-delete-btn" onclick="deleteMaterialPurchaseOrder(\''+safe(o.id)+'\')">删除</button>')+'</div></td></tr>').join('')+
     '</tbody></table></div>':
@@ -39,6 +48,7 @@ window.deleteMaterialPurchaseOrder=async function(id){
   const no=item?.order_no||(currentOrder?.id===id?currentOrder?.order_no:'这张合同');
   const inPreview=currentOrder?.id===id?currentOrder:null;
   const received=n(item?.received_qty)||n(inPreview?.items?.reduce((total,it)=>total+n(it.received_qty),0));
+  if(n(item?.returned_count)>0){toastMsg('已有回传合同的订单不能直接删除，请先核对归档文件');return}
   if(received>0||(['部分到货','已入库'].includes(item?.status)||['部分到货','已入库'].includes(inPreview?.status))){
     toastMsg('该合同已收货入库，不能直接删除，请先核对入库记录');return;
   }
@@ -62,7 +72,7 @@ views.materialPurchase=function(){
   setTimeout(loadPurchaseOrders,0);
   return '<div class="title"><div><h1>包装辅料采购</h1><p>包材采购单 → 订货合同 → 收货入库。与成品采购单独立管理。</p></div>'+
     '<div class="row" style="gap:8px;flex-wrap:wrap">'+btn('刷新列表','loadMaterialPurchaseOrders()')+btn('甲方资料 / 公章管理','editMaterialContractProfile()')+btn('管理包材',"go('materials')")+btn('＋ 新建包材采购单','newMaterialPO()',true)+'</div></div>'+
-    '<div class="mpo-note" style="margin-bottom:12px">支持彩盒、白卡纸盒、包装袋、吊牌、贴纸、标签、纸箱等辅料；一个采购单可包含多种材料。合同可编辑材质、规格、数量、价格、交货和付款条款。只有确认到货时才增加包材库存，绝不会改变成品 SKU 库存。未发生收货的错误合同可删除，已入库合同需先办理冲销。</div>'+
+    '<div class="mpo-note" style="margin-bottom:12px">支持彩盒、白卡纸盒、包装袋、吊牌、贴纸、标签、纸箱等辅料；一个采购单可包含多种材料。合同可编辑材质、规格、数量、价格、交货和付款条款。只有确认到货时才增加包材库存，绝不会改变成品 SKU 库存。未发生收货、也未保存回传文件的错误合同可删除，已归档或入库订单不能直接删除。</div>'+
     '<div id="materialPurchaseOrders"><div class="panel" style="padding:24px">正在加载包材采购单…</div></div>'
 };
 window.loadMaterialPurchaseOrders=loadPurchaseOrders;
@@ -257,6 +267,7 @@ window.previewMaterialPurchaseContract=async function(id){
       '<label class="mpo-seal-size-picker">公章尺寸 <select class="field" aria-label="公章打印尺寸" onchange="changeMaterialContractSealSize(this.value)">'+
       [38,42,45].map(size=>'<option value="'+size+'"'+(materialContractSealSize()===size?' selected':'')+'>'+({38:'小 · 38mm',42:'标准 · 42mm',45:'大 · 45mm'}[size])+'</option>').join('')+'</select></label>'+
       btn('甲方资料 / 公章管理','editMaterialContractProfile()')+
+      btn('回传合同 / 归档',"manageReturnedContracts('"+safe(id)+"')")+
       btn('修改合同内容',"editMaterialPurchaseContract('"+safe(id)+"')")+
       (n(currentOrder.items?.reduce((q,it)=>q+n(it.received_qty),0))===0&&currentOrder.status==='已下单'?
         '<button type="button" class="btn danger mpo-delete-btn" onclick="deleteMaterialPurchaseOrder(\''+safe(id)+'\')">删除合同</button>':'')+
