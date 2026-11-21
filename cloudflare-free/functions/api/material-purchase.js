@@ -111,9 +111,9 @@ export async function materialPurchaseHandler({request,env,path,method}){
       return resp({ok:true});
     }
     // Only a stored order id is accepted: files cannot be fetched with arbitrary KV keys.
-    const rf=path.match(/^\/material-purchase-orders\/([^/]+)\/returned-contracts(?:\/([^/]+))?$/);
+    const rf=path.match(/^\/material-purchase-orders\/([^/]+)\/returned-contracts(?:\/([^/]+)(?:\/(verify))?)?$/);
     if(rf){
-      const orderId=rf[1],fileId=rf[2];
+      const orderId=rf[1],fileId=rf[2],fileAction=rf[3];
       if(!safeId(orderId)||(fileId&&!safeId(fileId)))return resp({error:"文件或采购单编号无效"},400);
       const orderExists=await first(env.DB,"SELECT id,order_no FROM material_purchase_orders WHERE id=?",orderId);
       if(!orderExists)return resp({error:"采购单不存在"},404);
@@ -144,7 +144,16 @@ export async function materialPurchaseHandler({request,env,path,method}){
         }
         return resp({ok:true,file:{id:fileIdNew,original_name:fileName,content_type:format.contentType,byte_size:file.size,description,uploaded_at:new Date().toISOString(),is_void:0}},201);
       }
-      if(fileId&&method==="GET"){
+      // Explicitly test both the D1 index and the original KV object, without downloading the file.
+      if(fileId&&method==="GET"&&fileAction==="verify"){
+        const record=await first(env.DB,"SELECT kv_key,original_name,byte_size,is_void,uploaded_at FROM material_returned_contract_files WHERE id=? AND order_id=?",fileId,orderId);
+        if(!record)return resp({error:"云端无此回传合同记录",saved:false,readable:false},404);
+        const stored=await env.IMAGES.get(record.kv_key,"stream");
+        const readable=stored!==null;
+        if(!readable)return resp({saved:true,readable:false,error:"文件记录已保存，但原始文件暂时无法读取，请稍后重新验证"},409);
+        return resp({saved:true,readable:true,id:fileId,original_name:record.original_name,byte_size:record.byte_size,is_void:record.is_void,uploaded_at:record.uploaded_at});
+      }
+      if(fileId&&method==="GET"&&!fileAction){
         const record=await first(env.DB,"SELECT * FROM material_returned_contract_files WHERE id=? AND order_id=?",fileId,orderId);
         if(!record)return resp({error:"回传文件不存在"},404);
         const object=await env.IMAGES.get(record.kv_key,"arrayBuffer");
@@ -160,7 +169,7 @@ export async function materialPurchaseHandler({request,env,path,method}){
           "cache-control":"private, no-store, max-age=0",
           "x-content-type-options":"nosniff",
           "referrer-policy":"no-referrer",
-          "x-frame-options":"DENY"
+          "x-frame-options":"SAMEORIGIN"
         }});
       }
       if(fileId&&method==="DELETE"){
