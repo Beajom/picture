@@ -1925,7 +1925,7 @@ window.previewMaterialPurchaseContract=async function(id){
       btn('甲方资料 / 公章管理','editMaterialContractProfile()')+
       btn('回传合同 / 归档',"manageReturnedContracts('"+safe(id)+"')")+
       btn('修改合同内容',"editMaterialPurchaseContract('"+safe(id)+"')")+
-      (n(currentOrder.items?.reduce((q,it)=>q+n(it.received_qty),0))===0&&currentOrder.status==='已下单'?
+      (n(currentOrder.returned_count)===0&&n(currentOrder.items?.reduce((q,it)=>q+n(it.received_qty),0))===0&&currentOrder.status==='已下单'?
         '<button type="button" class="btn danger mpo-delete-btn" onclick="deleteMaterialPurchaseOrder(\''+safe(id)+'\')">删除合同</button>':'')+
       btn('A4打印 / 保存PDF','printMaterialPurchaseContract()',true)+'</div>'+
       paperMarkup(currentOrder));
