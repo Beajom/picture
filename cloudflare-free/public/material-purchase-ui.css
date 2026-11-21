@@ -385,3 +385,40 @@
 .mpo-return-warning{padding:9px 11px;background:#fffbf2;color:#946724;border:1px solid #fde8bb;border-radius:7px;font-size:11px;line-height:1.6}
 @media(max-width:1050px){.mpo-return-grid{grid-template-columns:1fr}.mpo-return-head{display:block}.mpo-return-counts{margin-top:11px}}
 @media(max-width:650px){.mpo-return-panel{padding:13px}.mpo-return-entry{flex-wrap:wrap}.mpo-return-manager-title{flex-wrap:wrap}.mpo-return-file{align-items:flex-start;flex-wrap:wrap}.mpo-return-file-actions{margin-left:50px;justify-content:flex-start}.mpo-return-upload{grid-template-columns:1fr}.mpo-return-counts{white-space:normal}}
+
+
+/* RETURNED_CONTRACT_DRAGDROP_V2: direct PDF viewer, paste and drag/drop file receiver */
+.mpo-return-dropzone{grid-column:1/-1;display:flex;flex-direction:column;gap:9px;align-items:center;justify-content:center;text-align:center;padding:28px 18px;background:#fff;border:2px dashed #a9bfeb;border-radius:12px;min-height:196px;cursor:pointer;transition:background-color .16s,border-color .16s,box-shadow .16s;outline-offset:3px}
+.mpo-return-dropzone:hover,.mpo-return-dropzone:focus-visible{border-color:#2962d5;background:#f7faff}
+.mpo-return-dropzone.is-dragging{background:#eaf3ff;border-color:#1b56cf;box-shadow:0 0 0 4px #dbeafe inset}
+.mpo-return-dropzone.is-ready{background:#f5fff9;border-color:#71c49a}
+.mpo-return-dropzone strong{color:#193a6b;font-size:15px;line-height:1.5}
+.mpo-return-dropzone>span{color:#6e819b;font-size:12px;line-height:1.5}
+.mpo-return-drop-icon{width:43px;height:43px;display:grid;place-items:center;background:#edf3ff;color:#356ed8;border-radius:13px;font-size:24px;font-weight:800}
+.mpo-return-selected{margin-top:5px;padding:9px 12px;background:#e9f9ee;border:1px solid #b6e5c3;border-radius:8px;color:#087948;font-size:12px;max-width:100%;overflow-wrap:anywhere;font-weight:650}
+.mpo-return-selected[hidden]{display:none!important}
+.mpo-return-upload-status{font-size:12px;color:#47617f}
+#mpoReturnedUploadStatus[data-state="error"]{color:#b42318}
+#mpoReturnedUploadStatus[data-state="working"]{color:#2459b4}
+#mpoReturnedUploadStatus[data-state="ready"]{color:#087948}
+.mpo-return-success{border:1px solid #9fdfb7;border-radius:9px;background:#edfdf4;color:#087441;padding:11px 13px;font-size:12px;font-weight:650;overflow-wrap:anywhere}
+.mpo-file-verification{font-size:10px!important;color:#64748b;line-height:1.45;margin-top:3px}
+.mpo-file-verification.is-good{color:#098046;font-weight:700}
+.mpo-file-verification.is-warning{color:#b54708;font-weight:650}
+.mpo-return-preview-pane{border:1px solid #dce5f4;background:#f8fafc;border-radius:12px;padding:13px;margin:2px 0 0}
+.mpo-return-preview-pane[hidden]{display:none!important}
+.mpo-return-preview-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:12px}
+.mpo-return-preview-head b{color:#1e375d;font-size:13px;overflow-wrap:anywhere}
+.mpo-return-preview-head>div{display:flex;gap:8px;flex-wrap:wrap}
+.mpo-return-preview-loading,.mpo-return-preview-error,.mpo-return-preview-tip{color:#61738d;font-size:12px;line-height:1.7;text-align:center;padding:16px}
+.mpo-return-preview-error{color:#b42318}
+.mpo-return-pdf-viewer{display:block;width:100%;height:min(67vh,730px);min-height:410px;border:1px solid #cbd5e1;background:#fff;border-radius:7px}
+.mpo-return-image-viewer{display:block;max-width:100%;max-height:75vh;height:auto;margin:0 auto;object-fit:contain;background:#fff;border-radius:6px}
+#mb:has(#mpoReturnedUpload) .modal{width:min(1080px,97vw)}
+#mb:has(#mpoReturnedUpload) .modalbody{padding:19px}
+@media(max-width:650px){
+  .mpo-return-dropzone{padding:20px 12px;min-height:174px}
+  .mpo-return-pdf-viewer{min-height:300px;height:57vh}
+  #mb:has(#mpoReturnedUpload) .modalbody{padding:11px}
+  .mpo-return-preview-head{align-items:flex-start}
+}
