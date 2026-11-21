@@ -144,12 +144,12 @@ export async function materialPurchaseHandler({request,env,path,method}){
         return resp({ok:true,file:{id:fileIdNew,original_name:fileName,content_type:format.contentType,byte_size:file.size,description,uploaded_at:new Date().toISOString(),is_void:0}},201);
       }
       if(fileId&&method==="GET"){
-        const record=await first(env.DB,"SELECT * FROM material_returned_contract_files WHERE id=? AND order_id=? AND is_void=0",fileId,orderId);
-        if(!record)return resp({error:"回传文件不存在或已作废"},404);
+        const record=await first(env.DB,"SELECT * FROM material_returned_contract_files WHERE id=? AND order_id=?",fileId,orderId);
+        if(!record)return resp({error:"回传文件不存在"},404);
         const object=await env.IMAGES.get(record.kv_key,"arrayBuffer");
         if(!object)return resp({error:"云端文件读取失败，请检查存储额度"},404);
         const ext=record.original_name.split(".").pop().toLowerCase();
-        const inline=["pdf","png","jpg","jpeg","webp"].includes(ext);
+        const inline=!Number(record.is_void)&&["pdf","png","jpg","jpeg","webp"].includes(ext);
         const filename=cleanedContractFilename(record.original_name);
         const disposition=(inline?"inline":"attachment")+'; filename="returned-contract.'+ext+'"; filename*=UTF-8\'\''+encodeURIComponent(filename);
         return new Response(object,{headers:{
