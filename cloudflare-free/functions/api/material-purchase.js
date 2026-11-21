@@ -49,7 +49,8 @@ async function detail(db,id){
   const extra=await first(db,"SELECT * FROM material_purchase_contract_details WHERE order_id=?",id);
   const items=await rows(db,"SELECT i.*,m.material_code,m.name material_name,m.unit,m.applicable_model,m.image_url,m.current_stock,(SELECT ir.public_url FROM image_refs ir WHERE ir.material_id=m.id AND ir.public_url IS NOT NULL ORDER BY ir.created_at DESC LIMIT 1) resolved_image_url FROM material_purchase_order_items i LEFT JOIN materials m ON m.id=i.material_id WHERE i.order_id=? ORDER BY i.rowid",id);
   const subtotal=items.reduce((sum,x)=>sum+number(x.quantity)*number(x.unit_price),0);
-  return {...order,items,subtotal,total:subtotal+number(order.shipping_fee),
+  const count=await first(db,"SELECT COUNT(*) total FROM material_returned_contract_files WHERE order_id=? AND is_void=0",id);
+  return {...order,items,returned_count:number(count?.total),subtotal,total:subtotal+number(order.shipping_fee),
     buyer_address:extra?.buyer_address??profile?.address??"",
     buyer_phone:extra?.buyer_phone??profile?.phone??"",
     buyer_representative:extra?.buyer_representative??profile?.representative??"",
