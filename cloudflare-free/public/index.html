@@ -513,6 +513,43 @@ body{background:#f4f7fb}
 @media(max-width:1050px){.mpo-return-grid{grid-template-columns:1fr}.mpo-return-head{display:block}.mpo-return-counts{margin-top:11px}}
 @media(max-width:650px){.mpo-return-panel{padding:13px}.mpo-return-entry{flex-wrap:wrap}.mpo-return-manager-title{flex-wrap:wrap}.mpo-return-file{align-items:flex-start;flex-wrap:wrap}.mpo-return-file-actions{margin-left:50px;justify-content:flex-start}.mpo-return-upload{grid-template-columns:1fr}.mpo-return-counts{white-space:normal}}
 
+
+/* RETURNED_CONTRACT_DRAGDROP_V2: direct PDF viewer, paste and drag/drop file receiver */
+.mpo-return-dropzone{grid-column:1/-1;display:flex;flex-direction:column;gap:9px;align-items:center;justify-content:center;text-align:center;padding:28px 18px;background:#fff;border:2px dashed #a9bfeb;border-radius:12px;min-height:196px;cursor:pointer;transition:background-color .16s,border-color .16s,box-shadow .16s;outline-offset:3px}
+.mpo-return-dropzone:hover,.mpo-return-dropzone:focus-visible{border-color:#2962d5;background:#f7faff}
+.mpo-return-dropzone.is-dragging{background:#eaf3ff;border-color:#1b56cf;box-shadow:0 0 0 4px #dbeafe inset}
+.mpo-return-dropzone.is-ready{background:#f5fff9;border-color:#71c49a}
+.mpo-return-dropzone strong{color:#193a6b;font-size:15px;line-height:1.5}
+.mpo-return-dropzone>span{color:#6e819b;font-size:12px;line-height:1.5}
+.mpo-return-drop-icon{width:43px;height:43px;display:grid;place-items:center;background:#edf3ff;color:#356ed8;border-radius:13px;font-size:24px;font-weight:800}
+.mpo-return-selected{margin-top:5px;padding:9px 12px;background:#e9f9ee;border:1px solid #b6e5c3;border-radius:8px;color:#087948;font-size:12px;max-width:100%;overflow-wrap:anywhere;font-weight:650}
+.mpo-return-selected[hidden]{display:none!important}
+.mpo-return-upload-status{font-size:12px;color:#47617f}
+#mpoReturnedUploadStatus[data-state="error"]{color:#b42318}
+#mpoReturnedUploadStatus[data-state="working"]{color:#2459b4}
+#mpoReturnedUploadStatus[data-state="ready"]{color:#087948}
+.mpo-return-success{border:1px solid #9fdfb7;border-radius:9px;background:#edfdf4;color:#087441;padding:11px 13px;font-size:12px;font-weight:650;overflow-wrap:anywhere}
+.mpo-file-verification{font-size:10px!important;color:#64748b;line-height:1.45;margin-top:3px}
+.mpo-file-verification.is-good{color:#098046;font-weight:700}
+.mpo-file-verification.is-warning{color:#b54708;font-weight:650}
+.mpo-return-preview-pane{border:1px solid #dce5f4;background:#f8fafc;border-radius:12px;padding:13px;margin:2px 0 0}
+.mpo-return-preview-pane[hidden]{display:none!important}
+.mpo-return-preview-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:12px}
+.mpo-return-preview-head b{color:#1e375d;font-size:13px;overflow-wrap:anywhere}
+.mpo-return-preview-head>div{display:flex;gap:8px;flex-wrap:wrap}
+.mpo-return-preview-loading,.mpo-return-preview-error,.mpo-return-preview-tip{color:#61738d;font-size:12px;line-height:1.7;text-align:center;padding:16px}
+.mpo-return-preview-error{color:#b42318}
+.mpo-return-pdf-viewer{display:block;width:100%;height:min(67vh,730px);min-height:410px;border:1px solid #cbd5e1;background:#fff;border-radius:7px}
+.mpo-return-image-viewer{display:block;max-width:100%;max-height:75vh;height:auto;margin:0 auto;object-fit:contain;background:#fff;border-radius:6px}
+#mb:has(#mpoReturnedUpload) .modal{width:min(1080px,97vw)}
+#mb:has(#mpoReturnedUpload) .modalbody{padding:19px}
+@media(max-width:650px){
+  .mpo-return-dropzone{padding:20px 12px;min-height:174px}
+  .mpo-return-pdf-viewer{min-height:300px;height:57vh}
+  #mb:has(#mpoReturnedUpload) .modalbody{padding:11px}
+  .mpo-return-preview-head{align-items:flex-start}
+}
+
 /* MATERIAL_PURCHASE_CSS_BUNDLE_END */
 </style>
 
@@ -1633,90 +1670,233 @@ window.deleteMaterialPurchaseOrder=async function(id){
 };
 
 const returnedContractURL=(orderId,fileId)=>'/api/material-purchase-orders/'+encodeURIComponent(orderId)+'/returned-contracts/'+encodeURIComponent(fileId);
-const returnedFileSize=bytes=>Number(bytes)>=1024*1024?(Number(bytes)/1024/1024).toFixed(1)+' MB':Math.max(1,Math.ceil(Number(bytes)/1024))+' KB';
+const returnedFileSize=bytes=>Number(bytes)>=1024*1024?(Number(bytes)/1024/1024).toFixed(2)+' MB':Math.max(1,Math.ceil(Number(bytes)/1024))+' KB';
+let returnedSelectedFile=null,returnedSelectedOrderId=null,returnedPasteListener=null,returnedPreviewURL=null,returnedUploadNotice='';
+const allowedReturnedExtensions=/\.(pdf|png|jpe?g|webp|docx)$/i;
+const cleanReturnedPasteFile=file=>{
+  if(!file)return null;
+  if(file.name&&allowedReturnedExtensions.test(file.name))return file;
+  if(file.type==='image/png')return new File([file],'粘贴截图-'+Date.now()+'.png',{type:'image/png'});
+  if(file.type==='image/jpeg')return new File([file],'粘贴图片-'+Date.now()+'.jpg',{type:'image/jpeg'});
+  if(file.type==='image/webp')return new File([file],'粘贴图片-'+Date.now()+'.webp',{type:'image/webp'});
+  if(file.type==='application/pdf')return new File([file],'粘贴合同-'+Date.now()+'.pdf',{type:'application/pdf'});
+  return file;
+};
+function clearReturnedPreview(){
+  if(returnedPreviewURL){URL.revokeObjectURL(returnedPreviewURL);returnedPreviewURL=null}
+}
+function updateReturnedSelection(file,orderId){
+  if(!file)return;
+  file=cleanReturnedPasteFile(file);
+  const status=el('mpoReturnedUploadStatus'),name=el('mpoReturnedSelected'),btn=el('mpoReturnedUploadSubmit');
+  if(!allowedReturnedExtensions.test(file.name||'')){toastMsg('仅支持 PDF、JPG、PNG、WebP 和 DOCX 文件');return}
+  if(file.size>20*1024*1024||file.size<1){toastMsg('文件必须小于20MB且不能为空');return}
+  returnedSelectedFile=file;
+  returnedSelectedOrderId=orderId;
+  if(name){name.hidden=false;name.textContent='已选择：'+file.name+'（'+returnedFileSize(file.size)+'）'}
+  if(status){status.textContent='文件已准备好，点击「上传并保存到云端」即可归档';status.dataset.state='ready'}
+  if(btn){btn.disabled=false;btn.textContent='上传并保存到云端'}
+  const drop=el('mpoReturnedDropzone');
+  if(drop)drop.classList.add('is-ready');
+}
+async function verifyReturnedContract(orderId,fileId){
+  const url=returnedContractURL(orderId,fileId)+'/verify';
+  const response=await fetch(url,{cache:'no-store'});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||!result.readable)throw Error(result.error||'原始文件暂时不可读取');
+  return result;
+}
+async function showReturnedFileStatuses(orderId,files){
+  const active=files.filter(f=>!Number(f.is_void)).slice(0,12);
+  await Promise.all(active.map(async file=>{
+    const indicator=document.querySelector('[data-returned-verify="'+file.id+'"]');
+    if(!indicator)return;
+    try{
+      await verifyReturnedContract(orderId,file.id);
+      if(!indicator.isConnected)return;
+      indicator.textContent='✓ 云端保存成功 · 原件可读取';
+      indicator.className='mpo-file-verification is-good';
+    }catch(e){
+      if(!indicator.isConnected)return;
+      indicator.textContent='! 有文件记录，但原件读取未确认';
+      indicator.className='mpo-file-verification is-warning';
+      indicator.title=String(e.message||e);
+    }
+  }));
+}
+window.previewReturnedContract=async function(orderId,fileId){
+  const container=el('mpoReturnedPreviewPane'),view=el('mpoReturnedPreviewBody');
+  if(!container||!view)return;
+  const file=(window.__mpoReturnedFiles||[]).find(f=>f.id===fileId);
+  if(!file)return;
+  container.hidden=false;
+  view.innerHTML='<div class="mpo-return-preview-loading">正在读取原始合同，请稍候…</div>';
+  try{
+    const response=await fetch(returnedContractURL(orderId,fileId),{cache:'no-store'});
+    if(!response.ok)throw Error('文件接口返回 '+response.status+'，无法读取');
+    const blob=await response.blob();
+    if(!blob.size)throw Error('云端文件内容为空');
+    clearReturnedPreview();
+    returnedPreviewURL=URL.createObjectURL(new Blob([blob],{type:file.content_type||blob.type||'application/octet-stream'}));
+    if(file.content_type==='application/pdf'){
+      view.innerHTML='<iframe class="mpo-return-pdf-viewer" title="回传合同 PDF 预览" src="'+returnedPreviewURL+'#toolbar=1"></iframe>'+
+        '<p class="mpo-return-preview-tip">如果浏览器不支持内嵌 PDF，可使用「下载原件」或新窗口查看。</p>';
+    }else if(String(file.content_type).startsWith('image/')){
+      view.innerHTML='<img class="mpo-return-image-viewer" alt="回传合同原始扫描件" src="'+returnedPreviewURL+'">';
+    }else{
+      view.innerHTML='<p class="mpo-return-preview-tip">DOCX 不支持浏览器内直接预览，请下载原件使用 Word / WPS 打开。</p>';
+    }
+    const a=el('mpoReturnedPreviewDownload');
+    if(a){a.href=returnedPreviewURL;a.download=file.original_name;a.hidden=false}
+    const label=el('mpoReturnedPreviewTitle');
+    if(label)label.textContent='预览：'+file.original_name;
+    container.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }catch(err){
+    view.innerHTML='<div class="mpo-return-preview-error">预览失败：'+safe(err.message)+'。请尝试下载原件，或检查云端文件状态。</div>';
+  }
+};
+window.closeReturnedContractPreview=function(){
+  clearReturnedPreview();
+  const container=el('mpoReturnedPreviewPane');
+  if(container)container.hidden=true;
+};
 window.manageReturnedContracts=async function(orderId){
   const order=purchaseOrders.find(o=>o.id===orderId)||(currentOrder?.id===orderId?currentOrder:null);
-  if(!order){toastMsg('采购单不存在，请先刷新列表');return}
+  if(!order){toastMsg('采购单不存在，请刷新列表');return}
   try{
     const response=await api('/material-purchase-orders/'+encodeURIComponent(orderId)+'/returned-contracts');
     const files=Array.isArray(response.files)?response.files:[],active=files.filter(f=>!Number(f.is_void));
+    window.__mpoReturnedFiles=files;
+    clearReturnedPreview();
+    returnedSelectedFile=null;returnedSelectedOrderId=null;
+    const successNotice=returnedUploadNotice;returnedUploadNotice='';
     const fileRows=files.length?files.map(file=>{
       const voided=!!Number(file.is_void),type=String(file.content_type||''),preview=!voided&&(/^(application\/pdf|image\/)/).test(type);
-      const url=returnedContractURL(orderId,file.id);
       return '<div class="mpo-return-file '+(voided?'is-void':'')+'">'+
         '<span class="mpo-return-icon">'+(type==='application/pdf'?'PDF':type.startsWith('image/')?'图像':'DOC')+'</span>'+
         '<div class="mpo-return-file-text"><strong>'+safe(file.original_name)+'</strong><span>'+
         returnedFileSize(file.byte_size)+' · '+safe(String(file.uploaded_at||'').replace('T',' ').slice(0,16))+
         (voided?' · 已作废':'')+'</span>'+
-        (file.description?'<small>'+safe(file.description)+'</small>':'')+'</div>'+
+        (file.description?'<small>'+safe(file.description)+'</small>':'')+
+        (voided?'<span class="mpo-file-verification">保留历史归档</span>':
+          '<span class="mpo-file-verification" data-returned-verify="'+safe(file.id)+'">正在验证云端原件…</span>')+
+        '</div>'+
         '<div class="mpo-return-file-actions">'+
-        (preview?'<a class="btn" target="_blank" rel="noopener noreferrer" href="'+safe(url)+'">预览</a>':'')+
+        (preview?'<button type="button" class="btn" data-file-action="preview" data-file-id="'+safe(file.id)+'">直接预览</button>':'')+
         '<button type="button" class="btn" data-file-action="download" data-file-id="'+safe(file.id)+'">下载</button>'+
-        (voided?'<span class="mpo-return-void">作废归档</span>':
+        (voided?'<span class="mpo-return-void">已作废</span>':
           '<button type="button" class="btn danger" data-file-action="void" data-file-id="'+safe(file.id)+'">标记作废</button>')+
-        '</div></div>'
-    }).join(''):'<p class="mpo-return-empty">暂无回传文件，请上传供应商签字、盖章后的原始合同。</p>';
+        '</div></div>';
+    }).join(''):'<p class="mpo-return-empty">暂无回传文件，请拖入供应商签字、盖章后的合同。</p>';
     openModal('回传合同归档 · '+order.order_no,
       '<div class="mpo-return-manager">'+
       '<div class="mpo-return-manager-title"><div><h3>供应商回传合同</h3><p>'+safe(order.supplier_name||'供应商未设置')+' · 采购单 '+safe(order.order_no)+'</p></div>'+
-      '<span class="mpo-return-label '+(active.length?'complete':'')+'">'+(active.length?'已回传 '+active.length+' 份':'尚未回传')+'</span></div>'+
+      '<span class="mpo-return-label '+(active.length?'complete':'')+'">'+(active.length?'已归档 '+active.length+' 份':'尚未回传')+'</span></div>'+
+      (successNotice?'<div class="mpo-return-success" role="status">'+safe(successNotice)+'</div>':'')+
       '<form id="mpoReturnedUpload" class="mpo-return-upload">'+
-      '<label>选择原始合同文件<input type="file" class="field" name="file" id="mpoReturnedFile" required accept=".pdf,.jpg,.jpeg,.png,.webp,.docx"></label>'+
-      '<label>备注（选填）<input type="text" class="field" name="description" maxlength="240" placeholder="如：供应商已盖章 / 双方签字确认 / 第二次回传"></label>'+
-      '<p class="mpo-return-help">支持 PDF、JPG、PNG、WebP、DOCX，单个文件最大 20MB。可多次上传，每次均保留原始文件。</p>'+
-      '<div class="mpo-return-upload-actions"><span id="mpoReturnedUploadStatus" aria-live="polite"></span><button type="submit" id="mpoReturnedUploadSubmit" class="btn primary">上传并保存到云端</button></div></form>'+
-      '<div class="mpo-return-list-title"><b>回传文件记录</b><small>总计 '+files.length+' 份 · 有效 '+active.length+' 份</small></div>'+
+      '<div class="mpo-return-dropzone" id="mpoReturnedDropzone" tabindex="0" role="button" aria-label="拖拽、粘贴或选择回传合同">'+
+      '<div class="mpo-return-drop-icon">⇧</div><strong>拖拽合同到此处，或 Ctrl + V 粘贴</strong>'+
+      '<span>可直接粘贴截图、复制的文件；也可点击选择 PDF / 图片 / DOCX</span>'+
+      '<button type="button" class="btn" id="mpoReturnedChooseFile">选择本地文件</button>'+
+      '<input type="file" name="file" id="mpoReturnedFile" tabindex="-1" hidden accept=".pdf,.jpg,.jpeg,.png,.webp,.docx">'+
+      '<div id="mpoReturnedSelected" class="mpo-return-selected" hidden></div></div>'+
+      '<label>上传备注（可选）<input type="text" class="field" name="description" maxlength="240" placeholder="例如：已盖章 / 双方已签字 / 第二次回传"></label>'+
+      '<p class="mpo-return-help">支持 PDF / JPG / PNG / WebP / DOCX，单个文件最大20MB。拖入或粘贴后确认文件，再点击上传保存。</p>'+
+      '<div class="mpo-return-upload-actions"><span id="mpoReturnedUploadStatus" aria-live="polite" data-state="idle">等待选择文件</span>'+
+      '<button type="submit" id="mpoReturnedUploadSubmit" class="btn primary" disabled>上传并保存到云端</button></div></form>'+
+      '<div class="mpo-return-list-title"><b>已回传合同原件</b><small>总计 '+files.length+' 份 · 有效 '+active.length+' 份</small></div>'+
       '<div id="mpoReturnedFiles" class="mpo-return-file-list">'+fileRows+'</div>'+
-      '<div class="mpo-return-warning">文件储存在 Workers KV 的非公开存储路径，但目前系统尚未配置严格的用户登录权限。正式使用时请启用 Cloudflare Access，避免他人访问合同。</div>'+
+      '<section class="mpo-return-preview-pane" id="mpoReturnedPreviewPane" hidden>'+
+      '<div class="mpo-return-preview-head"><b id="mpoReturnedPreviewTitle">合同预览</b>'+
+      '<div><a class="btn" id="mpoReturnedPreviewDownload" href="#" download hidden>下载原件</a>'+
+      '<button type="button" class="btn" id="mpoReturnedClosePreview">关闭预览</button></div></div>'+
+      '<div id="mpoReturnedPreviewBody"></div></section>'+
+      '<div class="mpo-return-warning">回传合同含公章、签字等敏感信息。目前系统尚未启用严格的登录访问控制，正式使用前建议配置 Cloudflare Access。</div>'+
       '</div>');
-    const form=el('mpoReturnedUpload');
+    const form=el('mpoReturnedUpload'),zone=el('mpoReturnedDropzone'),input=el('mpoReturnedFile');
+    el('mpoReturnedChooseFile').addEventListener('click',e=>{e.stopPropagation();input.click()});
+    zone.addEventListener('click',e=>{if(!e.target.closest('button'))input.click()});
+    zone.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target===zone){e.preventDefault();input.click()}});
+    input.addEventListener('change',()=>{if(input.files?.[0])updateReturnedSelection(input.files[0],orderId)});
+    for(const event of ['dragenter','dragover']){
+      zone.addEventListener(event,e=>{e.preventDefault();e.stopPropagation();zone.classList.add('is-dragging')});
+    }
+    for(const event of ['dragleave','dragend']){
+      zone.addEventListener(event,e=>{e.preventDefault();zone.classList.remove('is-dragging')});
+    }
+    zone.addEventListener('drop',e=>{
+      e.preventDefault();e.stopPropagation();zone.classList.remove('is-dragging');
+      const file=e.dataTransfer?.files?.[0];
+      if(file)updateReturnedSelection(file,orderId);else toastMsg('未识别到可上传文件，请尝试点击选择');
+    });
+    if(returnedPasteListener)document.removeEventListener('paste',returnedPasteListener);
+    returnedPasteListener=e=>{
+      if(!mb.classList.contains('open')||!el('mpoReturnedDropzone'))return;
+      const data=e.clipboardData;
+      const file=data?.files?.[0]||[...(data?.items||[])].filter(x=>x.kind==='file').map(x=>x.getAsFile()).find(Boolean);
+      if(!file)return;
+      e.preventDefault();updateReturnedSelection(file,orderId);
+    };
+    document.addEventListener('paste',returnedPasteListener);
+    el('mpoReturnedClosePreview').addEventListener('click',window.closeReturnedContractPreview);
     form.onsubmit=async e=>{
       e.preventDefault();
-      const file=el('mpoReturnedFile')?.files?.[0];
+      const file=returnedSelectedOrderId===orderId?returnedSelectedFile:null;
       const status=el('mpoReturnedUploadStatus'),button=el('mpoReturnedUploadSubmit');
-      if(!file)return;
-      if(file.size>20*1024*1024){toastMsg('单个文件不能超过20MB');return}
+      if(!file){toastMsg('请先拖入、粘贴或选择文件');return}
       button.disabled=true;button.textContent='正在上传…';
-      if(status)status.textContent='正在上传，请勿关闭窗口';
+      if(status){status.textContent='正在上传到云端，请不要关闭窗口';status.dataset.state='working'}
       try{
-        const fd=new FormData(form);
+        const fd=new FormData();
+        fd.append('file',file,file.name);
+        fd.append('description',form.querySelector('[name="description"]').value||'');
         const res=await fetch('/api/material-purchase-orders/'+encodeURIComponent(orderId)+'/returned-contracts',{method:'POST',body:fd,cache:'no-store'});
         const data=await res.json().catch(()=>({}));
-        if(!res.ok)throw Error(data.error||'上传失败');
+        if(!res.ok||!data.file?.id)throw Error(data.error||'上传失败，未收到云端确认');
+        let readable=false;
+        for(let attempt=0;attempt<3&&!readable;attempt++){
+          try{await verifyReturnedContract(orderId,data.file.id);readable=true}
+          catch(_){if(attempt<2)await new Promise(resolve=>setTimeout(resolve,450))}
+        }
+        returnedUploadNotice=readable?
+          '✓ 上传成功！原始文件已保存到云端，并通过读取校验：'+file.name:
+          '上传已写入云端记录，但原始文件读取尚待确认。请使用下方文件列表核验：'+file.name;
         await loadPurchaseOrders();
         await manageReturnedContracts(orderId);
-        toastMsg('供应商回传合同已保存到云端');
+        toastMsg(readable?'回传合同已上传并校验成功':'文件已归档，请再核验原始文件');
       }catch(err){
-        if(status)status.textContent='上传失败：'+err.message;
-        toastMsg('上传失败：'+err.message)
-      }finally{button.disabled=false;button.textContent='上传并保存到云端'}
+        if(status){status.textContent='保存失败：'+err.message;status.dataset.state='error'}
+        toastMsg('上传失败：'+err.message);
+        button.disabled=false;button.textContent='重试上传';
+      }
     };
-    el('mpoReturnedFiles')?.addEventListener('click',async e=>{
+    el('mpoReturnedFiles').addEventListener('click',async e=>{
       const target=e.target.closest('button[data-file-action]');
       if(!target)return;
-      const fileId=target.dataset.fileId;
-      const record=files.find(f=>f.id===fileId);
+      const fileId=target.dataset.fileId,record=files.find(f=>f.id===fileId);
       if(!record)return;
-      if(target.dataset.fileAction==='download'){
+      const action=target.dataset.fileAction;
+      if(action==='preview'){await window.previewReturnedContract(orderId,fileId);return}
+      if(action==='download'){
         try{
           const res=await fetch(returnedContractURL(orderId,fileId),{cache:'no-store'});
-          if(!res.ok)throw Error('文件读取失败');
+          if(!res.ok)throw Error('云端原始文件暂时无法读取');
           const url=URL.createObjectURL(await res.blob()),a=document.createElement('a');
           a.href=url;a.download=record.original_name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();
-          setTimeout(()=>URL.revokeObjectURL(url),1000);
+          setTimeout(()=>URL.revokeObjectURL(url),3000);
         }catch(err){toastMsg('下载失败：'+err.message)}
       }
-      if(target.dataset.fileAction==='void'){
-        if(!confirm('将「'+record.original_name+'」标记作废？原始文件和上传记录会继续保留，方便追溯。'))return;
+      if(action==='void'){
+        if(!confirm('将「'+record.original_name+'」标记作废？云端仍保留原始文件和历史记录。'))return;
         target.disabled=true;
         try{
           await api(returnedContractURL(orderId,fileId),{method:'DELETE'});
-          await loadPurchaseOrders();
-          await manageReturnedContracts(orderId);
-          toastMsg('已作废该版本，原始文件仍在云端归档');
+          await loadPurchaseOrders();await manageReturnedContracts(orderId);
+          toastMsg('该版本已标记作废，原始文件仍保留');
         }catch(err){target.disabled=false;toastMsg('操作失败：'+err.message)}
       }
     });
+    showReturnedFileStatuses(orderId,files);
   }catch(err){toastMsg('加载回传合同失败：'+err.message)}
 };
 
