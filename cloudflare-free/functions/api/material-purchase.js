@@ -10,6 +10,18 @@ const finiteNonneg=(n)=>Number.isFinite(Number(n))&&Number(n)>=0;
 const BUYER={company_name:"义乌市时盈电子商务有限公司",address:"浙江省义乌市北苑街道柳青10区49幢3单元102室（自主申报）",phone:"15027223216",representative:"陈崇飞"};
 const textValue=(d,key,fallback,max=1000)=>Object.prototype.hasOwnProperty.call(d,key)?shortText(d[key],max):shortText(fallback,max);
 const validSignDate=(value,fallback)=>validDate(value)?value:fallback;
+const CONTRACT_FILE_LIMIT=20*1024*1024; // Workers KV supports 25 MiB per value; leave margin.
+const returnedFormats={
+  pdf:{contentType:"application/pdf",magic:b=>String.fromCharCode(...b.slice(0,5))==="%PDF-"},
+  png:{contentType:"image/png",magic:b=>b[0]===137&&b[1]===80&&b[2]===78&&b[3]===71},
+  jpg:{contentType:"image/jpeg",magic:b=>b[0]===255&&b[1]===216&&b[2]===255},
+  jpeg:{contentType:"image/jpeg",magic:b=>b[0]===255&&b[1]===216&&b[2]===255},
+  webp:{contentType:"image/webp",magic:b=>String.fromCharCode(...b.slice(0,4))==="RIFF"&&String.fromCharCode(...b.slice(8,12))==="WEBP"},
+  docx:{contentType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",magic:b=>b[0]===80&&b[1]===75&&b[2]===3&&b[3]===4}
+};
+const cleanedContractFilename=name=>shortText(name,180).replace(/[\\/<>:"|?*\x00-\x1F]/g,"_").replace(/^\.+/,"").trim()||"回传合同";
+const safeId=value=>/^[a-zA-Z0-9-]{8,100}$/.test(String(value||""));
+
 
 
 async function ensureTables(db){
@@ -23,6 +35,9 @@ async function ensureTables(db){
     db.prepare("CREATE TABLE IF NOT EXISTS material_receipt_requests(id TEXT PRIMARY KEY,order_id TEXT NOT NULL REFERENCES material_purchase_orders(id),received_total INTEGER NOT NULL,notes TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     // Deleted contracts are removed from the working list, but a snapshot is retained for audit and recovery.
     db.prepare("CREATE TABLE IF NOT EXISTS material_purchase_order_deletions(id TEXT PRIMARY KEY,order_no TEXT NOT NULL,order_snapshot TEXT NOT NULL,deleted_reason TEXT NOT NULL DEFAULT '',deleted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
+    // Original supplier-returned contracts are kept separately from generated order PDFs.
+    db.prepare("CREATE TABLE IF NOT EXISTS material_returned_contract_files(id TEXT PRIMARY KEY,order_id TEXT NOT NULL REFERENCES material_purchase_orders(id) ON DELETE CASCADE,original_name TEXT NOT NULL,content_type TEXT NOT NULL,byte_size INTEGER NOT NULL,kv_key TEXT NOT NULL UNIQUE,description TEXT NOT NULL DEFAULT '',is_void INTEGER NOT NULL DEFAULT 0,uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,voided_at TEXT)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_material_returned_contract_files_order ON material_returned_contract_files(order_id,uploaded_at)"),
     // Database-level guard: a simultaneous receive or contract edit must never over-receive.
     db.prepare("CREATE TRIGGER IF NOT EXISTS trg_material_po_received_guard BEFORE UPDATE OF received_qty,quantity ON material_purchase_order_items WHEN NEW.received_qty < 0 OR NEW.received_qty > NEW.quantity BEGIN SELECT RAISE(ABORT,'received quantity exceeds ordered quantity'); END")
   ]);
@@ -94,8 +109,69 @@ export async function materialPurchaseHandler({request,env,path,method}){
       if(old?.seal_key)await env.IMAGES.delete(old.seal_key);
       return resp({ok:true});
     }
+    // Only a stored order id is accepted: files cannot be fetched with arbitrary KV keys.
+    const rf=path.match(/^\/material-purchase-orders\/([^/]+)\/returned-contracts(?:\/([^/]+))?$/);
+    if(rf){
+      const orderId=rf[1],fileId=rf[2];
+      if(!safeId(orderId)||(fileId&&!safeId(fileId)))return resp({error:"文件或采购单编号无效"},400);
+      const orderExists=await first(env.DB,"SELECT id,order_no FROM material_purchase_orders WHERE id=?",orderId);
+      if(!orderExists)return resp({error:"采购单不存在"},404);
+      if(method==="GET"&&!fileId){
+        const files=await rows(env.DB,"SELECT id,original_name,content_type,byte_size,description,is_void,uploaded_at,voided_at FROM material_returned_contract_files WHERE order_id=? ORDER BY uploaded_at DESC,id DESC LIMIT 100",orderId);
+        return resp({files,order_no:orderExists.order_no});
+      }
+      if(method==="POST"&&!fileId){
+        const form=await request.formData(),file=form.get("file");
+        if(!(file instanceof File))return resp({error:"请选择供应商回传的合同文件"},400);
+        if(file.size<=0||file.size>CONTRACT_FILE_LIMIT)return resp({error:"单个文件大小不能超过20MB"},400);
+        const fileName=cleanedContractFilename(file.name);
+        const ext=fileName.split(".").pop().toLowerCase(),format=returnedFormats[ext];
+        if(!format)return resp({error:"仅支持PDF、JPG、PNG、WebP和DOCX文件"},400);
+        const head=new Uint8Array(await file.slice(0,16).arrayBuffer());
+        if(!format.magic(head))return resp({error:"文件内容与扩展名不匹配，请重新导出PDF或上传原始扫描件"},400);
+        const existing=await first(env.DB,"SELECT COUNT(*) total FROM material_returned_contract_files WHERE order_id=? AND is_void=0",orderId);
+        if(number(existing?.total)>=20)return resp({error:"单张采购单最多保留20个有效回传合同，请先将错误文件标记作废"},400);
+        const fileIdNew=crypto.randomUUID(),key="private/returned-material-contracts/"+orderId+"/"+fileIdNew+"."+ext;
+        const description=shortText(form.get("description"),240);
+        await env.IMAGES.put(key,await file.arrayBuffer(),{metadata:{contentType:format.contentType}});
+        try{
+          await env.DB.prepare("INSERT INTO material_returned_contract_files(id,order_id,original_name,content_type,byte_size,kv_key,description) VALUES(?,?,?,?,?,?,?)")
+            .bind(fileIdNew,orderId,fileName,format.contentType,file.size,key,description).run();
+        }catch(e){
+          await env.IMAGES.delete(key).catch(()=>{});
+          throw e;
+        }
+        return resp({ok:true,file:{id:fileIdNew,original_name:fileName,content_type:format.contentType,byte_size:file.size,description,uploaded_at:new Date().toISOString(),is_void:0}},201);
+      }
+      if(fileId&&method==="GET"){
+        const record=await first(env.DB,"SELECT * FROM material_returned_contract_files WHERE id=? AND order_id=? AND is_void=0",fileId,orderId);
+        if(!record)return resp({error:"回传文件不存在或已作废"},404);
+        const object=await env.IMAGES.get(record.kv_key,"arrayBuffer");
+        if(!object)return resp({error:"云端文件读取失败，请检查存储额度"},404);
+        const ext=record.original_name.split(".").pop().toLowerCase();
+        const inline=["pdf","png","jpg","jpeg","webp"].includes(ext);
+        const filename=cleanedContractFilename(record.original_name);
+        const disposition=(inline?"inline":"attachment")+'; filename="returned-contract.'+ext+'"; filename*=UTF-8\'\''+encodeURIComponent(filename);
+        return new Response(object,{headers:{
+          "content-type":record.content_type,
+          "content-disposition":disposition,
+          "content-length":String(record.byte_size),
+          "cache-control":"private, no-store, max-age=0",
+          "x-content-type-options":"nosniff",
+          "referrer-policy":"no-referrer",
+          "x-frame-options":"DENY"
+        }});
+      }
+      if(fileId&&method==="DELETE"){
+        const change=await env.DB.prepare("UPDATE material_returned_contract_files SET is_void=1,voided_at=CURRENT_TIMESTAMP WHERE id=? AND order_id=? AND is_void=0").bind(fileId,orderId).run();
+        return Number(change.meta?.changes||0)?resp({ok:true,archived:true}):resp({error:"该文件已作废或不存在"},404);
+      }
+      return resp({error:"不支持的操作"},405);
+    }
     if(path==="/material-purchase-orders"&&method==="GET"){
-      const list=await rows(env.DB,"SELECT o.*,s.company_name supplier_name,COUNT(i.id) line_count,COALESCE(SUM(i.quantity),0) total_qty,COALESCE(SUM(i.quantity*i.unit_price),0)+o.shipping_fee total_amount,COALESCE(SUM(i.received_qty),0) received_qty FROM material_purchase_orders o LEFT JOIN suppliers s ON s.id=o.supplier_id LEFT JOIN material_purchase_order_items i ON i.order_id=o.id GROUP BY o.id ORDER BY o.created_at DESC LIMIT 300");
+      const list=await rows(env.DB,"SELECT o.*,s.company_name supplier_name,COUNT(i.id) line_count,COALESCE(SUM(i.quantity),0) total_qty,COALESCE(SUM(i.quantity*i.unit_price),0)+o.shipping_fee total_amount,COALESCE(SUM(i.received_qty),0) received_qty,
+        (SELECT COUNT(*) FROM material_returned_contract_files f WHERE f.order_id=o.id AND f.is_void=0) returned_count
+        FROM material_purchase_orders o LEFT JOIN suppliers s ON s.id=o.supplier_id LEFT JOIN material_purchase_order_items i ON i.order_id=o.id GROUP BY o.id ORDER BY o.created_at DESC LIMIT 300");
       return resp({orders:list});
     }
     if(path==="/material-purchase-orders"&&method==="POST"){
@@ -139,15 +215,16 @@ export async function materialPurchaseHandler({request,env,path,method}){
         const qtyReceived=existing.items.reduce((sum,item)=>sum+number(item.received_qty),0);
         const receipt=await first(env.DB,"SELECT id FROM material_receipt_requests WHERE order_id=? LIMIT 1",id);
         const ledger=await first(env.DB,"SELECT id FROM material_movements WHERE reference_no=? AND movement_type='包材采购入库' LIMIT 1",order.order_no);
-        if(order.status!=="已下单"||qtyReceived>0||receipt||ledger)
-          return resp({error:"此采购单已发生收货或入库，不能直接删除。请先核对库存流水并办理冲销。"},409);
+        const evidence=await first(env.DB,"SELECT id FROM material_returned_contract_files WHERE order_id=? LIMIT 1",id);
+        if(order.status!=="已下单"||qtyReceived>0||receipt||ledger||evidence)
+          return resp({error:"此采购单已发生入库或保存了回传合同，不能直接删除。请先核对库存流水及已归档合同。"},409);
         const reason=shortText(request.headers.get("x-delete-reason")||"录入错误，删除未入库合同",200);
         // D1 batch is atomic: archive then delete, with SQL-level guards against concurrent receipt.
-        const safeWhere="id=? AND status='已下单' AND NOT EXISTS(SELECT 1 FROM material_purchase_order_items WHERE order_id=? AND received_qty>0) AND NOT EXISTS(SELECT 1 FROM material_receipt_requests WHERE order_id=?) AND NOT EXISTS(SELECT 1 FROM material_movements WHERE reference_no=? AND movement_type='包材采购入库')";
+        const safeWhere="id=? AND status='已下单' AND NOT EXISTS(SELECT 1 FROM material_purchase_order_items WHERE order_id=? AND received_qty>0) AND NOT EXISTS(SELECT 1 FROM material_receipt_requests WHERE order_id=?) AND NOT EXISTS(SELECT 1 FROM material_movements WHERE reference_no=? AND movement_type='包材采购入库') AND NOT EXISTS(SELECT 1 FROM material_returned_contract_files WHERE order_id=?)";
         const archive=env.DB.prepare("INSERT INTO material_purchase_order_deletions(id,order_no,order_snapshot,deleted_reason) SELECT id,order_no,?,? FROM material_purchase_orders WHERE "+safeWhere)
-          .bind(JSON.stringify(existing),reason,id,id,id,order.order_no);
+          .bind(JSON.stringify(existing),reason,id,id,id,order.order_no,id);
         const remove=env.DB.prepare("DELETE FROM material_purchase_orders WHERE "+safeWhere)
-          .bind(id,id,id,order.order_no);
+          .bind(id,id,id,order.order_no,id);
         const result=await env.DB.batch([archive,remove]);
         if(number(result[1]?.meta?.changes)!==1)
           return resp({error:"合同状态已变化或已发生入库，未执行删除，请刷新后重试。"},409);
