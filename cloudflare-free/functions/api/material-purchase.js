@@ -169,9 +169,14 @@ export async function materialPurchaseHandler({request,env,path,method}){
       return resp({error:"不支持的操作"},405);
     }
     if(path==="/material-purchase-orders"&&method==="GET"){
-      const list=await rows(env.DB,"SELECT o.*,s.company_name supplier_name,COUNT(i.id) line_count,COALESCE(SUM(i.quantity),0) total_qty,COALESCE(SUM(i.quantity*i.unit_price),0)+o.shipping_fee total_amount,COALESCE(SUM(i.received_qty),0) received_qty,
+      const list=await rows(env.DB,`SELECT o.*,s.company_name supplier_name,COUNT(i.id) line_count,
+        COALESCE(SUM(i.quantity),0) total_qty,
+        COALESCE(SUM(i.quantity*i.unit_price),0)+o.shipping_fee total_amount,
+        COALESCE(SUM(i.received_qty),0) received_qty,
         (SELECT COUNT(*) FROM material_returned_contract_files f WHERE f.order_id=o.id AND f.is_void=0) returned_count
-        FROM material_purchase_orders o LEFT JOIN suppliers s ON s.id=o.supplier_id LEFT JOIN material_purchase_order_items i ON i.order_id=o.id GROUP BY o.id ORDER BY o.created_at DESC LIMIT 300");
+        FROM material_purchase_orders o LEFT JOIN suppliers s ON s.id=o.supplier_id
+        LEFT JOIN material_purchase_order_items i ON i.order_id=o.id
+        GROUP BY o.id ORDER BY o.created_at DESC LIMIT 300`);
       return resp({orders:list});
     }
     if(path==="/material-purchase-orders"&&method==="POST"){
