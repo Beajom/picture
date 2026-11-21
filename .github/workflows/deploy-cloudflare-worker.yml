@@ -121,6 +121,11 @@ jobs:
                grep -q "RETURNED_CONTRACT_ARCHIVE_UI" /tmp/index.html &&
                grep -q "manageReturnedContracts" /tmp/index.html &&
                grep -q "mpoReturnedUpload" /tmp/index.html &&
+               grep -q "RETURNED_CONTRACT_DRAGDROP_V2" /tmp/index.html &&
+               grep -q "mpoReturnedDropzone" /tmp/index.html &&
+               grep -q "returnedPasteListener" /tmp/index.html &&
+               grep -q "window.previewReturnedContract" /tmp/index.html &&
+               grep -q "verifyReturnedContract" /tmp/index.html &&
                grep -q "公章已保存到云端" /tmp/index.html &&
                grep -q "onchange=\"uploadMaterialContractStamp()\"" /tmp/index.html &&
                grep -q "mpo-buyer-seal" /tmp/index.html &&
@@ -200,6 +205,34 @@ jobs:
           assert isinstance(records.get('files'),list)
           print('Returned contract archive API verified (read only)')
           PY
+            # Verify one already-uploaded original via D1 + KV read-only endpoint.
+            FILE_ID="$(python - <<'PY'
+          import json
+          records=json.load(open('/tmp/returned-contract-files.json')).get('files',[])
+          valid=next((f for f in records if not f.get('is_void')),None)
+          print(valid['id'] if valid else '')
+          PY
+            )"
+            if [ -n "$FILE_ID" ]; then
+              verified=0
+              for attempt in 1 2 3 4; do
+                if curl -fsS "$BASE/api/material-purchase-orders/$ORDER_ID/returned-contracts/$FILE_ID/verify?check=$(date +%s)-$attempt" -o /tmp/returned-contract-verify.json; then
+                  if python - <<'PY'
+          import json
+          data=json.load(open('/tmp/returned-contract-verify.json'))
+          assert data.get('saved') is True
+          assert data.get('readable') is True
+          print('Existing returned contract original is readable from KV')
+          PY
+                  then verified=1;break;fi
+                fi
+                sleep 3
+              done
+              if [ "$verified" != "1" ]; then
+                echo "::error::Existing returned contract file could not be verified"
+                exit 1
+              fi
+            fi
           fi
           # The real delete action is intentionally not executed against production data.
           echo "Packaging procurement API verified."
