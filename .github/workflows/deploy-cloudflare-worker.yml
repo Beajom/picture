@@ -118,6 +118,9 @@ jobs:
                grep -q "editMaterialContractProfile" /tmp/index.html &&
                grep -q "deleteMaterialPurchaseOrder" /tmp/index.html &&
                grep -q "mpo-delete-btn" /tmp/index.html &&
+               grep -q "RETURNED_CONTRACT_ARCHIVE_UI" /tmp/index.html &&
+               grep -q "manageReturnedContracts" /tmp/index.html &&
+               grep -q "mpoReturnedUpload" /tmp/index.html &&
                grep -q "公章已保存到云端" /tmp/index.html &&
                grep -q "onchange=\"uploadMaterialContractStamp()\"" /tmp/index.html &&
                grep -q "mpo-buyer-seal" /tmp/index.html &&
@@ -182,6 +185,22 @@ jobs:
               assert 'material_grade' in m and 'material_spec' in m
           print('Material grade and specification fields verified on production D1')
           PY
+          # Read-only check: verify returned-contract archive API without uploading or deleting live files.
+          python - <<'PY' > /tmp/material-order-id.txt
+          import json
+          orders=json.load(open('/tmp/material-purchase-api.json')).get('orders',[])
+          if orders: print(orders[0]['id'])
+          PY
+          ORDER_ID="$(cat /tmp/material-order-id.txt)"
+          if [ -n "$ORDER_ID" ]; then
+            curl -fsS "$BASE/api/material-purchase-orders/$ORDER_ID/returned-contracts?check=$(date +%s)" -o /tmp/returned-contract-files.json
+            python - <<'PY'
+          import json
+          records=json.load(open('/tmp/returned-contract-files.json'))
+          assert isinstance(records.get('files'),list)
+          print('Returned contract archive API verified (read only)')
+          PY
+          fi
           # The real delete action is intentionally not executed against production data.
           echo "Packaging procurement API verified."
           curl -fsS "$BASE/api/material-contract-profile?ts=$(date +%s)" -o /tmp/material-contract-profile.json
