@@ -83,6 +83,28 @@ async function ensureOutboundMetaTables(env){
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
 }
+async function ensureProfessionalPurchaseContractTable(env){
+  await exec(env.DB,`CREATE TABLE IF NOT EXISTS purchase_contract_documents(
+    purchase_order_id TEXT PRIMARY KEY REFERENCES purchase_orders(id) ON DELETE CASCADE,
+    fields_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
+}
+const PROFESSIONAL_CONTRACT_KEYS=new Set(['contract_no','contract_title','sign_date','sign_location','buyer_company','buyer_address','buyer_phone','buyer_representative','supplier_company','supplier_address','supplier_phone','supplier_representative','supplier_bank','supplier_account','delivery_address','transport_terms','payment_terms','quality_terms','packaging_terms','acceptance_terms','supplier_liability','buyer_liability','invoice_terms','amendment_terms','dispute_terms','other_terms','signed_on_buyer','signed_on_supplier','show_buyer_stamp','sign_note']);
+function normalizeProfessionalContract(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('合同信息格式错误');
+  const result={};
+  for(const [key,val] of Object.entries(raw)){
+    if(!PROFESSIONAL_CONTRACT_KEYS.has(key))continue;
+    if(key==='show_buyer_stamp'){result[key]=val===true;continue}
+    if(typeof val!=='string')throw new Error('合同字段必须填写文字');
+    if(val.length>5000)throw new Error('单个合同条款不能超过5000字符');
+    result[key]=val.trim();
+  }
+  if(JSON.stringify(result).length>30000)throw new Error('合同内容过长，请精简文本');
+  return result;
+}
+
 async function ensureProductVisibilityTable(env){
   await exec(env.DB,`CREATE TABLE IF NOT EXISTS product_visibility(
     product_id TEXT PRIMARY KEY,
@@ -216,6 +238,25 @@ export async function onRequest(ctx){
   try{
     if(p==='/material-contract-profile'||p==='/material-contract-profile/stamp'||p==='/material-purchase-orders'||p.startsWith('/material-purchase-orders/')){
       return materialPurchaseHandler({request,env,path:p,method});
+    }
+    const purchaseContractPath=p.match(/^\/purchase-orders\/([^/]+)\/contract$/);
+    if(purchaseContractPath&&['GET','PUT'].includes(method)){
+      const orderId=purchaseContractPath[1];
+      if(!/^[a-zA-Z0-9-]{8,100}$/.test(orderId))return err('采购单编号无效',400);
+      const exists=await one(env.DB,'SELECT id,order_no FROM purchase_orders WHERE id=?',orderId);
+      if(!exists)return err('采购单不存在',404);
+      await ensureProfessionalPurchaseContractTable(env);
+      if(method==='GET'){
+        const row=await one(env.DB,'SELECT fields_json,updated_at FROM purchase_contract_documents WHERE purchase_order_id=?',orderId);
+        let fields={};try{fields=JSON.parse(row?.fields_json||'{}')}catch(_){}
+        return json({order_no:exists.order_no,fields,updated_at:row?.updated_at||null,saved:!!row});
+      }
+      const requestBody=await request.json(),fields=normalizeProfessionalContract(requestBody.fields||{});
+      await exec(env.DB,`INSERT INTO purchase_contract_documents(purchase_order_id,fields_json)
+        VALUES(?,?) ON CONFLICT(purchase_order_id) DO UPDATE SET
+        fields_json=excluded.fields_json,updated_at=CURRENT_TIMESTAMP`,orderId,JSON.stringify(fields));
+      const row=await one(env.DB,'SELECT updated_at FROM purchase_contract_documents WHERE purchase_order_id=?',orderId);
+      return json({ok:true,saved:true,order_no:exists.order_no,updated_at:row?.updated_at||null});
     }
     if(p==='/bootstrap'&&method==='GET'){
       await ensureOutboundMetaTables(env);
