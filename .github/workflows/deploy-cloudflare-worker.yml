@@ -73,10 +73,12 @@ jobs:
           grep -q "变体显示管理" cloudflare-free/public/index.html
           grep -q "newMaterialPO" cloudflare-free/public/material-purchase-ui.js
           grep -q "<th>产品图片</th>" cloudflare-free/public/index.html
-          grep -q "function previewPurchaseContract(id)" cloudflare-free/public/index.html
-          grep -q "出口产品购货合同" cloudflare-free/public/index.html
-          grep -q "contractPaper" cloudflare-free/public/index.html
-          grep -q "保存修改" cloudflare-free/public/index.html
+          grep -q "PURCHASE_CONTRACT_DEFAULT_ENTRY_V2" cloudflare-free/public/index.html
+          grep -q "openProfessionalPurchaseContract" cloudflare-free/public/index.html
+          grep -q "function previewSimplePOPDF(id)" cloudflare-free/public/index.html
+          grep -q "正式购货合同 / PDF" cloudflare-free/public/index.html
+          grep -q "contractPaper" cloudflare-free/public/professional-purchase-contract.js
+          grep -q "保存到云端" cloudflare-free/public/professional-purchase-contract.js
 
       - name: Install Wrangler
         working-directory: cloudflare-free
@@ -142,7 +144,10 @@ jobs:
                grep -q "renderDashboardHome()" /tmp/index.html &&
                grep -q "dashboard-metrics" /tmp/index.html &&
                grep -q "mobileNavBtn" /tmp/index.html &&
-               grep -q "professional-purchase-contract.js?v=20261124" /tmp/index.html; then
+               grep -q "PURCHASE_CONTRACT_DEFAULT_ENTRY_V2" /tmp/index.html &&
+               grep -q "openProfessionalPurchaseContract" /tmp/index.html &&
+               grep -q "previewSimplePOPDF" /tmp/index.html &&
+               grep -q "professional-purchase-contract.js?v=20261124-2" /tmp/index.html; then
               ok=1
               break
             fi
