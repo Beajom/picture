@@ -140,7 +140,8 @@ jobs:
                grep -q "DASHBOARD_UI_V2_BEGIN" /tmp/index.html &&
                grep -q "renderDashboardHome()" /tmp/index.html &&
                grep -q "dashboard-metrics" /tmp/index.html &&
-               grep -q "mobileNavBtn" /tmp/index.html; then
+               grep -q "mobileNavBtn" /tmp/index.html &&
+               grep -q "professional-purchase-contract.js?v=20261124" /tmp/index.html; then
               ok=1
               break
             fi
@@ -179,6 +180,13 @@ jobs:
           grep -Fq 'height:297mm!important' /tmp/material-contract-print.css
           grep -Fq '.mpo-print-primary' /tmp/material-contract-print.css
           echo "Standalone A4 PDF stylesheet verified."
+          curl -fsS "$BASE/professional-purchase-contract.js?check=$(date +%s)" -o /tmp/pro-purchase-contract.js
+          curl -fsS "$BASE/professional-purchase-contract.css?check=$(date +%s)" -o /tmp/pro-purchase-contract.css
+          grep -Fq "window.previewPurchaseContract=window.openProfessionalPurchaseContract" /tmp/pro-purchase-contract.js
+          grep -Fq "云端已保存" /tmp/pro-purchase-contract.js
+          grep -Fq "contract-signatures" /tmp/pro-purchase-contract.css
+          echo "Professional purchasing contract assets verified."
+
           # Reading bootstrap triggers safe, additive D1 material-field migration.
           curl -fsS "$BASE/api/bootstrap?material_fields_check=$(date +%s)" -o /tmp/material-fields-bootstrap.json
           python - <<'PY'
@@ -196,6 +204,24 @@ jobs:
           orders=json.load(open('/tmp/material-purchase-api.json')).get('orders',[])
           if orders: print(orders[0]['id'])
           PY
+          # Validate professional contract read-only API on an existing finished-goods purchase order.
+          curl -fsS "$BASE/api/bootstrap?contract_readonly=$(date +%s)" -o /tmp/professional-po-bootstrap.json
+          PO_ID="$(python - <<'PY'
+          import json
+          orders=json.load(open('/tmp/professional-po-bootstrap.json')).get('purchase_orders',[])
+          print(orders[0]['id'] if orders else '')
+          PY
+          )"
+          if [ -n "$PO_ID" ]; then
+            curl -fsS "$BASE/api/purchase-orders/$PO_ID/contract?check=$(date +%s)" -o /tmp/professional-contract-read.json
+            python - <<'PY'
+          import json
+          result=json.load(open('/tmp/professional-contract-read.json'))
+          assert isinstance(result.get('fields'),dict)
+          assert 'saved' in result
+          print('Professional contract D1 read endpoint verified (no customer data modified)')
+          PY
+          fi
           ORDER_ID="$(cat /tmp/material-order-id.txt)"
           if [ -n "$ORDER_ID" ]; then
             curl -fsS "$BASE/api/material-purchase-orders/$ORDER_ID/returned-contracts?check=$(date +%s)" -o /tmp/returned-contract-files.json
