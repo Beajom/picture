@@ -1,7 +1,7 @@
 /* Professional purchase contract, attached to existing Amazon Supply finished-goods POs. */
 (function(){
 'use strict';
-const VERSION='20261124-a4-final';
+const VERSION='20261124-header-v3';
 const fields=[
   ['contract_no','合同编号'],['contract_title','合同名称'],['sign_date','签约日期'],['sign_location','签约地点'],
   ['buyer_company','需方公司'],['buyer_address','需方地址'],['buyer_phone','需方电话'],['buyer_representative','需方代表'],
