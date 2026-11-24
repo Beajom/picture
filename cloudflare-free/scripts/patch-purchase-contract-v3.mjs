@@ -19,7 +19,7 @@ replaceWithin("purchase(){return","materials(){return",block=>{
   const marker='>PDF预览</button><button class="link red"';
   const at=block.indexOf(marker);
   if(at<0)throw new Error("Could not locate purchase-list PDF action");
-  const contractButton=`>PDF预览</button><button class="btn" style="padding:5px 10px;margin-right:6px;color:#7c3aed;border-color:#ddd6fe;background:#f5f3ff" onclick="previewPurchaseContract(\\''+o.id+'\\')">采购合同</button><button class="link red"`;
+  const contractButton=`>PDF预览</button><button class="btn" style="padding:5px 10px;margin-right:6px;color:#7c3aed;border-color:#ddd6fe;background:#f5f3ff" onclick="previewPurchaseContract(\\''+o.id+'\\')">正式购货合同</button><button class="link red"`;
   return block.slice(0,at)+contractButton+block.slice(at+marker.length)
 });
 
@@ -28,7 +28,7 @@ replaceWithin("async function viewPO(id){","function previewPOPDF(id){",block=>{
   const marker='>PDF预览</button></div>';
   const at=block.lastIndexOf(marker);
   if(at<0){console.warn("Purchase detail PDF action not found; continuing with list action only");return block}
-  const replacement=`>PDF预览</button><button class="btn" style="color:#7c3aed;border-color:#ddd6fe;background:#f5f3ff" onclick="previewPurchaseContract(\\''+o.id+'\\')">采购合同</button></div>`;
+  const replacement=`>PDF预览</button><button class="btn" style="color:#7c3aed;border-color:#ddd6fe;background:#f5f3ff" onclick="previewPurchaseContract(\\''+o.id+'\\')">正式购货合同</button></div>`;
   return block.slice(0,at)+replacement+block.slice(at+marker.length)
 });
 
