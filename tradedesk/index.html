@@ -489,6 +489,82 @@ tr.doc-item-drop-target td{background:#f0f7ff!important}
 .bulkbar .btn:disabled{opacity:.42;cursor:not-allowed}.global-search-kbd{white-space:nowrap}.top-icon-btn kbd{font-size:9px;font-weight:700;line-height:1.2;font-family:inherit;color:#dbeafe;border:1px solid #ffffff45;border-radius:5px;padding:3px 5px;margin-left:4px}
 .batch-print-page{background:#fff}.batch-print-page .paper{margin:0 auto!important;box-shadow:none!important}
 @media(max-width:760px){.doc-link-row{align-items:stretch;flex-direction:column}.doc-version-head{align-items:flex-start;flex-direction:column}.doc-version-row>span{align-items:flex-start;flex-direction:column;gap:2px}.bulkbar{flex-wrap:wrap}.doc-sync-choice{align-items:flex-start}}
+
+/* V13 adaptive desktop layout: laptop, ultrawide and scaled displays */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overflow-x:hidden}
+#app,.app-shell,.main,.content,.doc-grid,.doc-grid>.card,.doc-grid>.paper-wrap,.card,.card-pad{min-width:0;max-width:100%}
+.app-shell{grid-template-columns:clamp(210px,16vw,248px) minmax(0,1fr);min-height:100vh;min-height:100dvh}
+.main{min-width:0;width:100%;min-height:100vh;min-height:100dvh}
+.content{min-width:0;overflow-x:hidden;padding:clamp(12px,1.4vw,22px)}
+.grid{min-width:0}
+.table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.doc-grid{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:clamp(10px,1vw,16px);align-items:start}
+.doc-grid>.card,.doc-grid>.paper-wrap{min-width:0;width:100%}
+.doc-grid .editor .section-head{flex-wrap:wrap}
+.doc-grid .editor .section-head>.row{flex-wrap:wrap;justify-content:flex-end}
+.paper-wrap{width:100%;min-width:0;overflow-x:hidden;overflow-y:visible;container-type:inline-size}
+.paper{width:794px;max-width:none;min-width:0;transform:none}
+.paper-wrap .document-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.purchase-edit-table{min-width:1040px;table-layout:auto}
+.purchase-edit-table th,.purchase-edit-table td{white-space:nowrap}
+.purchase-edit-table td:nth-child(2) select{min-width:160px}
+.purchase-edit-table td:nth-child(4) input,.purchase-edit-table td:nth-child(5) input{min-width:120px}
+.purchase-summary .box{min-width:0}
+.purchase-summary .box b{display:block;line-height:1.35;overflow-wrap:anywhere;word-break:break-word}
+@media(max-width:1450px){
+  .doc-grid{grid-template-columns:minmax(0,1fr)}
+  .purchase-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:1250px) and (min-width:781px){
+  .app-shell{grid-template-columns:78px minmax(0,1fr)}
+  .sidebar{padding-left:8px;padding-right:8px}
+  .sidebar .brand>div:not(.logo),.sidebar .nav-label,.sidebar .nav-title,.sidebar .sidebar-footer{display:none}
+  .sidebar .brand{justify-content:center;padding-left:0;padding-right:0}
+  .sidebar .nav a{justify-content:center;padding-left:0;padding-right:0}
+  .sidebar .nav-ico{margin:0}
+  .topbar{height:auto;min-height:64px;padding:10px 14px;gap:8px;flex-wrap:wrap}
+  .topbar-left{flex:1 1 340px;gap:8px}
+  .topbar-title{min-width:140px}
+  .topbar-tools{flex:1 1 100%;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+  .topbar-tools .muted{display:none}
+  .global-search-wrap{width:min(380px,45vw)}
+}
+@media(max-width:980px) and (min-width:781px){
+  .topbar-left{flex-basis:100%}
+  .topbar-tools{justify-content:flex-start}
+  .global-search-wrap{width:min(420px,calc(100vw - 110px))}
+}
+@media(max-width:780px){
+  .app-shell{grid-template-columns:minmax(0,1fr)}
+  .main{min-height:calc(100vh - 80px);min-height:calc(100dvh - 80px)}
+  .topbar{height:auto;min-height:0;flex-wrap:wrap;gap:8px}
+  .topbar-left{width:100%;flex:1 1 100%;gap:10px}
+  .topbar-tools{width:100%;flex:1 1 100%;justify-content:flex-start;flex-wrap:wrap}
+  .content{padding:12px}
+  .doc-grid{grid-template-columns:minmax(0,1fr)}
+  .purchase-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .paper-wrap{padding:10px}
+  .modal-bg{padding:8px}
+  .modal{width:min(100%,96vw);max-height:96vh;max-height:96dvh}
+  .modal-body{padding:12px}
+  .section-head{flex-wrap:wrap}
+}
+@media(max-width:560px){
+  .topbar-tools .cloud,.topbar-tools .role-badge{display:none}
+  .topbar-tools #logoutBtn{margin-left:auto}
+  .content{padding:8px}
+  .grid-4,.grid-2,.form-grid,.purchase-summary{grid-template-columns:minmax(0,1fr)}
+  .purchase-summary .box b{font-size:14px}
+  .doc-grid .editor .section-head>.row{width:100%;justify-content:flex-start}
+  .modal-head,.modal-foot{padding:12px}
+  .paper-wrap{padding:8px}
+}
+@media print{
+  .paper{zoom:1!important}
+  .paper-wrap{overflow:visible!important;container-type:normal!important}
+}
+
 </style>
 </head>
 <body>
@@ -911,7 +987,44 @@ function navLink(k,n){return `<a data-nav="${k}" href="${pageHref(k)}" class="${
 function navGroup(title,items){return `<div class="sidebar-nav-group"><div class="nav-title">${title}</div><div class="nav">${items.map(x=>navLink(x[0],x[1])).join('')}</div></div>`}
 function systemNavItems(){const a=[['recycle','回收站'],['audit','操作日志'],['backup','数据备份']];if(state.userRole==='owner')a.push(['team','员工权限']);if(state.userRole==='owner'||state.userRole==='admin')a.push(['settings','公司设置']);return a}
 function shell(content){const [title,sub]=pages[state.page],todos=todoItems(),collapsed=state.sidebarCollapsed?' sidebar-collapsed':'';return `<div class="app-shell${collapsed}"><aside class="sidebar"><button class="sidebar-toggle" onclick="window.toggleSidebar()" title="${state.sidebarCollapsed?'展开侧边栏':'收起侧边栏'}">${state.sidebarCollapsed?'›':'‹'}</button><div class="brand"><div class="logo">TD</div><div><h2>TradeDesk</h2><small>Foreign Trade OS</small></div></div><div class="sidebar-nav-groups">${navGroup('经营',[['dashboard','工作台总览'],['orders','订单中心'],['payments','收款中心']])}${navGroup('基础资料',[['products','产品库'],['customers','客户库'],['suppliers','供应商']])}${navGroup('业务单据',[['purchases','采购合同'],['quotes','报价单'],['pi','形式发票 PI'],['invoice','商业发票'],['packing','装箱单'],['customs','报关单'],['contracts','销售合同']])}${navGroup('系统',systemNavItems())}</div><div class="sidebar-footer">TRADEDESK · CLOUD ERP<br>Sales · Procurement · Documents</div></aside><main class="main"><header class="topbar"><div class="topbar-left"><div class="topbar-title"><h1>${title}</h1><p>${sub}</p></div><div class="global-search-wrap"><span class="global-search-icon">⌕</span><input id="globalSearchInput" class="global-search" placeholder="搜索订单 / SKU / 客户 / 供应商 / 单据…" value="${esc(state.globalSearch||'')}" oninput="window.renderGlobalSearch(this.value)" onfocus="window.renderGlobalSearch(this.value)" onblur="setTimeout(()=>document.getElementById('globalSearchResults')?.classList.remove('show'),150)"><span class="global-search-kbd">Ctrl / ⌘ K</span><div id="globalSearchResults" class="search-popover">${searchResultsHtml(state.globalSearch)}</div></div></div><div class="topbar-tools"><button class="top-icon-btn" title="Alt+N 快速新建" onclick="window.quickCreate()">＋ <span>快速新建 <kbd>Alt+N</kbd></span></button><button class="top-icon-btn" onclick="window.openNotifications()">🔔${todos.length?`<i class="notify-badge">${todos.length>99?'99+':todos.length}</i>`:''}</button><div class="cloud"><span class="status-dot ${state.networkOnline&&state.cloudOk?'ok':'bad'}"></span><span class="${state.networkOnline?'':'network-warn'}">${!state.networkOnline?'网络已断开':state.cloudOk?'云端已连接':'云端异常'}</span></div><span class="role-badge">${esc(roleLabel(state.userRole))}</span><span class="muted" style="font-size:11px">${esc(user?.email||'')}</span><button class="btn" id="logoutBtn">退出</button></div></header><section class="content">${content}<div class="footer">TradeDesk Complete · Sales + Procurement · Secure Cloud Database</div></section></main></div>${state.modal}`}
-function render(){let content=state.page==='dashboard'?dashboard():state.page==='orders'?salesOrders():state.page==='payments'?paymentCenter():state.page==='products'?products():state.page==='customers'?(state.customerDetailId?customerDetail(state.customerDetailId):customers()):state.page==='suppliers'?suppliers():state.page==='purchases'?purchaseContracts():state.page==='recycle'?recycleBinPage():state.page==='audit'?auditLogPage():state.page==='backup'?backupPage():state.page==='team'?teamPage():docPages[state.page]?documents():settings();app.innerHTML=shell(content);document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',e=>{if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();window.gotoPage(a.dataset.nav)}));$('#logoutBtn').onclick=()=>supabase.auth.signOut();preparePreviewEdits();applyTableColumnVisibility();attachImageFallbacks();if(state.globalSearch){const pop=$('#globalSearchResults');if(pop)pop.classList.add('show')}}
+
+function fitPaperPreviews(){
+  const canZoom=!!(window.CSS&&CSS.supports&&CSS.supports('zoom','1'));
+  document.querySelectorAll('.paper-wrap').forEach(w=>{
+    const paper=w.querySelector('.paper');
+    if(!paper)return;
+    const fit=()=>{
+      const available=Math.max(280,w.clientWidth-28);
+      const scale=Math.max(.36,Math.min(1,available/794));
+      const value=String(Math.round(scale*1000)/1000);
+      if(paper.dataset.responsiveZoom===value)return;
+      paper.dataset.responsiveZoom=value;
+      if(canZoom){
+        paper.style.zoom=value;
+        paper.style.transform='none';
+        paper.style.marginBottom='';
+      }else{
+        paper.style.zoom='';
+        paper.style.transformOrigin='top left';
+        paper.style.transform='scale('+value+')';
+        paper.style.marginBottom='-'+Math.round(paper.offsetHeight*(1-scale))+'px';
+      }
+    };
+    fit();
+    if(!w.dataset.paperFitObserver){
+      w.dataset.paperFitObserver='1';
+      if('ResizeObserver' in window){
+        const observer=new ResizeObserver(fit);
+        observer.observe(w);
+        w.__paperFitObserver=observer;
+      }else{
+        window.addEventListener('resize',fit,{passive:true});
+      }
+    }
+  });
+}
+
+function render(){let content=state.page==='dashboard'?dashboard():state.page==='orders'?salesOrders():state.page==='payments'?paymentCenter():state.page==='products'?products():state.page==='customers'?(state.customerDetailId?customerDetail(state.customerDetailId):customers()):state.page==='suppliers'?suppliers():state.page==='purchases'?purchaseContracts():state.page==='recycle'?recycleBinPage():state.page==='audit'?auditLogPage():state.page==='backup'?backupPage():state.page==='team'?teamPage():docPages[state.page]?documents():settings();app.innerHTML=shell(content);document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',e=>{if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();window.gotoPage(a.dataset.nav)}));$('#logoutBtn').onclick=()=>supabase.auth.signOut();preparePreviewEdits();applyTableColumnVisibility();attachImageFallbacks();fitPaperPreviews();if(state.globalSearch){const pop=$('#globalSearchResults');if(pop)pop.classList.add('show')}}
 function recycleBinPage(){const all=db.recycleBin||[],list=pagedRows(all,'recycle');return `<div class="card"><div class="section-head"><div><h3>回收站</h3><p>删除的数据先进入这里，可恢复；只有“永久删除”才会真正从云端移除。</p></div><span class="badge">${all.length} 条</span></div>${all.length?`<div class="table-wrap"><table class="table"><tr><th>类型</th><th>名称</th><th>删除时间</th><th>操作</th></tr>${list.map(x=>`<tr><td><span class="recycle-type">${esc(recycleLabel(x.table))}</span></td><td><b>${esc(x.name)}</b></td><td>${esc(String(x.deletedAt||'').replace('T',' ').slice(0,19))}</td><td><button class="btn small primary" onclick="window.restoreRecycle('${x.table}','${x.id}')">恢复</button> <button class="btn small danger" onclick="window.permanentDelete('${x.table}','${x.id}')">永久删除</button></td></tr>`).join('')}</table></div>${paginationBar(all.length,'recycle')}`:'<div class="empty-state-card"><b>回收站为空</b><span>以后删除的产品、客户、订单、单据等会先进入这里。</span></div>'}</div>`}
 function auditLogPage(){const all=db.auditLogs||[],list=pagedRows(all,'audit');return `<div class="card"><div class="section-head"><div><h3>操作日志</h3><p>数据库自动记录新增、修改、移入回收站、恢复和永久删除。</p></div><span class="badge">最近 ${all.length} 条</span></div>${all.length?`<div class="table-wrap"><table class="table"><tr><th>时间</th><th>动作</th><th>类型</th><th>对象</th></tr>${list.map(x=>`<tr><td>${esc(String(x.created_at||'').replace('T',' ').slice(0,19))}</td><td><span class="audit-action ${esc(x.action)}">${esc(({CREATE:'新增',UPDATE:'修改',DELETE_TO_RECYCLE:'移入回收站',RESTORE:'恢复',DELETE_PERMANENT:'永久删除'})[x.action]||x.action)}</span></td><td>${esc(recycleLabel(x.entity_type))}</td><td><b>${esc(x.entity_name||x.entity_id||'-')}</b></td></tr>`).join('')}</table></div>${paginationBar(all.length,'audit')}`:'<div class="empty-state-card"><b>暂无操作记录</b><span>从 V11 开始的关键数据库操作会自动记录。</span></div>'}</div>`}
 
