@@ -147,7 +147,7 @@ jobs:
                grep -q "PURCHASE_CONTRACT_DEFAULT_ENTRY_V2" /tmp/index.html &&
                grep -q "openProfessionalPurchaseContract" /tmp/index.html &&
                grep -q "previewSimplePOPDF" /tmp/index.html &&
-               grep -q "professional-purchase-contract.js?v=20261124-header-v3" /tmp/index.html; then
+               grep -q "professional-purchase-contract.js?v=20261124-product-image-v4" /tmp/index.html; then
               ok=1
               break
             fi
@@ -194,6 +194,10 @@ jobs:
           grep -Fq "stamp_choice_confirmed" /tmp/pro-purchase-contract.js
           grep -Fq "PROFESSIONAL_A4_FINAL_V2" /tmp/pro-purchase-contract.css
           grep -Fq "PRO_CONTRACT_HEADER_REFINEMENT_V3" /tmp/pro-purchase-contract.css
+          grep -Fq "PRODUCT_IMAGE_IN_CONTRACT_V4" /tmp/pro-purchase-contract.css
+          grep -Fq "resolved_image_url" /tmp/pro-purchase-contract.js
+          grep -Fq "startsWith('/api/image/')" /tmp/pro-purchase-contract.js
+          grep -Fq "contract-product-image" /tmp/pro-purchase-contract.css
           grep -Fq "grid-template-columns:minmax(0,1fr) 59mm" /tmp/pro-purchase-contract.css
           grep -Fq "contract-print-zoom" /tmp/pro-purchase-contract.css
           grep -Fq "z-index:4;opacity:.83" /tmp/pro-purchase-contract.css
