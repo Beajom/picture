@@ -1,7 +1,7 @@
 /* Professional purchase contract, attached to existing Amazon Supply finished-goods POs. */
 (function(){
 'use strict';
-const VERSION='20261124-header-v3';
+const VERSION='20261124-product-image-v4';
 const fields=[
   ['contract_no','合同编号'],['contract_title','合同名称'],['sign_date','签约日期'],['sign_location','签约地点'],
   ['buyer_company','需方公司'],['buyer_address','需方地址'],['buyer_phone','需方电话'],['buyer_representative','需方代表'],
@@ -76,8 +76,10 @@ function defaults(order,profile){
   };
 }
 function safeProductImage(value){
-  const str=String(value||'');
-  if(/^https:\/\//i.test(str)||str.startsWith('/api/images/'))return str;
+  const str=String(value||'').trim();
+  // Product gallery images are served from /api/image/<KV key>, singular.
+  // Keep the URL unchanged so the existing Cloudflare image endpoint can serve it.
+  if(/^https:\/\//i.test(str)||str.startsWith('/api/image/')||str.startsWith('/api/images/'))return str;
   return '';
 }
 function renderContract(order,profile,f){
@@ -106,10 +108,13 @@ function renderContract(order,profile,f){
     ['十二、其他条款及补充说明',f.other_terms+(f.sign_note?'\n补充约定：'+f.sign_note:'')]
   ];
   const items=(order.items||[]).map((item,index)=>{
-    const image=safeProductImage(item.image_url||item.parent_image_url);
+    const image=safeProductImage(item.resolved_image_url)||safeProductImage(item.image_url)||
+      safeProductImage(item.resolved_parent_image_url)||safeProductImage(item.parent_image_url);
     const mdl=String(item.internal_code||'').split('-')[0],spec=[item.color,item.size].filter(Boolean).join(' / ');
     return '<tr><td class="center">'+(index+1)+'</td>'+
-      '<td class="center">'+(image?'<img src="'+escapeText(image)+'" style="width:13mm;height:13mm;max-width:100%;object-fit:contain" alt="产品图片">':'—')+'</td>'+
+      '<td class="center contract-product-image-cell">'+(image?
+        '<img class="contract-product-image" loading="eager" decoding="sync" src="'+escapeText(image)+'" alt="'+escapeText((item.product_name||item.internal_code||'商品')+'产品图')+'">':
+        '<span class="contract-product-image-missing" title="该商品还未在商品/ASIN档案中关联产品图片">待上传</span>')+'</td>'+
       '<td>'+escapeText(mdl||'—')+'<div class="sku">'+escapeText(item.sku||'')+'</div></td>'+
       '<td>'+escapeText(item.product_name||'')+'</td>'+
       '<td>'+escapeText(spec||'—')+'</td>'+
@@ -280,7 +285,17 @@ async function loadContract(id,windowHandle){
       if(!w.confirm('合同尚未保存到云端。仍要打印当前草稿吗？'))return;
     }
     if(doc.fonts?.ready)await doc.fonts.ready;
-    await Promise.all([...doc.images].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve})));
+    await Promise.all([...doc.images].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{
+      img.addEventListener('load',resolve,{once:true});
+      img.addEventListener('error',resolve,{once:true});
+    })));
+    const failed=doc.querySelectorAll('.contract-product-image:not([data-print-ok])');
+    let broken=0;
+    failed.forEach(img=>{if(!img.naturalWidth)broken++});
+    const missing=(order.items||[]).filter(item=>!(
+      safeProductImage(item.resolved_image_url)||safeProductImage(item.image_url)||
+      safeProductImage(item.resolved_parent_image_url)||safeProductImage(item.parent_image_url))).length;
+    if((broken||missing)&&!w.confirm('本采购单有 '+(broken+missing)+' 个商品图片尚未成功加载或未上传。\n继续打印会保留占位提示。是否仍要打印？'))return;
     const fit=measurePageFit();
     const label=doc.getElementById('contractPageCheck');
     if(label){
