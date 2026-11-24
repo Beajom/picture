@@ -557,8 +557,24 @@ export async function onRequest(ctx){
         s.phone supplier_phone,s.payment_method supplier_payment_method,s.bank_type,s.account_name,s.bank_name,s.bank_account
         FROM purchase_orders po LEFT JOIN suppliers s ON s.id=po.supplier_id WHERE po.id=?`,m[1]);
       if(!po)return err('采购单不存在',404);
-      po.items=await all(env.DB,`SELECT i.*,p.sku,p.internal_code,p.product_name,p.color,p.size,p.image_url,p.parent_image_url
-        FROM purchase_order_items i JOIN products p ON p.id=i.product_id WHERE i.purchase_order_id=?`,m[1]);
+      // Use the same product-image resolution as /bootstrap: exact SKU -> color -> parent.
+      // Older POs can have image_refs even when products.image_url is blank.
+      po.items=await all(env.DB,`SELECT i.*,p.sku,p.internal_code,p.product_name,p.color,p.size,p.parent_asin,
+        p.image_url,p.parent_image_url,
+        COALESCE(NULLIF(p.image_url,''),
+          (SELECT ir.public_url FROM image_refs ir
+           WHERE ir.product_id=p.id OR (ir.parent_asin=p.parent_asin AND ir.color=p.color AND ir.kind='color')
+           ORDER BY CASE WHEN ir.product_id=p.id THEN 0 ELSE 1 END,ir.created_at DESC LIMIT 1)
+        ) AS resolved_image_url,
+        COALESCE(NULLIF(p.parent_image_url,''),
+          (SELECT ir.public_url FROM image_refs ir
+           WHERE ir.parent_asin=p.parent_asin AND ir.kind='parent'
+           ORDER BY ir.created_at DESC LIMIT 1)
+        ) AS resolved_parent_image_url
+        FROM purchase_order_items i
+        JOIN products p ON p.id=i.product_id
+        WHERE i.purchase_order_id=?
+        ORDER BY i.rowid`,m[1]);
       return json(po);
     }
     if(m&&method==='DELETE'){
