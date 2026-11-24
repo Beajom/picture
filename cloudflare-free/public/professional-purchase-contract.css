@@ -162,3 +162,74 @@ body.preview-only .contract-paper{margin:0 auto}
   .contract-line-table tr,.contract-clause,.contract-signatures{break-inside:avoid!important;page-break-inside:avoid!important}
   .contract-paper img{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}
 }
+
+
+/* PRO_CONTRACT_HEADER_REFINEMENT_V3 — print-safe formal heading and right aligned contract metadata.
+   Keep visual treatment subtle for black-and-white A4 printouts. */
+.contract-company{
+  font-family:"SimSun","Songti SC","Noto Serif CJK SC",serif;
+  font-size:17.2pt;
+  font-weight:700;
+  letter-spacing:1.2pt;
+  line-height:1.22;
+  margin:0 0 .8mm;
+}
+.contract-document-title{
+  font-family:"SimSun","Songti SC","Noto Serif CJK SC",serif;
+  font-size:20pt;
+  font-weight:700;
+  letter-spacing:2.8pt;
+  line-height:1.25;
+  margin:0 0 3.3mm;
+}
+.contract-head{
+  grid-template-columns:minmax(0,1fr) 59mm;
+  column-gap:5.5mm;
+  align-items:start;
+}
+.contract-opening{
+  line-height:1.43;
+  letter-spacing:.05pt;
+}
+.contract-head-meta{
+  width:59mm;
+  max-width:100%;
+  justify-self:end;
+  margin-left:auto;
+  padding-top:.25mm;
+  color:#20242b;
+  font-size:8.8pt;
+  line-height:1.42;
+  font-variant-numeric:tabular-nums;
+}
+.contract-head-meta>div{
+  display:grid;
+  grid-template-columns:18mm minmax(0,1fr);
+  column-gap:.7mm;
+  min-height:4.45mm;
+  align-items:start;
+}
+.contract-head-meta strong{font-weight:700;white-space:nowrap}
+.contract-head-meta span{overflow-wrap:anywhere;text-align:left;white-space:normal}
+.contract-section-title{margin-top:2.7mm;margin-bottom:1.35mm}
+.contract-line-table thead th{
+  background:#eef2f6;
+  color:#263342;
+  font-size:8.65pt;
+  font-weight:700;
+  letter-spacing:.12pt;
+  text-align:center;
+  line-height:1.28;
+  padding:1.5mm .6mm;
+  border-top:.38mm solid #2d3e51;
+  border-bottom:.32mm solid #2d3e51;
+}
+.contract-line-table tbody td{vertical-align:middle}
+@media print{
+  .contract-line-table thead th{
+    background:#eef2f6!important;
+    color:#263342!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+}
