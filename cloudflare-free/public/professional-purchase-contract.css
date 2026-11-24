@@ -1,0 +1,85 @@
+/* Professional procurement contract — editable screen / independent A4 print */
+:root{font-family:"Microsoft YaHei","Noto Sans CJK SC",Arial,sans-serif;color:#15233c}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#edf1f7}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.contract-toolbar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #d8e0ec;display:flex;gap:15px;align-items:center;justify-content:space-between;padding:12px 24px;box-shadow:0 2px 12px #1e35590b}
+.contract-toolbar-title{min-width:0}
+.contract-toolbar-title strong{display:block;color:#163052;font-size:16px}
+.contract-toolbar-title small{font-size:11px;color:#76859a;display:block;margin-top:4px}
+.contract-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.contract-btn{border-radius:8px;border:1px solid #d5dfed;background:#fff;color:#264464;min-height:36px;padding:8px 13px;font-size:12px;font-weight:700}
+.contract-btn:hover{border-color:#9ab5db;background:#f4f8fe}
+.contract-btn.primary{background:#2459cc;border-color:#2459cc;color:#fff}
+.contract-btn.primary:hover{background:#1949a8}
+.contract-btn:disabled{opacity:.5;cursor:not-allowed}
+.contract-save-state{font-size:11px;color:#846529;font-weight:650}
+.contract-save-state.saved{color:#087f55}
+.contract-save-state.error{color:#b42318}
+.contract-layout{display:grid;grid-template-columns:minmax(290px,360px) minmax(0,1fr);align-items:start;gap:20px;max-width:1510px;margin:0 auto;padding:20px 24px 45px}
+.contract-editor{position:sticky;top:78px;max-height:calc(100vh - 94px);overflow:auto;background:#fff;border-radius:12px;border:1px solid #dbe4f0;box-shadow:0 1px 6px #203b6410;padding:17px}
+.contract-editor h2{font-size:15px;margin:0 0 5px;color:#1a3357}
+.contract-editor>p{font-size:11px;color:#71839c;line-height:1.6;margin:0 0 12px}
+.contract-editor h3{font-size:12px;color:#23466e;padding:12px 0 6px;border-bottom:1px solid #e9eef4;margin:13px 0}
+.contract-edit-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.contract-edit-fields label{min-width:0;display:flex;flex-direction:column;gap:5px;color:#516785;font-size:11px}
+.contract-edit-fields label.wide{grid-column:1/-1}
+.contract-edit-fields input,.contract-edit-fields textarea{border:1px solid #dbe4ef;border-radius:8px;padding:8px 9px;background:#fff;width:100%;outline-offset:2px;color:#263b5c;font-size:12px}
+.contract-edit-fields textarea{resize:vertical;min-height:60px;line-height:1.55}
+.contract-edit-fields input:focus,.contract-edit-fields textarea:focus{border-color:#6295e6;outline:2px solid #e4eefe}
+.contract-checkbox{display:flex!important;flex-direction:row!important;align-items:center;gap:8px!important}
+.contract-checkbox input{width:16px!important;height:16px!important;margin:0;flex:none}
+.contract-editor-note{font-size:11px;line-height:1.65;color:#806d44;background:#fffbf2;border:1px solid #fae8ba;padding:10px;border-radius:8px;margin:14px 0 0}
+.contract-document-wrap{min-width:0;overflow:auto}
+.contract-paper{width:210mm;min-height:297mm;margin:0 auto;padding:14mm 15mm;background:#fff;box-shadow:0 5px 22px #243a5b1b;color:#141414;font-family:"SimSun","Songti SC","Noto Serif CJK SC",serif;font-size:10pt;line-height:1.5}
+.contract-company{text-align:center;font-size:19pt;font-weight:700;letter-spacing:1.5pt;margin:0 0 1mm}
+.contract-document-title{text-align:center;font-size:22pt;font-weight:700;letter-spacing:3pt;margin:0 0 6mm}
+.contract-head{display:grid;grid-template-columns:minmax(0,1.48fr) minmax(0,.95fr);gap:7mm;align-items:start}
+.contract-opening{font-size:10pt;line-height:1.7;text-align:justify}
+.contract-head-meta{font-size:9.5pt;line-height:1.65}
+.contract-head-meta>div{display:grid;grid-template-columns:20mm 1fr;gap:2mm}
+.contract-head-meta strong{white-space:nowrap}
+.contract-section-title{font-weight:700;margin:5mm 0 2mm}
+.contract-line-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9.3pt}
+.contract-line-table th,.contract-line-table td{border:.3mm solid #222;vertical-align:middle;padding:1.8mm 1mm;overflow-wrap:anywhere;word-break:break-word}
+.contract-line-table th{background:#f8f8f8;text-align:center;font-weight:700}
+.contract-line-table .center{text-align:center}
+.contract-line-table .money{text-align:right;white-space:nowrap}
+.contract-line-table .sku{color:#4c5563;font-size:8.2pt}
+.contract-line-table thead{display:table-header-group}
+.contract-line-table tr{break-inside:avoid;page-break-inside:avoid}
+.contract-total-row{border:1px solid #222;border-top:0;display:grid;grid-template-columns:1fr auto;gap:5mm;padding:2mm 3mm;font-size:9.5pt}
+.contract-total-row strong{font-size:11pt}
+.contract-uppercase-row{border:1px solid #222;border-top:0;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:2mm 3mm;font-size:10pt}
+.contract-clauses{border:1px solid #222;border-top:0}
+.contract-clause{display:grid;grid-template-columns:33mm minmax(0,1fr);line-height:1.55;min-height:9mm;font-size:9.6pt;border-bottom:.23mm solid #555;break-inside:avoid;page-break-inside:avoid}
+.contract-clause:last-child{border-bottom:0}
+.contract-clause strong{padding:1.6mm 2mm 1.6mm 2.2mm;border-right:.23mm solid #555;font-weight:700}
+.contract-clause span{padding:1.6mm 2mm;white-space:pre-wrap;overflow-wrap:anywhere}
+.contract-signatures{display:grid;grid-template-columns:1fr 1fr;margin-top:5mm;border:1px solid #222;break-inside:avoid;page-break-inside:avoid;align-items:stretch}
+.contract-signatures .party{position:relative;padding:2.5mm 3mm 8mm;min-height:51mm;overflow:hidden}
+.contract-signatures .party+.party{border-left:1px solid #222}
+.contract-signatures .party h4{font-size:10pt;margin:0 0 2mm;font-weight:700}
+.contract-party-detail{display:grid;grid-template-columns:21mm minmax(0,1fr);font-size:9pt;min-height:5.2mm;line-height:1.55;gap:1mm;position:relative;z-index:1}
+.contract-party-detail label{font-weight:700}
+.contract-party-detail span{overflow-wrap:anywhere;word-break:break-word}
+.contract-stamp{position:absolute;width:37mm;height:37mm;object-fit:contain;top:11mm;left:37mm;z-index:2;opacity:.88;mix-blend-mode:multiply;pointer-events:none}
+.contract-signature-bottom{position:relative;z-index:1;font-size:9pt;margin-top:2mm}
+.contract-print-note{font-size:8.5pt;margin:2mm 0 0;color:#656565}
+.contract-hidden{display:none!important}
+body.preview-only .contract-layout{display:block;max-width:none}
+body.preview-only .contract-editor{display:none}
+body.preview-only .contract-paper{margin:0 auto}
+@page{size:A4 portrait;margin:0}
+@media print{
+  html,body{background:#fff!important;margin:0!important;padding:0!important;width:auto!important}
+  .contract-toolbar,.contract-editor{display:none!important}
+  .contract-layout{display:block!important;width:100%!important;padding:0!important;margin:0!important;max-width:none!important}
+  .contract-document-wrap{overflow:visible!important}
+  .contract-paper{width:210mm!important;max-width:210mm!important;min-height:0!important;margin:0!important;padding:12mm 14mm!important;box-shadow:none!important;break-after:auto!important}
+  .contract-signatures{break-inside:avoid!important;page-break-inside:avoid!important}
+  .contract-line-table th,.contract-line-table td{break-inside:avoid}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media(max-width:1180px){.contract-layout{grid-template-columns:310px minmax(0,1fr);gap:12px;padding:14px}.contract-paper{transform-origin:top center}}
+@media(max-width:760px){.contract-layout{grid-template-columns:1fr}.contract-editor{position:static;max-height:none}.contract-toolbar{align-items:flex-start;flex-direction:column}.contract-actions{justify-content:flex-start}.contract-document-wrap{overflow:auto}}
