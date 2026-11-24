@@ -80,6 +80,13 @@ CREATE TABLE IF NOT EXISTS purchase_orders(
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS purchase_contract_documents(
+  purchase_order_id TEXT PRIMARY KEY REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  fields_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS purchase_order_items(
   id TEXT PRIMARY KEY,
   purchase_order_id TEXT NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
