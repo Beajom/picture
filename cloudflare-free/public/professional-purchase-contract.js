@@ -1,7 +1,7 @@
 /* Professional purchase contract, attached to existing Amazon Supply finished-goods POs. */
 (function(){
 'use strict';
-const VERSION='20261124';
+const VERSION='20261124-a4-final';
 const fields=[
   ['contract_no','合同编号'],['contract_title','合同名称'],['sign_date','签约日期'],['sign_location','签约地点'],
   ['buyer_company','需方公司'],['buyer_address','需方地址'],['buyer_phone','需方电话'],['buyer_representative','需方代表'],
@@ -71,7 +71,8 @@ function defaults(order,profile){
     dispute_terms:'履行本合同发生争议，双方先协商解决；协商不成时，依法向有管辖权的人民法院提起诉讼。',
     other_terms:'本合同一式两份，供需双方各执一份。双方签字或依法加盖印章后生效；电子签署及其他签订方式按适用法律及双方约定办理。',
     signed_on_buyer:day,signed_on_supplier:day,sign_note:'',
-    show_buyer_stamp:false
+    show_buyer_stamp:!!profile.has_stamp,
+    stamp_choice_confirmed:false
   };
 }
 function safeProductImage(value){
@@ -162,7 +163,12 @@ async function loadContract(id,windowHandle){
     getJSON('/api/material-contract-profile').catch(()=>({profile:{}}))
   ]);
   const profile=profResponse.profile||{};
-  const fieldsValue=Object.assign(defaults(order,profile),contract.fields||{});
+  const storedFields=contract.fields||{};
+  const fieldsValue=Object.assign(defaults(order,profile),storedFields);
+  // Earlier saved drafts always defaulted to 'no stamp'. Show an authorized saved stamp
+  // unless the user explicitly opts out in the upgraded editor.
+  if(profile.has_stamp && storedFields.show_buyer_stamp===false && storedFields.stamp_choice_confirmed!==true)
+    fieldsValue.show_buyer_stamp=true;
   if(!profile.has_stamp)fieldsValue.show_buyer_stamp=false;
   const w=windowHandle;
   if(w.closed)return;
@@ -173,6 +179,7 @@ async function loadContract(id,windowHandle){
     '<div class="contract-toolbar"><div class="contract-toolbar-title"><strong>出口产品购货合同 · '+escapeText(order.order_no)+'</strong>'+
     '<small>正式合同与普通采购单 PDF 独立保存</small></div>'+
     '<div class="contract-actions"><span class="contract-save-state '+(contract.saved?'saved':'')+'" id="contractSaveStatus">'+(contract.saved?'已读取云端合同':'尚未保存合同')+'</span>'+
+    '<span class="contract-page-check" id="contractPageCheck">A4 单页排版检测中…</span>'+
     '<button id="contractShowPreview" class="contract-btn" type="button">只看 A4</button>'+
     '<button id="contractSave" class="contract-btn" type="button">保存到云端</button>'+
     '<button id="contractPrint" class="contract-btn primary" type="button">A4 打印 / 保存 PDF</button>'+
@@ -182,15 +189,75 @@ async function loadContract(id,windowHandle){
     '</body></html>';
   w.document.open();w.document.write(html);w.document.close();
   const doc=w.document,saveStatus=doc.getElementById('contractSaveStatus');
+  const millimeterToPx=96/25.4;
+  const minimumPrintZoom=.72;
+  const measuredPrintHeight=(zoom)=>{
+    const paper=doc.getElementById('contractPaper');
+    if(!paper)return Number.POSITIVE_INFINITY;
+    // A hidden offscreen copy uses the exact print width and padding with no
+    // min-height. Never crop original legal clauses to force one page.
+    const probe=paper.cloneNode(true);
+    probe.removeAttribute('id');
+    probe.style.setProperty('position','absolute','important');
+    probe.style.setProperty('left','-20000px','important');
+    probe.style.setProperty('top','0','important');
+    probe.style.setProperty('display','block','important');
+    probe.style.setProperty('visibility','hidden','important');
+    probe.style.setProperty('min-height','0','important');
+    probe.style.setProperty('height','auto','important');
+    probe.style.setProperty('width',(210/zoom).toFixed(3)+'mm','important');
+    probe.style.setProperty('padding',(10/zoom).toFixed(3)+'mm '+(12/zoom).toFixed(3)+'mm','important');
+    probe.style.setProperty('margin','0','important');
+    probe.style.setProperty('box-shadow','none','important');
+    probe.style.setProperty('overflow','visible','important');
+    doc.body.appendChild(probe);
+    const height=probe.getBoundingClientRect().height;
+    probe.remove();
+    return height*zoom;
+  };
+  const measurePageFit=()=>{
+    const maxHeight=294*millimeterToPx; // reserve 3mm to avoid a blank second page
+    for(let step=0;step<=28;step++){
+      const zoom=Math.max(minimumPrintZoom,Math.round((1-step*.01)*100)/100);
+      if(measuredPrintHeight(zoom)<=maxHeight){
+        doc.documentElement.style.setProperty('--contract-print-zoom',String(zoom));
+        doc.documentElement.style.setProperty('--contract-print-width',(210/zoom).toFixed(3)+'mm');
+        doc.documentElement.style.setProperty('--contract-print-padding-y',(10/zoom).toFixed(3)+'mm');
+        doc.documentElement.style.setProperty('--contract-print-padding-x',(12/zoom).toFixed(3)+'mm');
+        return {fits:true,zoom};
+      }
+    }
+    doc.documentElement.style.setProperty('--contract-print-zoom',String(minimumPrintZoom));
+    doc.documentElement.style.setProperty('--contract-print-width',(210/minimumPrintZoom).toFixed(3)+'mm');
+    doc.documentElement.style.setProperty('--contract-print-padding-y',(10/minimumPrintZoom).toFixed(3)+'mm');
+    doc.documentElement.style.setProperty('--contract-print-padding-x',(12/minimumPrintZoom).toFixed(3)+'mm');
+    return {fits:false,zoom:minimumPrintZoom};
+  };
+  let fitCheckRequested=false;
+  const schedulePageCheck=()=>{
+    if(fitCheckRequested)return;
+    fitCheckRequested=true;
+    w.requestAnimationFrame(()=>{
+      fitCheckRequested=false;
+      if(w.closed)return;
+      const fit=measurePageFit(),label=doc.getElementById('contractPageCheck');
+      if(label){
+        label.textContent=fit.fits?'A4 单页适配 · '+Math.round(fit.zoom*100)+'%':'内容超出 A4 单页，请精简条款';
+        label.className='contract-page-check'+(fit.fits?'':' warn');
+      }
+    });
+  };
   const refresh=()=>{
     doc.getElementById('contractPaper').innerHTML=renderContract(order,profile,fieldsValue);
     doc.title=(fieldsValue.contract_no||order.order_no)+' 出口产品购货合同';
     saveStatus.textContent='有未保存修改';saveStatus.className='contract-save-state';
+    schedulePageCheck();
   };
   doc.querySelectorAll('[data-field]').forEach(input=>{
     input.addEventListener('input',()=>{
       const name=input.dataset.field;
       fieldsValue[name]=input.type==='checkbox'?input.checked:input.value;
+      if(name==='show_buyer_stamp')fieldsValue.stamp_choice_confirmed=true;
       refresh();
     });
   });
@@ -212,7 +279,15 @@ async function loadContract(id,windowHandle){
     if(!(await persist())){
       if(!w.confirm('合同尚未保存到云端。仍要打印当前草稿吗？'))return;
     }
+    if(doc.fonts?.ready)await doc.fonts.ready;
     await Promise.all([...doc.images].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve})));
+    const fit=measurePageFit();
+    const label=doc.getElementById('contractPageCheck');
+    if(label){
+      label.textContent=fit.fits?'A4 单页适配 · '+Math.round(fit.zoom*100)+'%':'内容过多，无法不裁切地放进一页';
+      label.className='contract-page-check'+(fit.fits?'':' warn');
+    }
+    if(!fit.fits && !w.confirm('当前合同的商品行数或条款较多，无法在清晰可读的前提下完整放进一张 A4。\n继续打印将自动分页，不会裁切条款。是否继续？'))return;
     w.focus();w.print();
   });
   doc.getElementById('contractShowPreview').addEventListener('click',()=>{
@@ -220,6 +295,8 @@ async function loadContract(id,windowHandle){
     doc.getElementById('contractShowPreview').textContent=active?'显示编辑区':'只看 A4';
   });
   doc.getElementById('contractClose').addEventListener('click',()=>w.close());
+  if(doc.fonts?.ready)doc.fonts.ready.then(schedulePageCheck);
+  else schedulePageCheck();
 }
 window.openProfessionalPurchaseContract=function(id){
   const popup=window.open('','_blank','width=1380,height=900');
