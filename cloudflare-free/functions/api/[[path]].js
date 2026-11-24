@@ -90,13 +90,13 @@ async function ensureProfessionalPurchaseContractTable(env){
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
 }
-const PROFESSIONAL_CONTRACT_KEYS=new Set(['contract_no','contract_title','sign_date','sign_location','buyer_company','buyer_address','buyer_phone','buyer_representative','supplier_company','supplier_address','supplier_phone','supplier_representative','supplier_bank','supplier_account','delivery_address','transport_terms','payment_terms','quality_terms','packaging_terms','acceptance_terms','supplier_liability','buyer_liability','invoice_terms','amendment_terms','dispute_terms','other_terms','signed_on_buyer','signed_on_supplier','show_buyer_stamp','sign_note']);
+const PROFESSIONAL_CONTRACT_KEYS=new Set(['contract_no','contract_title','sign_date','sign_location','buyer_company','buyer_address','buyer_phone','buyer_representative','supplier_company','supplier_address','supplier_phone','supplier_representative','supplier_bank','supplier_account','delivery_address','transport_terms','payment_terms','quality_terms','packaging_terms','acceptance_terms','supplier_liability','buyer_liability','invoice_terms','amendment_terms','dispute_terms','other_terms','signed_on_buyer','signed_on_supplier','show_buyer_stamp','stamp_choice_confirmed','sign_note']);
 function normalizeProfessionalContract(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('合同信息格式错误');
   const result={};
   for(const [key,val] of Object.entries(raw)){
     if(!PROFESSIONAL_CONTRACT_KEYS.has(key))continue;
-    if(key==='show_buyer_stamp'){result[key]=val===true;continue}
+    if(key==='show_buyer_stamp'||key==='stamp_choice_confirmed'){result[key]=val===true;continue}
     if(typeof val!=='string')throw new Error('合同字段必须填写文字');
     if(val.length>5000)throw new Error('单个合同条款不能超过5000字符');
     result[key]=val.trim();
