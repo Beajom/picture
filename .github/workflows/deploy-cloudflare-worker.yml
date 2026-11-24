@@ -61,13 +61,14 @@ jobs:
           from pathlib import Path
           s=Path("cloudflare-free/public/index.html").read_text(encoding="utf-8")
           a=s.rfind("<script>")
-          b=s.rfind("</script>")
+          b=s.find("</script>",a)
           if a < 0 or b < 0 or b <= a:
               raise SystemExit("frontend script block not found")
           Path("/tmp/frontend.js").write_text(s[a+8:b], encoding="utf-8")
           PY
           node --check /tmp/frontend.js
           node --check cloudflare-free/public/material-purchase-ui.js
+          node --check cloudflare-free/public/professional-purchase-contract.js
           node --check cloudflare-free/functions/api/material-purchase.js
           grep -q "变体显示管理" cloudflare-free/public/index.html
           grep -q "newMaterialPO" cloudflare-free/public/material-purchase-ui.js
