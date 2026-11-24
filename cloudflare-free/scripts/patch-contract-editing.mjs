@@ -2,6 +2,12 @@ import fs from "node:fs/promises";
 
 const file = new URL("../public/index.html", import.meta.url);
 let html = await fs.readFile(file, "utf8");
+// Professional A4 contract is now routed directly from the primary PDF buttons.
+if(html.includes("PURCHASE_CONTRACT_DEFAULT_ENTRY_V2")){
+  console.log("Professional purchase-contract route present; skip legacy contract injection.");
+  process.exit(0);
+}
+
 
 const start = html.indexOf("function previewPurchaseContract(id){");
 const end = html.indexOf("async function delPO(id){", start);
