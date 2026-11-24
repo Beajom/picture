@@ -233,3 +233,39 @@ body.preview-only .contract-paper{margin:0 auto}
     print-color-adjust:exact!important;
   }
 }
+
+
+/* PRODUCT_IMAGE_IN_CONTRACT_V4: SKU photo with fixed A4-safe footprint. */
+.contract-product-image-cell{
+  text-align:center;
+  vertical-align:middle;
+  padding:.9mm .5mm!important;
+  width:12%;
+}
+.contract-product-image{
+  display:block;
+  width:12.5mm;
+  height:12.5mm;
+  max-width:100%;
+  margin:0 auto;
+  object-fit:contain;
+  object-position:center;
+  background:#fff;
+}
+.contract-product-image-missing{
+  display:inline-block;
+  font-size:7.4pt;
+  line-height:1.25;
+  color:#727c8a;
+  padding:1mm .5mm;
+  white-space:nowrap;
+}
+@media print{
+  .contract-product-image{
+    width:12.5mm!important;
+    height:12.5mm!important;
+    object-fit:contain!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+}
