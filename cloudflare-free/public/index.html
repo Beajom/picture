@@ -2314,5 +2314,7 @@ window.receiveMaterialPurchase=async function(id){
 /* MATERIAL_PURCHASE_JS_BUNDLE_END */
 load().then(render).catch(e=>{setCloudSyncStatus(false,e.message);root.innerHTML='<div class="panel"><div class="empty" style="color:#b42318">云端数据加载失败：'+esc(e.message)+'<div class="small muted" style="margin-top:12px">为避免显示错误库存，已暂停使用浏览器旧缓存。请检查网络并点击刷新。</div><button class="btn" style="margin-top:12px" onclick="location.reload()">重新加载</button></div></div>';renderNav()})
 </script>
+<!-- Professional signed contract: loaded after the classic workbench so it replaces only the contract preview action. -->
+<script src="/professional-purchase-contract.js?v=20261124"></script>
 </body>
 </html>
