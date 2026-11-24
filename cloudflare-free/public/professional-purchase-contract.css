@@ -83,3 +83,82 @@ body.preview-only .contract-paper{margin:0 auto}
 }
 @media(max-width:1180px){.contract-layout{grid-template-columns:310px minmax(0,1fr);gap:12px;padding:14px}.contract-paper{transform-origin:top center}}
 @media(max-width:760px){.contract-layout{grid-template-columns:1fr}.contract-editor{position:static;max-height:none}.contract-toolbar{align-items:flex-start;flex-direction:column}.contract-actions{justify-content:flex-start}.contract-document-wrap{overflow:auto}}
+
+
+/* PROFESSIONAL_A4_FINAL_V2
+   Compact and legible one-sheet contract; never use overflow:hidden on the agreement. */
+.contract-paper{
+  width:210mm;
+  min-height:297mm;
+  padding:10mm 12mm;
+  font-size:9pt;
+  line-height:1.39;
+  overflow:visible;
+}
+.contract-company{font-size:16.8pt;letter-spacing:1px;line-height:1.25;margin:0 0 1mm}
+.contract-document-title{font-size:19pt;letter-spacing:2px;line-height:1.3;margin:0 0 3.5mm}
+.contract-head{grid-template-columns:minmax(0,1.52fr) minmax(0,.95fr);gap:4mm}
+.contract-opening{font-size:9pt;line-height:1.46}
+.contract-head-meta{font-size:8.7pt;line-height:1.42}
+.contract-head-meta>div{grid-template-columns:18mm 1fr;gap:1mm;min-height:4.3mm}
+.contract-section-title{font-size:9.3pt;margin:3mm 0 1.4mm}
+.contract-line-table{font-size:8.5pt}
+.contract-line-table th,.contract-line-table td{padding:1.15mm .7mm;border-width:.24mm;line-height:1.35}
+.contract-line-table th{background:#fafafa}
+.contract-line-table img{width:11mm!important;height:11mm!important;max-width:100%;object-fit:contain}
+.contract-line-table .sku{font-size:7.8pt}
+.contract-total-row{padding:1.35mm 2.2mm;gap:2.5mm;font-size:8.65pt;line-height:1.35}
+.contract-total-row strong{font-size:9.4pt}
+.contract-uppercase-row{padding:1.35mm 2.2mm;gap:4px;font-size:8.8pt;line-height:1.35}
+.contract-clause{
+  grid-template-columns:28mm minmax(0,1fr);
+  min-height:0;
+  font-size:8.6pt;
+  line-height:1.36;
+  border-bottom-width:.2mm;
+}
+.contract-clause strong{padding:1mm 1.45mm;border-right-width:.2mm}
+.contract-clause span{padding:1mm 1.6mm}
+.contract-signatures{margin-top:3mm;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.contract-signatures .party{min-height:40mm;padding:2mm 2.5mm 3mm;overflow:visible;isolation:isolate}
+.contract-signatures .party h4{font-size:9.1pt;margin:0 0 1mm}
+.contract-party-detail{grid-template-columns:20mm minmax(0,1fr);font-size:8.55pt;line-height:1.35;min-height:4.4mm;gap:.5mm}
+.contract-signature-bottom{font-size:8.6pt;margin-top:1.5mm}
+.contract-stamp{
+  width:34mm;height:34mm;max-width:48%;
+  top:11mm;left:24mm;
+  z-index:4;opacity:.83;
+  object-fit:contain;
+  mix-blend-mode:multiply;
+  pointer-events:none;
+}
+.contract-print-note{font-size:7.6pt;margin:1mm 0 0;line-height:1.3}
+.contract-page-check{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#526b8f}
+.contract-page-check.warn{color:#b54708;font-weight:700}
+.contract-editor-note{margin-bottom:8px}
+@page{size:A4 portrait;margin:0}
+@media print{
+  html,body{height:auto!important;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;overflow:visible!important}
+  body{background:#fff!important}
+  .contract-toolbar,.contract-editor,.contract-page-check{display:none!important}
+  .contract-layout{display:block!important;width:auto!important;min-width:0!important;max-width:none!important;margin:0!important;padding:0!important}
+  .contract-document-wrap{display:block!important;overflow:visible!important;width:auto!important}
+  .contract-paper{
+    box-sizing:border-box!important;
+    width:var(--contract-print-width,210mm)!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:0!important;
+    height:auto!important;
+    margin:0!important;
+    margin-left:var(--contract-print-left,0mm)!important;
+    padding:var(--contract-print-padding-y,10mm) var(--contract-print-padding-x,12mm)!important;
+    zoom:var(--contract-print-zoom,1)!important;
+    border:0!important;
+    box-shadow:none!important;
+    overflow:visible!important;
+    break-after:auto!important;
+  }
+  .contract-line-table tr,.contract-clause,.contract-signatures{break-inside:avoid!important;page-break-inside:avoid!important}
+  .contract-paper img{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}
+}
