@@ -147,7 +147,7 @@ jobs:
                grep -q "PURCHASE_CONTRACT_DEFAULT_ENTRY_V2" /tmp/index.html &&
                grep -q "openProfessionalPurchaseContract" /tmp/index.html &&
                grep -q "previewSimplePOPDF" /tmp/index.html &&
-               grep -q "professional-purchase-contract.js?v=20261124-2" /tmp/index.html; then
+               grep -q "professional-purchase-contract.js?v=20261124-a4-final" /tmp/index.html; then
               ok=1
               break
             fi
@@ -190,6 +190,11 @@ jobs:
           curl -fsS "$BASE/professional-purchase-contract.css?check=$(date +%s)" -o /tmp/pro-purchase-contract.css
           grep -Fq "window.previewPurchaseContract=window.openProfessionalPurchaseContract" /tmp/pro-purchase-contract.js
           grep -Fq "云端已保存" /tmp/pro-purchase-contract.js
+          grep -Fq "measurePageFit" /tmp/pro-purchase-contract.js
+          grep -Fq "stamp_choice_confirmed" /tmp/pro-purchase-contract.js
+          grep -Fq "PROFESSIONAL_A4_FINAL_V2" /tmp/pro-purchase-contract.css
+          grep -Fq "contract-print-zoom" /tmp/pro-purchase-contract.css
+          grep -Fq "z-index:4;opacity:.83" /tmp/pro-purchase-contract.css
           grep -Fq "contract-signatures" /tmp/pro-purchase-contract.css
           echo "Professional purchasing contract assets verified."
 
